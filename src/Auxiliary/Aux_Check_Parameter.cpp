@@ -568,6 +568,14 @@ void Aux_Check_Parameter()
 #  endif
 #  endif // #ifdef DUAL_ENERGY
 
+#  if ( EOS != IDEAL_GAS  &&  EOS != NUCLEAR )
+#     error : ERROR : unsupported equation of state (IDEAL_GAS/NUCLEAR) !!
+#  endif
+
+#  if ( defined NEUTRINO_TRANSPORT  &&  NEUTRINO_TRANSPORT != IDSA )
+#     error : ERROR : unsupported neutrino transport scheme (IDSA) !!
+#  endif
+
 #  if ( defined CHECK_INTERMEDIATE  &&  CHECK_INTERMEDIATE != EXACT  &&  CHECK_INTERMEDIATE != HLLE  &&  \
         CHECK_INTERMEDIATE != HLLC )
 #     error : ERROR : unsupported option in CHECK_INTERMEDIATE (EXACT/HLLE/HLLC) !!

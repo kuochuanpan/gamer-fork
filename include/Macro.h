@@ -69,6 +69,15 @@
 #endif
 
 
+// equation of states
+#define IDEAL_GAS    1
+#define NUCLEAR      2
+
+
+// neutrino transport schemes
+#define IDSA         1
+
+
 // Poisson solvers
 #define SOR          1
 #define MG           2

@@ -163,6 +163,24 @@ void Aux_TakeNote()
       fprintf( Note, "DUAL_ENERGY                     UNKNOWN\n" );
 #     endif
 
+#     if   ( EOS == IDEAL_GAS )
+      fprintf( Note, "EOS                             IDEAL_GAS\n" );
+#     elif ( EOS == NUCLEAR )
+      fprintf( Note, "EOS                             NUCLEAR\n" );
+#     else
+      fprintf( Note, "EOS                             UNKNOWN\n" );
+#     endif
+
+#     ifdef NEUTRINO_TRANSPORT
+#     if   ( NEUTRINO_TRANSPORT == IDSA )
+      fprintf( Note, "NEUTRINO_TRANSPORT              IDSA\n" );
+#     else
+      fprintf( Note, "NEUTRINO_TRANSPORT              UNKNOWN\n" );
+#     endif
+#     else // #ifdef NEUTRINO_TRANSPORT
+      fprintf( Note, "NEUTRINO_TRANSPORT              OFF\n" );
+#     endif // #ifdef NEUTRINO_TRANSPORT ... else ...
+
 //    c. options in MHD
 #     elif ( MODEL == MHD )
 #     warning : WAIT MHD !!!

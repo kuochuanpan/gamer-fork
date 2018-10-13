@@ -73,6 +73,12 @@ SIMU_OPTION += -DRSOLVER=ROE
 # --> useless for RTVD/WAF
 SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 
+# equation of state: IDEAL_GAS/NUCLEAR
+SIMU_OPTION += -DEOS=NUCLEAR
+
+# nutrino transport scheme: IDSA
+SIMU_OPTION += -DNEUTRINO_TRANSPORT=IDSA
+
 
 # (b-2) MHD options
 # ------------------------------------------------------------------------------------
