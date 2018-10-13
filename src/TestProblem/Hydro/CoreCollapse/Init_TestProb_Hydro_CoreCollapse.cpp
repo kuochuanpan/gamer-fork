@@ -225,21 +225,28 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double *Table_Velr = Progenitor_Prof + 3*Progenitor_NBin;
    const double *Table_Ye   = Progenitor_Prof + 4*Progenitor_NBin;
 
+   double xc, yc, zc;
    double r, dens, pres, velr, velx, vely, velz, ye, r_xy, v_xy, angle, sign;
-   r = sqrt(SQR(x) + SQR(y) + SQR(z));
+
+   xc = x - BoxCenter[0];
+   yc = y - BoxCenter[1];
+   zc = z - BoxCenter[2];
+
+   r = sqrt(SQR(xc) + SQR(yc) + SQR(zc));
+
    dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r);
    pres = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Pres, r);
    velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r);
    ye   = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Ye, r);
 
-   r_xy = sqrt( SQR(x) + SQR(y));
+   r_xy = sqrt( SQR(xc) + SQR(yc));
 
    if (r_xy == 0.0)
    {
      angle = M_PI/2.;
    } else
    {
-     angle = atan(z/r_xy);
+     angle = atan(zc/r_xy);
    }
    velz = velr*sin(angle);
 
@@ -248,9 +255,9 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    {
      angle = M_PI/2.0;
    } else {
-     angle = atan(y/x);
+     angle = atan(yc/xc);
    }
-   sign = x/ abs(x);
+   sign = xc/ abs(xc);
    velx = sign*v_xy*cos(angle);
    vely = sign*v_xy*sin(angle);
 
