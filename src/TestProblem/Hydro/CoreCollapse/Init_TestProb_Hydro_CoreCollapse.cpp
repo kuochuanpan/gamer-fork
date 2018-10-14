@@ -136,17 +136,13 @@ void SetParameter()
      Table_Velr = Progenitor_Prof + 3*Progenitor_NBin;
      Table_Ye   = Progenitor_Prof + 4*Progenitor_NBin;
 
+     // convert to code units (assuming progentior model is in cgs)
      for (int b=0; b<Progenitor_NBin; b++)
      {
        Table_R[b]    /= UNIT_L;
        Table_Dens[b] /= UNIT_D;
        Table_Pres[b] /= UNIT_P;
-       Table_Velr[b] /= (UNIT_L/UNIT_T);
-
-       if ( MPI_Rank == 0 )
-       {
-         Aux_Message( stdout, "DEUBG Density %13.7e \n",Table_Dens[b]);
-       }
+       Table_Velr[b] /= UNIT_V;
      }
 
    }
@@ -251,7 +247,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    velz = velr*sin(angle);
 
    v_xy = velr*cos(angle);
-   if (x == 0.0)
+   if (xc == 0.0)
    {
      angle = M_PI/2.0;
    } else {
