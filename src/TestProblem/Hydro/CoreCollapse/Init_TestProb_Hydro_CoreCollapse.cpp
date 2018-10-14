@@ -44,6 +44,10 @@ void Validate()
    Aux_Error( ERROR_INFO, "GRAVITY must be enabled !!\n" );
 #  endif
 
+
+// TODO: must enable nuclear EoS
+
+
 /*
 #  ifdef PARTICLE
    Aux_Error( ERROR_INFO, "PARTICLE must be disabled !!\n" );
@@ -265,6 +269,12 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[ENGY] = pres / (GAMMA - 1.0) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC
+
+void End_CoreCollapse()
+{
+  delete [] Progenitor_Prof;
+} // FUNCTION End_CoreCollapse
+
 #endif // #if ( MODEL == HYDRO )
 
 
@@ -309,7 +319,7 @@ void Init_TestProb_Hydro_CoreCollapse()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr             = NULL;    // option: OPT__OUTPUT_USER;      example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
    Aux_Record_User_Ptr         = NULL;    // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
-   End_User_Ptr                = NULL;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
+   End_User_Ptr                = End_CoreCollapse;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
 #  ifdef GRAVITY
    Init_ExternalAcc_Ptr        = NULL;    // option: OPT__GRAVITY_TYPE=2/3; example: SelfGravity/Init_ExternalAcc.cpp
    Init_ExternalPot_Ptr        = NULL;    // option: OPT__EXTERNAL_POT;     example: TestProblem/ELBDM/ExtPot/Init_TestProb_ELBDM_ExtPot.cpp --> Init_ExtPot()
