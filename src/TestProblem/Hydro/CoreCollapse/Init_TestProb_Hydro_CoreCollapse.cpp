@@ -1,6 +1,6 @@
 #include "GAMER.h"
 #include "TestProb.h"
-
+//#include "Nuc_eos.h"
 
 
 // problem-specific global variables
@@ -151,6 +151,11 @@ void SetParameter()
 
    }
 
+// load the EOS table
+//nuc_eos_C_ReadTable("LS220.h5");
+//printf("nrho: %d\n",nrho);
+//printf("ntemp: %d\n",ntemp);
+//printf("nye: %d\n",nye);
 
 // (1-2) set the default values
 
@@ -261,11 +266,13 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    velx = sign*v_xy*cos(angle);
    vely = sign*v_xy*sin(angle);
 
-
+   //printf("Ye debug: %15.6E\n",ye);
    fluid[DENS] = dens;
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
+   fluid[YE]   = ye;
+   fluid[ENTR] = 0.0;
    fluid[ENGY] = pres / (GAMMA - 1.0) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC

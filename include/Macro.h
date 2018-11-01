@@ -125,11 +125,19 @@
 #  define NCOMP_PASSIVE_USER  0
 #endif
 // --> including entropy (or internal energy) when the dual energy formalism is adopted
-#if (  ( MODEL == HYDRO || MODEL == MHD )  &&  defined DUAL_ENERGY  )
+// TODO: add EOS nuclear add +2 variables
+
+#if (  ( MODEL == HYDRO || MODEL == MHD )  &&  defined DUAL_ENERGY && (EOS== NUCLEAR) )
+#  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + 3 )
+#elif (  ( MODEL == HYDRO || MODEL == MHD )  &&  EOS == NUCLEAR )
+#  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + 2 )
+#elif (  ( MODEL == HYDRO || MODEL == MHD )  &&  defined DUAL_ENERGY)
 #  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + 1 )
 #else
 #  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER )
 #endif
+
+
 
 // assuming all passive scalars have the corresponding fluxes
 #  define NFLUX_PASSIVE       NCOMP_PASSIVE
@@ -187,6 +195,12 @@
 # endif
 #endif
 
+// Nuclear EoS
+# if (EOS == NUCLEAR)
+# define ENTR ( NCOMP_TOTAL - 2 )
+# define YE   ( NCOMP_TOTAL - 1 )
+# endif
+
 // flux indices of flux[] --> element of [0 ... NFLUX_FLUID-1]
 #  define  FLUX_DENS          0
 #  define  FLUX_MOMX          1
@@ -203,6 +217,17 @@
 #  define  FLUX_EINT          ( NFLUX_TOTAL - 1 )
 # endif
 #endif
+
+// TODO: Nuclear EOS: conflict with DUAL_ENERGY
+# if (EOS == NUCLEAR)
+# define FLUX_ENTR
+# define FLUX_YE
+# define _ENTR        ( 1 << ENTR )
+# define _YE          ( 1 << YE )
+# define _FLUX_ENTR   ( 1 << FLUX_ENTR )
+# define _FLUX_YE     ( 1 << FLUX_YE )
+# endif
+
 
 // bitwise field indices
 // --> must have "_VAR_NAME = 1<<VAR_NAME" (e.g., _DENS == 1<<DENS)
