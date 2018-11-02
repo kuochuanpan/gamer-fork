@@ -4,6 +4,7 @@
 extern Timer_t *Timer_dt         [NLEVEL];
 extern Timer_t *Timer_Flu_Advance[NLEVEL];
 extern Timer_t *Timer_Gra_Advance[NLEVEL];
+extern Timer_t *Timer_Src_Advance[NLEVEL];
 extern Timer_t *Timer_Che_Advance[NLEVEL];
 extern Timer_t *Timer_SF         [NLEVEL];
 extern Timer_t *Timer_FixUp      [NLEVEL];
@@ -423,7 +424,10 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 //    6-1. local source terms
 // *********************************
    const int InOutSg_Src = SaveSg_Flu;    // save in the same FluSg
-   Src_AdvanceDt( lv, TimeNew, TimeOld, dt_SubStep, SaveSg_Flu );
+
+// we have assumed that Src_AdvanceDt() requires no ghost zones
+   TIMING_FUNC(   Src_AdvanceDt( lv, TimeNew, TimeOld, dt_SubStep, SaveSg_Flu ),
+                  Timer_Src_Advance[lv]   );
 
 
 // *********************************
