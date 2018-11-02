@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2303)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2304)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -160,6 +160,7 @@ Procedure for outputting new variables:
 //                2301 : 2018/07/24 --> add OPT__UM_IC_FORMAT, PAR_IC_FORMAT, and PAR_IC_MASS
 //                2302 : 2018/07/24 --> Replace GRACKLE_MODE by GRACKLE_ACTIVATE
 //                2303 : 2018/10/04 --> Set "CodeVersion" to VERSION defined in Macro.h
+//                2304 : 2018/11/02 --> output SRC_USER
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1224,7 +1225,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 
    const time_t CalTime   = time( NULL );    // calendar time
 
-   KeyInfo.FormatVersion  = 2303;
+   KeyInfo.FormatVersion  = 2304;
    KeyInfo.Model          = MODEL;
    KeyInfo.NLevel         = NLEVEL;
    KeyInfo.NCompFluid     = NCOMP_FLUID;
@@ -1882,6 +1883,9 @@ void FillIn_InputPara( InputPara_t &InputPara )
    InputPara.Opt__GravityType        = OPT__GRAVITY_TYPE;
    InputPara.Opt__ExternalPot        = OPT__EXTERNAL_POT;
 #  endif
+
+// source terms
+   InputPara.Src_User                = SRC_USER;
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
@@ -2569,6 +2573,9 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Opt__GravityType",        HOFFSET(InputPara_t,Opt__GravityType       ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Opt__ExternalPot",        HOFFSET(InputPara_t,Opt__ExternalPot       ), H5T_NATIVE_INT     );
 #  endif
+
+// source terms
+   H5Tinsert( H5_TypeID, "Src_User",                HOFFSET(InputPara_t,Src_User               ), H5T_NATIVE_INT     );
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE

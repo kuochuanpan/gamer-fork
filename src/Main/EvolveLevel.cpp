@@ -420,7 +420,14 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 // ===============================================================================================
 
 // *********************************
-//    6-1. Grackle cooling/heating
+//    6-1. local source terms
+// *********************************
+   const int InOutSg_Src = SaveSg_Flu;    // save in the same FluSg
+   Src_AddSource( lv, TimeNew, TimeOld, dt_SubStep, SaveSg_Flu );
+
+
+// *********************************
+//    6-2. Grackle cooling/heating
 // *********************************
 #     ifdef SUPPORT_GRACKLE
       if ( GRACKLE_ACTIVATE )
@@ -456,7 +463,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 
 
 // *********************************
-//    6-2. star formation
+//    6-3. star formation
 // *********************************
 #     ifdef STAR_FORMATION
       if ( SF_CREATE_STAR_SCHEME != SF_CREATE_STAR_SCHEME_NONE )

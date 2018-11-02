@@ -1734,6 +1734,9 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
    LoadField( "Opt__ExternalPot",        &RS.Opt__ExternalPot,        SID, TID, NonFatal, &RT.Opt__ExternalPot,         1, NonFatal );
 #  endif
 
+// source terms
+   LoadField( "Src_User",                &RS.Src_User,                SID, TID, NonFatal, &RT.Src_User,                 1, NonFatal );
+
 // Grackle
 #  ifdef SUPPORT_GRACKLE
    LoadField( "Grackle_Activate",        &RS.Grackle_Activate,        SID, TID, NonFatal, &RT.Grackle_Activate,         1, NonFatal );
