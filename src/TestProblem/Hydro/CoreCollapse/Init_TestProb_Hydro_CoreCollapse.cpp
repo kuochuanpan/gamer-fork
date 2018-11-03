@@ -9,6 +9,26 @@ static bool   var_bool;
 static double var_double;
 static int    var_int;
 static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
+static bool   bounce;                      // Core bounce
+static double bounce_time;                 // Core bounce time
+
+// Parameters for the Deleptonization scheme
+static bool   use_deleptonization;         // Switch on/off Deleptonization during collapse phase
+static double delep_Enu;
+static double delep_rho1;
+static double delep_rho2;
+static double delep_ye1;
+static double delep_ye2;
+static double delep_yec;
+
+// Parameters for the light-bulb scheme
+static bool   use_lightbulb;               // Switch on/off Neutirno lightbulb after core bounce
+static double lb_Lnu;                      // Parametrized Neutrino luminosity in [erg/s]
+static double ln_Tnu;                      // Parametrized Neutirno temperature in [MeV]
+static double lb_heatFactor;               // The heating factor
+
+
+// Parameters for the progenitor model
 
 static double *Progenitor_Prof = NULL; // radial progenitor model
 static int    Progenitor_NBin ;        // number of radial bins in the progenitor model
@@ -326,6 +346,7 @@ void Init_TestProb_Hydro_CoreCollapse()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr             = NULL;    // option: OPT__OUTPUT_USER;      example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
    Aux_Record_User_Ptr         = NULL;    // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
+   Src_User_Ptr                = SrcDeleptonization;  // Deleptonization during collaspe
    End_User_Ptr                = End_CoreCollapse;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
 #  ifdef GRAVITY
    Init_ExternalAcc_Ptr        = NULL;    // option: OPT__GRAVITY_TYPE=2/3; example: SelfGravity/Init_ExternalAcc.cpp
