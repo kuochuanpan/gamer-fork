@@ -125,6 +125,8 @@ struct Makefile_t
    int RSolver;
 #  endif
    int DualEnergy;
+   int EoS;
+   int NeutrinoScheme;
 
 #  elif ( MODEL == MHD )
 #  warning : WAIT MHD !!!
@@ -471,6 +473,7 @@ struct InputPara_t
 #  endif
 
 // source terms
+   int    Src_Deleptonization;
    int    Src_User;
 
 // Grackle

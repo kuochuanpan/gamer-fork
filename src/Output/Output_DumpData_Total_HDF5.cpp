@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2304)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2305)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -161,6 +161,7 @@ Procedure for outputting new variables:
 //                2302 : 2018/07/24 --> Replace GRACKLE_MODE by GRACKLE_ACTIVATE
 //                2303 : 2018/10/04 --> Set "CodeVersion" to VERSION defined in Macro.h
 //                2304 : 2018/11/02 --> output SRC_USER
+//                2305 : 2018/11/03 --> output SRC_DELEPTONIZATION, NEUTRINO_SCHEME, EOS
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1225,7 +1226,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 
    const time_t CalTime   = time( NULL );    // calendar time
 
-   KeyInfo.FormatVersion  = 2304;
+   KeyInfo.FormatVersion  = 2305;
    KeyInfo.Model          = MODEL;
    KeyInfo.NLevel         = NLEVEL;
    KeyInfo.NCompFluid     = NCOMP_FLUID;
@@ -1437,6 +1438,18 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.DualEnergy             = DUAL_ENERGY;
 #  else
    Makefile.DualEnergy             = 0;
+#  endif
+
+#  ifdef EOS
+   Makefile.EoS                    = EOS;
+#  else
+   Makefile.EoS                    = 0;
+#  endif
+
+#  ifdef NEUTRINO_SCHEME
+   Makefile.NeutrinoScheme         = NEUTRINO_SCHEME;
+#  else
+   Makefile.NeutrinoScheme         = 0;
 #  endif
 
 #  elif ( MODEL == MHD )
@@ -1885,6 +1898,7 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
 
 // source terms
+   InputPara.Src_Deleptonization     = SRC_DELEPTONIZATION;
    InputPara.Src_User                = SRC_USER;
 
 // Grackle
@@ -2171,6 +2185,8 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "RSolver",                HOFFSET(Makefile_t,RSolver                ), H5T_NATIVE_INT );
 #  endif
    H5Tinsert( H5_TypeID, "DualEnergy",             HOFFSET(Makefile_t,DualEnergy             ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "EoS",                    HOFFSET(Makefile_t,EoS                    ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "NeutrinoScheme",         HOFFSET(Makefile_t,NeutrinoScheme         ), H5T_NATIVE_INT );
 
 #  elif ( MODEL == MHD )
 #  warning : WAIT MHD !!!
@@ -2575,6 +2591,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
 #  endif
 
 // source terms
+   H5Tinsert( H5_TypeID, "Src_Deleptonization",     HOFFSET(InputPara_t,Src_Deleptonization    ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Src_User",                HOFFSET(InputPara_t,Src_User               ), H5T_NATIVE_INT     );
 
 // Grackle
