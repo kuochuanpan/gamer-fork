@@ -61,6 +61,7 @@ bool                 OPT__CK_RESTRICT, OPT__CK_PATCH_ALLOCATE, OPT__FIXUP_FLUX, 
 bool                 OPT__UM_IC_DOWNGRADE, OPT__UM_IC_REFINE, OPT__TIMING_MPI;
 bool                 OPT__CK_CONSERVATION, OPT__RESET_FLUID, OPT__RECORD_USER, OPT__NORMALIZE_PASSIVE, AUTO_REDUCE_DT;
 bool                 OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_FLAG_NEAR_BOUNDARY;
+bool                 SRC_USER;
 UM_IC_Format_t       OPT__UM_IC_FORMAT;
 TestProbID_t         TESTPROB_ID;
 OptInit_t            OPT__INIT;
@@ -304,6 +305,7 @@ Timer_t *Timer_MPI[3];
 Timer_t *Timer_dt         [NLEVEL];
 Timer_t *Timer_Flu_Advance[NLEVEL];
 Timer_t *Timer_Gra_Advance[NLEVEL];
+Timer_t *Timer_Src_Advance[NLEVEL];
 Timer_t *Timer_Che_Advance[NLEVEL];
 Timer_t *Timer_SF         [NLEVEL];
 Timer_t *Timer_FixUp      [NLEVEL];
