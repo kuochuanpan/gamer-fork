@@ -29,7 +29,7 @@ void (*Flu_ResetByUser_API_Ptr)( const int lv, const int FluSg, const double TTi
 //                   --> It will be set automatically in "Flu_ResetByUser_API()" and "Model_Init_ByFunction_AssignData()"
 //                5. Enabled by the runtime option "OPT__RESET_FLUID"
 //
-// Parameter   :  fluid    : Fluid array storing both the input (origial) and reset values
+// Parameter   :  fluid    : Fluid array storing both the input (original) and reset values
 //                           --> Including both active and passive variables
 //                x/y/z    : Target physical coordinates
 //                Time     : Target physical time

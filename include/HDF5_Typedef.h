@@ -470,6 +470,9 @@ struct InputPara_t
    int    Opt__ExternalPot;
 #  endif
 
+// source terms
+   int    Src_User;
+
 // Grackle
 #  ifdef SUPPORT_GRACKLE
    int    Grackle_Activate;
