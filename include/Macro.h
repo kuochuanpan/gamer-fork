@@ -74,7 +74,7 @@
 #define NUCLEAR      2
 
 
-// neutrino transport schemes
+// neutrino updating schemes
 #define IDSA         1
 
 

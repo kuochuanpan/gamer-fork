@@ -171,15 +171,15 @@ void Aux_TakeNote()
       fprintf( Note, "EOS                             UNKNOWN\n" );
 #     endif
 
-#     ifdef NEUTRINO_TRANSPORT
-#     if   ( NEUTRINO_TRANSPORT == IDSA )
-      fprintf( Note, "NEUTRINO_TRANSPORT              IDSA\n" );
+#     ifdef NEUTRINO_SCHEME
+#     if   ( NEUTRINO_SCHEME == IDSA )
+      fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
 #     else
-      fprintf( Note, "NEUTRINO_TRANSPORT              UNKNOWN\n" );
+      fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
 #     endif
-#     else // #ifdef NEUTRINO_TRANSPORT
-      fprintf( Note, "NEUTRINO_TRANSPORT              OFF\n" );
-#     endif // #ifdef NEUTRINO_TRANSPORT ... else ...
+#     else // #ifdef NEUTRINO_SCHEME
+      fprintf( Note, "NEUTRINO_SCHEME                 OFF\n" );
+#     endif // #ifdef NEUTRINO_SCHEME ... else ...
 
 //    c. options in MHD
 #     elif ( MODEL == MHD )
