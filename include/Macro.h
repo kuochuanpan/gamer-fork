@@ -75,7 +75,9 @@
 
 
 // neutrino updating schemes
-#define IDSA         1
+#define LIGHTBULB    1
+#define IDSA         2
+#define M1           3
 
 
 // Poisson solvers

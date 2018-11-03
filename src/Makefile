@@ -76,8 +76,8 @@ SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 # equation of state: IDEAL_GAS/NUCLEAR
 SIMU_OPTION += -DEOS=NUCLEAR
 
-# neutrino updating scheme: IDSA
-SIMU_OPTION += -DNEUTRINO_SCHEME=IDSA
+# neutrino updating scheme: LIGHTBULB/IDSA/M1
+SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
 
 
 # (b-2) MHD options

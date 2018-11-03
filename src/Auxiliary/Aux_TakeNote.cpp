@@ -172,8 +172,12 @@ void Aux_TakeNote()
 #     endif
 
 #     ifdef NEUTRINO_SCHEME
-#     if   ( NEUTRINO_SCHEME == IDSA )
+#     if   ( NEUTRINO_SCHEME == LIGHTBULB )
+      fprintf( Note, "NEUTRINO_SCHEME                 LIGHTBULB\n" );
+#     elif ( NEUTRINO_SCHEME == IDSA )
       fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
+#     elif ( NEUTRINO_SCHEME == M1 )
+      fprintf( Note, "NEUTRINO_SCHEME                 M1\n" );
 #     else
       fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
 #     endif
