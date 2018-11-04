@@ -572,8 +572,8 @@ void Aux_Check_Parameter()
 #     error : ERROR : unsupported equation of state (IDEAL_GAS/NUCLEAR) !!
 #  endif
 
-#  if ( defined NEUTRINO_TRANSPORT  &&  NEUTRINO_TRANSPORT != IDSA )
-#     error : ERROR : unsupported neutrino transport scheme (IDSA) !!
+#  if ( defined NEUTRINO_SCHEME  &&  NEUTRINO_SCHEME != LIGHTBULB  &&  NEUTRINO_SCHEME != IDSA  &&  NEUTRINO_SCHEME != M1 )
+#     error : ERROR : unsupported neutrino updating scheme (LIGHTBULB/IDSA/M1) !!
 #  endif
 
 #  if ( defined CHECK_INTERMEDIATE  &&  CHECK_INTERMEDIATE != EXACT  &&  CHECK_INTERMEDIATE != HLLE  &&  \

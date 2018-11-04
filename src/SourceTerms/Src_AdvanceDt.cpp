@@ -27,7 +27,13 @@ void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, co
 {
 
 // skip if there is no source term (check all source terms below)
-   if ( !SRC_USER )  return;
+#  if ( NEUTRINO_SCHEME == LIGHTBULB )
+   const bool Src_Lightbulb = true;
+#  else
+   const bool Src_Lightbulb = false;
+#  endif
+
+   if ( !Src_Lightbulb  &&  !SRC_DELEPTONIZATION  &&  !SRC_USER )    return;
 
 
 // check
@@ -55,8 +61,22 @@ void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, co
 
 //###REVISE: should we make different source terms "commutative"?
 //       add source terms
-//       (1) user-defined
-         if ( SRC_USER )   Src_User_Ptr( fluid, x, y, z, TimeNew, lv, NULL, dt );
+         /*
+//       (1) lightbulb neutrino scheme
+#        if ( NEUTRINO_SCHEME == LIGHTBULB )
+            Src_Lightbulbl     ( fluid, x, y, z, TimeNew, lv, NULL, dt );
+#        endif
+         */
+
+         /*
+//       (2) deleptonization
+         if ( SRC_DELEPTONIZATION )
+            Src_Deleptonization( fluid, x, y, z, TimeNew, lv, NULL, dt );
+         */
+
+//       (3) user-defined
+         if ( SRC_USER )
+            Src_User_Ptr       ( fluid, x, y, z, TimeNew, lv, NULL, dt );
 
 //       store the updated results
          for (int v=0; v<NCOMP_TOTAL; v++)   amr->patch[FluSg][lv][PID]->fluid[v][k][j][i] = fluid[v];
