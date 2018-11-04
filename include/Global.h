@@ -272,4 +272,5 @@ extern real       (*h_Pot_Array_T[2])[ CUBE(GRA_NXT) ];
 
 
 
+
 #endif // #ifndef __GLOBAL_H__

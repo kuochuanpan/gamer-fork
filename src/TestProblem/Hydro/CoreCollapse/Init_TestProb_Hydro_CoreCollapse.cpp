@@ -1,6 +1,6 @@
 #include "GAMER.h"
 #include "TestProb.h"
-//#include "Nuc_eos.h"
+#include "NuclearEos.h"
 
 
 // problem-specific global variables
@@ -147,18 +147,19 @@ void SetParameter()
    {
      const bool RowMajor_No  = false; // load data into the column major OPT__RECORD_USER
      const bool AllocMem_Yes = true; // allocate memort for Progenitor_Prof
-     const int  NCol         = 5;    // total number of columns to load   TODO: use runtime paprameter
-     const int  TargetCols[NCol] = {0,2,4,5,7}; // target columns: {radius, density, pressure, velr, ye}
+     const int  NCol         = 6;    // total number of columns to load   TODO: use runtime paprameter
+     const int  TargetCols[NCol] = {0,2,3,4,5,7}; // target columns: {radius, density, temp, pressure, velr, ye}
 
-     double *Table_R, *Table_Dens, *Table_Pres, *Table_Velr, *Table_Ye;
+     double *Table_R, *Table_Dens, *Table_Temp, *Table_Pres, *Table_Velr, *Table_Ye;
 
      Progenitor_NBin = Aux_LoadTable(Progenitor_Prof, progenitor_file, NCol, TargetCols, RowMajor_No, AllocMem_Yes);
 
      Table_R    = Progenitor_Prof + 0*Progenitor_NBin;
      Table_Dens = Progenitor_Prof + 1*Progenitor_NBin;
-     Table_Pres = Progenitor_Prof + 2*Progenitor_NBin;
-     Table_Velr = Progenitor_Prof + 3*Progenitor_NBin;
-     Table_Ye   = Progenitor_Prof + 4*Progenitor_NBin;
+     Table_Temp = Progenitor_Prof + 2*Progenitor_NBin;
+     Table_Pres = Progenitor_Prof + 3*Progenitor_NBin;
+     Table_Velr = Progenitor_Prof + 4*Progenitor_NBin;
+     Table_Ye   = Progenitor_Prof + 5*Progenitor_NBin;
 
      // convert to code units (assuming progentior model is in cgs)
      for (int b=0; b<Progenitor_NBin; b++)
@@ -246,12 +247,17 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
    const double *Table_R    = Progenitor_Prof + 0*Progenitor_NBin;
    const double *Table_Dens = Progenitor_Prof + 1*Progenitor_NBin;
-   const double *Table_Pres = Progenitor_Prof + 2*Progenitor_NBin;
-   const double *Table_Velr = Progenitor_Prof + 3*Progenitor_NBin;
-   const double *Table_Ye   = Progenitor_Prof + 4*Progenitor_NBin;
+   const double *Table_Temp = Progenitor_Prof + 2*Progenitor_NBin;
+   const double *Table_Pres = Progenitor_Prof + 3*Progenitor_NBin;
+   const double *Table_Velr = Progenitor_Prof + 4*Progenitor_NBin;
+   const double *Table_Ye   = Progenitor_Prof + 5*Progenitor_NBin;
 
    double xc, yc, zc;
-   double r, dens, pres, velr, velx, vely, velz, ye, r_xy, v_xy, angle, sign;
+   double r, dens, temp, pres, velr, velx, vely, velz, ye, r_xy, v_xy, angle, sign;
+
+   const double temp_mev_to_kelvin = 1.1604447522806e10;
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu, rfeps;
+   int keyerr;
 
    xc = x - BoxCenter[0];
    yc = y - BoxCenter[1];
@@ -260,9 +266,12 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    r = sqrt(SQR(xc) + SQR(yc) + SQR(zc));
 
    dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r);
+   temp = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Temp, r); // [K]
    pres = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Pres, r);
    velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r);
    ye   = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Ye, r);
+
+   xtmp = temp/temp_mev_to_kelvin; // to MeV
 
    r_xy = sqrt( SQR(xc) + SQR(yc));
 
@@ -286,14 +295,21 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    velx = sign*v_xy*cos(angle);
    vely = sign*v_xy*sin(angle);
 
-   //printf("Ye debug: %15.6E\n",ye);
+   // call EOS to get other variables
+   // use temperature mode
+
+   nuc_eos_C_short((dens*UNIT_D),&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+        &xdpdrhoe, &xmunu, 0, &keyerr, rfeps);
+
+   //printf("Entr debug: %15.6E\n",xent);
+   
    fluid[DENS] = dens;
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
-   fluid[YE]   = ye;
-   fluid[ENTR] = 0.0;
-   fluid[ENGY] = pres / (GAMMA - 1.0) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[YE]   = ye;    // electron fraction []
+   fluid[ENTR] = xent;  // entropy [kB/baryon]
+   fluid[ENGY] = (xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC
 
@@ -346,7 +362,7 @@ void Init_TestProb_Hydro_CoreCollapse()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr             = NULL;    // option: OPT__OUTPUT_USER;      example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
    Aux_Record_User_Ptr         = NULL;    // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
-   Src_User_Ptr                = SrcDeleptonization;  // Deleptonization during collaspe
+   //Src_User_Ptr                = SrcDeleptonization;  // Deleptonization during collaspe
    End_User_Ptr                = End_CoreCollapse;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
 #  ifdef GRAVITY
    Init_ExternalAcc_Ptr        = NULL;    // option: OPT__GRAVITY_TYPE=2/3; example: SelfGravity/Init_ExternalAcc.cpp

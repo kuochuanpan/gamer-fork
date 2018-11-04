@@ -159,6 +159,7 @@ void Init_ByRestart();
 void Init_Unit();
 void Init_Reload_OldFormat();
 void Init_ByFunction();
+void Init_NuclearEos();
 void Init_TestProb();
 void Init_ByFile();
 void Init_UniformGrid( const int lv, const bool FindHomePatchForPar );

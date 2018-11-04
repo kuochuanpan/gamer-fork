@@ -329,6 +329,30 @@ Timer_t *Timer_Poi_PrePot_F[NLEVEL];
 #endif
 
 
+// 6. Nuclear EoS
+int nrho;
+int ntemp;
+int nye;
+
+double *alltables;
+double *logrho;
+double *logtemp;
+double *yes;
+double energy_shift;
+double dtemp, dtempi;
+double drho, drhoi;
+double dye, dyei;
+
+// min and max values
+
+double eos_rhomax, eos_rhomin;
+double eos_tempmin, eos_tempmax;
+double eos_yemin, eos_yemax;
+
+int ivs_short[8];
+
+
+
 // function pointer for recording the user-specified info
 extern void (*Aux_Record_User_Ptr)();
 
@@ -557,4 +581,3 @@ int main( int argc, char *argv[] )
    return 0;
 
 } // FUNCTION : Main
-
