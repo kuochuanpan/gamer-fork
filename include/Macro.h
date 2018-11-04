@@ -74,8 +74,10 @@
 #define NUCLEAR      2
 
 
-// neutrino transport schemes
-#define IDSA         1
+// neutrino updating schemes
+#define LIGHTBULB    1
+#define IDSA         2
+#define M1           3
 
 
 // Poisson solvers
