@@ -28,6 +28,11 @@ SET_GLOBAL( FieldIdx_t Idx_Enpy,          Idx_Undefined );
 #elif ( DUAL_ENERGY == DE_EINT )
 SET_GLOBAL( FieldIdx_t Idx_Eint,          Idx_Undefined );
 #endif
+// TODO: add nuclear EOS here
+#if (defined NUCLEAR)
+SET_GLOBAL( FieldIdx_t Idx_Entr,          Idx_Undefined );
+SET_GLOBAL( FieldIdx_t Idx_Ye,            Idx_Undefined );
+#endif
 
 // Grackle fields
 SET_GLOBAL( FieldIdx_t Idx_e,             Idx_Undefined );

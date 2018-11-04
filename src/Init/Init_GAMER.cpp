@@ -75,6 +75,8 @@ void Init_GAMER( int *argc, char ***argv )
    Init_FFTW();
 #  endif
 
+// Initial the nuclear Eos solver
+   Init_NuclearEos();
 
 // initialize the test problem parameters
    Init_TestProb();
