@@ -4,8 +4,11 @@
 extern void (*Src_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
                              const int lv, double AuxArray[], const double dt );
 
+extern void (*Src_Deleptonization_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
+                             const int lv, double AuxArray[], const double dt );
 
-
+extern void (*Src_LightBulb_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
+                             const int lv, double AuxArray[], const double dt );
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Src_AdvanceDt
@@ -61,18 +64,17 @@ void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, co
 
 //###REVISE: should we make different source terms "commutative"?
 //       add source terms
-         /*
+
 //       (1) lightbulb neutrino scheme
 #        if ( NEUTRINO_SCHEME == LIGHTBULB )
-            Src_Lightbulbl     ( fluid, x, y, z, TimeNew, lv, NULL, dt );
+            Src_LightBulb_Ptr ( fluid, x, y, z, TimeNew, lv, NULL, dt );
 #        endif
-         */
 
-         /*
+
 //       (2) deleptonization
          if ( SRC_DELEPTONIZATION )
-            Src_Deleptonization( fluid, x, y, z, TimeNew, lv, NULL, dt );
-         */
+            Src_Deleptonization_Ptr( fluid, x, y, z, TimeNew, lv, NULL, dt );
+
 
 //       (3) user-defined
          if ( SRC_USER )

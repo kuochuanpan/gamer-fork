@@ -190,6 +190,20 @@ double                SF_CREATE_STAR_MIN_STAR_MASS;
 double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
+#ifdef DELEPTIONIZATION
+double DELEP_ENU;
+double DELEP_RHO1;
+double DELEP_RHO2;
+double DELEP_YE1;
+double DELEP_YE2;
+double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+double LB_LNU;
+double LB_TNU;
+double LB_HEATFACTOR;
+#endif
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // =======================================================================================================

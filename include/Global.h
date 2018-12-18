@@ -215,6 +215,21 @@ extern double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
 
+// (2-9) Supernova
+#ifdef DELEPTIONIZATION
+extern double DELEP_ENU;
+extern double DELEP_RHO1;
+extern double DELEP_RHO2;
+extern double DELEP_YE1;
+extern double DELEP_YE2;
+extern double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+extern double LB_LNU;
+extern double LB_TNU;
+extern double LB_HEATFACTOR;
+#endif
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // ============================================================================================================
