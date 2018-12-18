@@ -59,7 +59,7 @@ void nuc_eos_C_testing() {
       failcount1++;
       //      fprintf(stderr,"%d %15.6E %15.6E %15.6E %15.6E\n", i, xlr, xlt, xye, xeps);
     } else {
-      if(abs(nlt-savedtemp) > 1.0e-10) {
+      if(fabs(nlt-savedtemp) > 1.0e-10) {
 	failcount2++;
       }
       //      assert( abs(nlt-savedtemp) <= 1.0e-10);

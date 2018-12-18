@@ -240,8 +240,9 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    double r, dens, temp, pres, velr, velx, vely, velz, ye, r_xy, v_xy, angle, sign;
 
    const double temp_mev_to_kelvin = 1.1604447522806e10;
-   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu, rfeps;
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
    int keyerr;
+   const double rfeps = 1.0e-10;
 
    xc = x - BoxCenter[0];
    yc = y - BoxCenter[1];
@@ -249,10 +250,10 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    r = sqrt(SQR(xc) + SQR(yc) + SQR(zc));
 
-   dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r);
+   dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r); // code unit
    temp = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Temp, r); // [K]
    pres = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Pres, r);
-   velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r);
+   velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r); // code unit
    ye   = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Ye, r);
 
    xtmp = temp/temp_mev_to_kelvin; // to MeV
@@ -276,7 +277,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
      angle = atan(yc/xc);
    }
    sign = xc/ abs(xc);
-   velx = sign*v_xy*cos(angle);
+   velx = sign*v_xy*cos(angle); // code unit
    vely = sign*v_xy*sin(angle);
 
    // call EOS to get other variables
@@ -285,15 +286,22 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    nuc_eos_C_short((dens*UNIT_D),&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
         &xdpdrhoe, &xmunu, 1, &keyerr, rfeps);
 
-   //printf("Entr debug: %15.6E\n",xent);
+   if (keyerr != 0)
+   {
+     printf("debug: keyerr not zero %d\n",keyerr);
+   }
 
-   fluid[DENS] = dens;
+   //printf("debug: gamc %15.6E\n",(xcs2*(dens*UNIT_D)/xprs));
+   //printf("debug: game %15.6E\n",(xprs/((dens*UNIT_D)*xenr)+1.0));
+
+   fluid[DENS] = dens; // code unit
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
-   fluid[YE]   = ye;    // electron fraction []
-   fluid[ENTR] = xent;  // entropy [kB/baryon]
-   fluid[ENGY] = (xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[YE]   = ye*dens;    // electron fraction []
+   fluid[ENTR] = xent*dens;  // entropy [kB/baryon]
+   //fluid[ENGY] = pres / ( GAMMA - 1.0 ) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC
 

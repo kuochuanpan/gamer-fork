@@ -73,8 +73,13 @@ void nuc_eos_C_short(double xrho, double *xtemp, double xye,
     lt = nlt;
     *xtemp = pow(10.0,lt);
   } else if(keytemp == 2) {
-    fprintf(stderr,"keytemp = 2 not yet implemented. Aborting!\n");
-    abort();
+    //fprintf(stderr,"keytemp = 2 not yet implemented. Aborting!\n");
+    //abort();
+		double xs = *xent;
+    double nlt = 0.0;
+    nuc_eos_C_findtemp_entropy(lr,lt,xye,xs,&nlt,rfeps,keyerr);
+    lt = nlt;
+    *xtemp = pow(10.0,lt);
   }
 
   double res[8];

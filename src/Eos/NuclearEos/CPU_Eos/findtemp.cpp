@@ -4,12 +4,148 @@
 #include<math.h>
 #include "NuclearEos.h"
 
-
 double linterp2D(double* xs, double* ys, double* fs, double x, double y);
 
 void bisection(double lr, double lt0, double ye, double leps0, double* ltout,
 	       int iv, double prec, int* keyerrt);
 
+
+void nuc_eos_C_findtemp_entropy(double lr, double lt0, double ye,
+			double xs, double *ltout, double prec, int *keyerrt) {
+
+    // local vars
+    double dlepsdlt; // derivative dlogeps/dlogT
+    int itmax = 20;
+    double s, lt, ldt, tol, d1,d2,d3,s0, s1, lt1;
+    double ltn, tinput;
+    double ltmax = logtemp[ntemp-1]; // max temp
+    double ltmin = logtemp[0]; // min temp
+
+    *keyerrt = 0;
+    tol = prec;
+    lt = lt0;
+    lt1 = lt;
+    s0 = xs;
+    s1 = s0;
+
+    // step 1: do we already have the right temperature
+    nuc_eos_C_linterp_for_entr(lr,lt,ye,&s,alltables,nrho,ntemp,nye,
+			     logrho,logtemp,yes,&dlepsdlt);
+
+    if (fabs(s-s0) < tol*fabs(s0))
+    {
+        return;
+    }
+
+    lt1 = lt;
+    s1 = s;
+
+    int it = 0;
+    while(it < itmax) {
+
+    // step 2: check if the two bounding values of the entropy
+    //         give eps values that enclose the new entr.
+    int itemp = MIN(MAX(1 + (int)(( lt - logtemp[0] - 1.0e-10) * dtempi),1),ntemp-1);
+    int irho = MIN(MAX(1 + (int)(( lr - logrho[0] - 1.0e-10) * drhoi),1),nrho-1);
+    int iye = MIN(MAX(1 + (int)(( ye - yes[0] - 1.0e-10) * dyei),1),nye-1);
+
+    double ss1, ss2;
+    // lower entropy
+    {
+      // get data at 4 points
+      double fs[4];
+      // point 0
+      int ifs = 2 + NTABLES*(irho-1 + nrho*((itemp-1) + ntemp*(iye-1)));
+      fs[0] = alltables[ifs];
+      // point 1
+      ifs = 2 + NTABLES*(irho + nrho*((itemp-1) + ntemp*(iye-1)));
+      fs[1] = alltables[ifs];
+      // point 2
+      ifs = 2 + NTABLES*(irho-1 + nrho*((itemp-1) + ntemp*(iye)));
+      fs[2] = alltables[ifs];
+      // point 3
+      ifs = 2 + NTABLES*(irho + nrho*((itemp-1) + ntemp*(iye)));
+      fs[3] = alltables[ifs];
+
+      ss1 = linterp2D(&logrho[irho-1],&yes[iye-1], fs, lr, ye);
+    }
+    // upper entripy
+    {
+      // get data at 4 points
+      double fs[4];
+      // point 0
+      int ifs = 2 + NTABLES*(irho-1 + nrho*((itemp) + ntemp*(iye-1)));
+      fs[0] = alltables[ifs];
+      // point 1
+      ifs = 2 + NTABLES*(irho + nrho*((itemp) + ntemp*(iye-1)));
+      fs[1] = alltables[ifs];
+      // point 2
+      ifs = 2 + NTABLES*(irho-1 + nrho*((itemp) + ntemp*(iye)));
+      fs[2] = alltables[ifs];
+      // point 3
+      ifs = 2 + NTABLES*(irho + nrho*((itemp) + ntemp*(iye)));
+      fs[3] = alltables[ifs];
+
+      ss2 = linterp2D(&logrho[irho-1],&yes[iye-1], fs, lr, ye);
+    }
+
+    // Check if we are already bracketing the input internal
+    // energy. If so, interpolate for new T.
+    if(s0 >= ss1 && s0 <= ss2) {
+
+      *ltout = (logtemp[itemp]-logtemp[itemp-1]) / (ss2 - ss1) *
+	           (s0 - ss1) + logtemp[itemp-1];
+#if DEBUG
+      fprintf(stderr,"it: %d, bracketed solution\n", it);
+#endif
+      return;
+
+    }
+
+    // well, then do a Newton-Raphson step
+    ldt = -(s - s0) / dlepsdlt;
+    ltn = MIN(MAX(lt + ldt,ltmin),ltmax);
+    lt1 = lt;
+    lt = ltn;
+    s1 = s;
+
+    nuc_eos_C_linterp_for_entr(lr,lt,ye,&s,alltables,nrho,ntemp,nye,
+			       logrho,logtemp,yes,&dlepsdlt);
+#if DEBUG
+    fprintf(stderr,"findtemp it: %d, err: %15.6E \n", it, fabs((leps-leps0) / leps0));
+#endif
+
+    if(fabs(s-s0) < prec*fabs(s0)) {
+      *ltout = lt;
+      return;
+    }
+
+    // if we are closer than 10^-3  to the
+    // root (eps-eps0)=0, we are switching to
+    // the secant method, since the table is rather coarse and the
+    // derivatives may be garbage.
+    if(fabs(s-s0) < 1.0e-3*fabs(s0)) {
+      dlepsdlt = (s-s1)/(lt-lt1);
+    }
+
+    it++;
+  }
+
+  if(it >= itmax - 1) {
+    // try bisection
+#if DEBUG
+    fprintf(stderr,"trying bisection\n");
+#endif
+    bisection(lr, lt0, ye, s0, ltout, 2, prec, keyerrt);
+#if DEBUG
+    fprintf(stderr,"bisection keyerrt: %d\n",*keyerrt);
+#endif
+    return;
+  }
+
+  fprintf(stderr,"We should never reach this point! Aborting!\n");
+  abort();
+}
 void nuc_eos_C_findtemp(double lr, double lt0, double ye,
 			double lepsin, double prec, double *ltout,
 			int *keyerrt) {

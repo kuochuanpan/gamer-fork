@@ -50,20 +50,22 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
    double xdens,dens, ener, entr, ye, xmom, ymom, zmom;
    double del_ye, del_entr;
-   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu, rfeps;
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
    int keyerr;
+   const double rfeps = 1.0e-10;
 
    double yout;
 
    dens  = fluid[DENS]; // code units
    xdens = dens*UNIT_D;  // [g/cm^3]
-   entr  = fluid[ENTR];
-   xmom  = fluid[MOMX]*UNIT_V;
-   ymom  = fluid[MOMY]*UNIT_V;
-   zmom  = fluid[MOMZ]*UNIT_V;
-   ye    = fluid[YE];
+   entr  = fluid[ENTR]/dens;
+   xmom  = fluid[MOMX]; // code unit
+   ymom  = fluid[MOMY];
+   zmom  = fluid[MOMZ];
+   ye    = fluid[YE]/dens;
    ener  = fluid[ENGY];
-   xenr = ener - energy_shift - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens;
+   ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
+   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy
 
    del_ye = 0.0;
    if (xdens <= delep_minDens)
@@ -78,12 +80,15 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
    if (del_ye < 0.0)
    {
+
+      xtmp = 10.0; // trial value
+
       nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
           &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
       xmunu += Q;
 
-      if ((xmunu < DELEP_ENU) || (xdens > 2.e12))
+      if ((xmunu < DELEP_ENU) || (xdens >= 2.e12))
       {
         del_entr = 0.0;
       } else
@@ -91,25 +96,24 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
         del_entr = - del_ye * (xmunu - DELEP_ENU) / xtmp;
       }
 
-      fluid[ENTR] = entr + del_entr;
-      fluid[YE]   = ye + del_ye;
+      fluid[ENTR] = dens*(entr + del_entr);
+      fluid[YE]   = dens*(ye + del_ye);
+
 
       nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
           &xdpdrhoe, &xmunu, 2, &keyerr, rfeps); // entropy mode
 
-      fluid[ENGY] = (xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+      fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
    }
 
-
-
-   //printf("delep: del_ye %13.7e\n",del_ye);
-   //printf("delep: dye %13.7e\n",(yout-ye));
+   //printf("delep: ye %13.7e\n",ye);
+   //printf("delep: dye %13.7e\n",(del_ye));
 
 } // FUNCTION : Src_User
 
 double YeOfRhoFunc(double xdens)
 {
-  double xofrho, xofrho2, ye;
+  double xofrho, ye;
   xofrho = 2.0*log10(xdens) - log10(DELEP_RHO2) - log10(DELEP_RHO1);
   xofrho = xofrho / (log10(DELEP_RHO2) - log10(DELEP_RHO1));
   xofrho = MAX(-1.0, MIN(1.0, xofrho));
