@@ -206,6 +206,22 @@ void Init_Load_Parameter()
 #  endif
 
 
+// supernova
+#  ifdef DELEPTIONIZATION
+   ReadPara->Add( "DELEP_ENU",                      &DELEP_ENU,                     10.0,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO1",                     &DELEP_RHO1,                    4.e8,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO2",                     &DELEP_RHO2,                    7.e12,      0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YE1",                      &DELEP_YE1,                     0.5,        0.0,           1.0   );
+   ReadPara->Add( "DELEP_YE2",                      &DELEP_YE2,                     0.275,      0.0,           1.0   );
+   ReadPara->Add( "DELEP_YEC",                      &DELEP_YEC,                     0.015,      0.0,           1.0   );
+#  endif
+
+#  ifdef NEUTRINO_SCHEME
+   ReadPara->Add( "LB_LNU",                      &LB_LNU,                     2.2e52,           0.0,           NoMax_double   );
+   ReadPara->Add( "LB_TNU",                      &LB_TNU,                     4.0,              0.0,           NoMax_double   );
+   ReadPara->Add( "LB_HEATFACTOR",               &LB_HEATFACTOR,              1.0,              0.0,           NoMax_double   );
+#  endif
+
 // fluid solvers in HYDRO and MHD
 #  if ( MODEL == HYDRO )
    ReadPara->Add( "GAMMA",                      &GAMMA,                           5.0/3.0,         1.0,           NoMax_double   );
@@ -398,4 +414,3 @@ void Init_Load_Parameter()
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
 
 } // FUNCTION : Init_Load_Parameter
-

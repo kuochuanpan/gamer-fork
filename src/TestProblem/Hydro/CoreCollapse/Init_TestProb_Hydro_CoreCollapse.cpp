@@ -12,24 +12,8 @@ static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
 static bool   bounce;                      // Core bounce
 static double bounce_time;                 // Core bounce time
 
-// Parameters for the Deleptonization scheme
-static bool   use_deleptonization;         // Switch on/off Deleptonization during collapse phase
-static double delep_Enu;
-static double delep_rho1;
-static double delep_rho2;
-static double delep_ye1;
-static double delep_ye2;
-static double delep_yec;
-
-// Parameters for the light-bulb scheme
-static bool   use_lightbulb;               // Switch on/off Neutirno lightbulb after core bounce
-static double lb_Lnu;                      // Parametrized Neutrino luminosity in [erg/s]
-static double ln_Tnu;                      // Parametrized Neutirno temperature in [MeV]
-static double lb_heatFactor;               // The heating factor
-
 
 // Parameters for the progenitor model
-
 static double *Progenitor_Prof = NULL; // radial progenitor model
 static int    Progenitor_NBin ;        // number of radial bins in the progenitor model
 // =======================================================================================
@@ -256,8 +240,9 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    double r, dens, temp, pres, velr, velx, vely, velz, ye, r_xy, v_xy, angle, sign;
 
    const double temp_mev_to_kelvin = 1.1604447522806e10;
-   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu, rfeps;
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
    int keyerr;
+   const double rfeps = 1.0e-10;
 
    xc = x - BoxCenter[0];
    yc = y - BoxCenter[1];
@@ -265,10 +250,10 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    r = sqrt(SQR(xc) + SQR(yc) + SQR(zc));
 
-   dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r);
+   dens = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Dens, r); // code unit
    temp = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Temp, r); // [K]
    pres = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Pres, r);
-   velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r);
+   velr = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Velr, r); // code unit
    ye   = Mis_InterpolateFromTable(Progenitor_NBin, Table_R, Table_Ye, r);
 
    xtmp = temp/temp_mev_to_kelvin; // to MeV
@@ -292,26 +277,35 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
      angle = atan(yc/xc);
    }
    sign = xc/ abs(xc);
-   velx = sign*v_xy*cos(angle);
+   velx = sign*v_xy*cos(angle); // code unit
    vely = sign*v_xy*sin(angle);
 
    // call EOS to get other variables
-   // use temperature mode
+   // use temperature mode (1)
 
    nuc_eos_C_short((dens*UNIT_D),&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
-        &xdpdrhoe, &xmunu, 0, &keyerr, rfeps);
+        &xdpdrhoe, &xmunu, 1, &keyerr, rfeps);
 
-   //printf("Entr debug: %15.6E\n",xent);
-   
-   fluid[DENS] = dens;
+   if (keyerr != 0)
+   {
+     printf("debug: keyerr not zero %d\n",keyerr);
+   }
+
+   //printf("debug: gamc %15.6E\n",(xcs2*(dens*UNIT_D)/xprs));
+   //printf("debug: game %15.6E\n",(xprs/((dens*UNIT_D)*xenr)+1.0));
+
+   fluid[DENS] = dens; // code unit
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
-   fluid[YE]   = ye;    // electron fraction []
-   fluid[ENTR] = xent;  // entropy [kB/baryon]
-   fluid[ENGY] = (xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[YE]   = ye*dens;    // electron fraction []
+   fluid[ENTR] = xent*dens;  // entropy [kB/baryon]
+   //fluid[ENGY] = pres / ( GAMMA - 1.0 ) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC
+
+
 
 void End_CoreCollapse()
 {
@@ -362,7 +356,7 @@ void Init_TestProb_Hydro_CoreCollapse()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr             = NULL;    // option: OPT__OUTPUT_USER;      example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
    Aux_Record_User_Ptr         = NULL;    // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
-   //Src_User_Ptr                = SrcDeleptonization;  // Deleptonization during collaspe
+   Src_User_Ptr                = NULL;       //
    End_User_Ptr                = End_CoreCollapse;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
 #  ifdef GRAVITY
    Init_ExternalAcc_Ptr        = NULL;    // option: OPT__GRAVITY_TYPE=2/3; example: SelfGravity/Init_ExternalAcc.cpp
