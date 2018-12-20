@@ -36,7 +36,7 @@ COMPILE_VERBOSE := 0
 SIMU_OPTION += -DMODEL=HYDRO
 
 # enable gravity
-#SIMU_OPTION += -DGRAVITY
+SIMU_OPTION += -DGRAVITY
 
 # enable particles
 # --> must enable GRAVITY
@@ -76,7 +76,10 @@ SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 # equation of state: IDEAL_GAS/NUCLEAR
 SIMU_OPTION += -DEOS=NUCLEAR
 
-# neutrino updating scheme: LIGHTBULB/IDSA/M1
+# enable Deleptonization
+SIMU_OPTION += -DDELEPTIONIZATION
+
+# nutrino transport scheme: LIGHTBULB/IDSA/M1
 SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
 
 
@@ -147,7 +150,7 @@ endif # PARTICLE
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
-SIMU_OPTION += -DNLEVEL=10
+SIMU_OPTION += -DNLEVEL=8
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
@@ -178,11 +181,11 @@ SIMU_OPTION += -DTIMING
 
 # serial mode (in which no MPI libraries are required)
 # --> must disable LOAD_BALANCE
-SIMU_OPTION += -DSERIAL
+#SIMU_OPTION += -DSERIAL
 
 # load-balance parallelization: HILBERT
 # --> must disable SERIAL
-#SIMU_OPTION += -DLOAD_BALANCE=HILBERT
+SIMU_OPTION += -DLOAD_BALANCE=HILBERT
 
 # overlap MPI communication with computation
 # --> NOT supported yet; must enable LOAD_BALANCE
@@ -195,7 +198,7 @@ SIMU_OPTION += -DOPENMP
 #SIMU_OPTION += -DLAOHU
 
 # support HDF5 format
-#SIMU_OPTION += -DSUPPORT_HDF5
+SIMU_OPTION += -DSUPPORT_HDF5
 
 # support GNU scientific library
 #SIMU_OPTION += -DSUPPORT_GSL
@@ -206,7 +209,8 @@ SIMU_OPTION += -DOPENMP
 # random number implementation: RNG_GNU_EXT/RNG_CPP11 (GNU extension drand48_r/c++11 <random>)
 # --> use RNG_GNU_EXT for compilers supporting GNU extensions (**not supported on some macOS**)
 #     use RNG_CPP11   for compilers supporting c++11 (**may need to add -std=c++11 to CXXFLAG**)
-SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
+#SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
+SIMU_OPTION += -DRANDOM_NUMBER=RNG_CPP11
 
 
 
@@ -241,11 +245,11 @@ SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
 
 # gnu
 # -------------------------------------------------------------------------------
- CXX         = g++                                       # serial compiler
-#CXX         = $(MPI_PATH)/bin/mpicxx                    # MPI compiler
+# CXX         = g++-8                                       # serial compiler
+CXX         = $(MPI_PATH)/bin/mpicxx                    # MPI compiler
 #CXX         = CC                                        # cray wrapper script
- CXXFLAG     = -g -O3                                    # general flags
-#CXXFLAG     = -g -O3 -std=c++11
+# CXXFLAG     = -g -O3                                    # general flags
+CXXFLAG     = -g -O3 -std=c++11
 #CXXFLAG     = -g -Ofast
  CXXFLAG    += -Wall -Wextra                             # warning flags
  CXXFLAG    += -Wno-unused-variable -Wno-unused-parameter \
@@ -367,8 +371,15 @@ LIBYT_PATH   :=
 #GRACKLE_PATH :=
 #GSL_PATH     := /usr/local/gsl-1.16
 
-
-
+# NTHU- Kuo-Chuan Pan (iMac Pro/ GNU)
+#CUDA_PATH    :=
+#FFTW_PATH    := /Users/pan/tools/fftw-2.1.5-gnu
+##FFTW_PATH    := /Users/pan/tools/fftw-2.1.5-float8-gnu
+#MPI_PATH     := /Users/pan/tools/openmpi-3.1.2-gnu
+#HDF5_PATH    := /Users/pan/tools/hdf5-1.8.21-gnu
+#GRACKLE_PATH :=
+#GSL_PATH     :=
+#LIBYT_PATH   :=
 
 
 
@@ -405,7 +416,7 @@ CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopMa
                Init_MemAllocate_Fluid.cpp  Init_Parallelization.cpp  Init_RecordBasePatch.cpp  Init_Refine.cpp \
                Init_ByRestart_v1.cpp  Init_ByFunction.cpp  Init_TestProb.cpp  Init_ByFile.cpp  Init_OpenMP.cpp \
                Init_ByRestart_HDF5.cpp  Init_ResetParameter.cpp  Init_ByRestart_v2.cpp  Init_MemoryPool.cpp \
-               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp
+               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp Init_NuclearEos.cpp
 
 CC_FILE     += Interpolate.cpp  Int_CQuadratic.cpp  Int_MinMod1D.cpp  Int_MinMod3D.cpp  Int_vanLeer.cpp \
                Int_Quadratic.cpp  Int_Table.cpp  Int_CQuartic.cpp  Int_Quartic.cpp
@@ -601,13 +612,6 @@ vpath %.cpp    YT
 endif # SUPPORT_LIBYT
 
 
-# local source terms source files
-# ------------------------------------------------------------------------------------
-CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp
-
-vpath %.cpp    SourceTerms
-
-
 # Grackle source files (included only if "SUPPORT_GRACKLE" is turned on)
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DSUPPORT_GRACKLE, $(SIMU_OPTION))" "-DSUPPORT_GRACKLE"
@@ -627,6 +631,22 @@ CC_FILE     += SF_CreateStar.cpp  SF_CreateStar_AGORA.cpp
 
 vpath %.cpp    StarFormation
 endif # STAR_FORMATION
+
+# Nuclear EOS source files (included only if "-DEOS=NUCLEAR")
+# ------------------------------------------------------------------------------------
+#
+# TODO: add nuclear eos files only if -DEOS=NUCLEAR
+
+ CC_FILE += findtemp.cpp linterp_for_temp.cpp linterp_many.cpp linterp_some.cpp NuclearEos.cpp \
+					 readtable.cpp testing.cpp linterp_for_entr.cpp
+
+vpath %.cpp Eos/NuclearEos/CPU_Eos
+
+# local source terms source files
+# ------------------------------------------------------------------------------------
+ CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp Src_Deleptonization.cpp Src_Lightbulb.cpp
+
+vpath %.cpp    SourceTerms
 
 
 # test problem source files
@@ -877,6 +897,3 @@ clean :
 	@rm -f $(OBJ_PATH)/*
 	@rm -f $(EXECUTABLE)
 	@rm -f ./*.linkinfo
-
-
-

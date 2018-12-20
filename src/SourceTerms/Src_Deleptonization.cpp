@@ -57,7 +57,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    double yout;
 
    dens  = fluid[DENS]; // code units
-   xdens = dens*UNIT_D;  // [g/cm^3]
+   xdens = dens*UNIT_D; // [g/cm^3]
    entr  = fluid[ENTR]/dens;
    xmom  = fluid[MOMX]; // code unit
    ymom  = fluid[MOMY];
@@ -67,7 +67,9 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
    xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy
 
-   del_ye = 0.0;
+   del_ye   = 0.0;
+   del_entr = 0.0;
+
    if (xdens <= delep_minDens)
    {
      del_ye = 0.0;
@@ -80,6 +82,10 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
    if (del_ye < 0.0)
    {
+
+      //printf("delep: dens %13.7e\n",xdens);
+      //printf("delep: ye   %13.7e\n",ye);
+      //printf("delep: dye  %13.7e\n",(del_ye));
 
       xtmp = 10.0; // trial value
 
@@ -98,7 +104,6 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
       fluid[ENTR] = dens*(entr + del_entr);
       fluid[YE]   = dens*(ye + del_ye);
-
 
       nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
           &xdpdrhoe, &xmunu, 2, &keyerr, rfeps); // entropy mode
