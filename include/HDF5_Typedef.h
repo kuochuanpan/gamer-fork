@@ -467,6 +467,7 @@ struct InputPara_t
    int    Opt__GraP5Gradient;
    int    Opt__GravityType;
    int    Opt__ExternalPot;
+   int    Opt__GravityExtraMass;
 #  endif
 
 // source terms

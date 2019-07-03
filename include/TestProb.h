@@ -36,6 +36,8 @@ extern void (*Src_User_Ptr)( real fluid[], const double x, const double y, const
 #ifdef GRAVITY
 extern void (*Init_ExternalAcc_Ptr)();
 extern void (*Init_ExternalPot_Ptr)();
+extern real (*Poi_AddExtraMassForGravity_Ptr)( const double x, const double y, const double z, const double Time,
+                                               const int lv, double AuxArray[] );
 #endif
 #ifdef PARTICLE
 extern void (*Par_Init_ByFunction_Ptr)( const long NPar_ThisRank, const long NPar_AllRank,
