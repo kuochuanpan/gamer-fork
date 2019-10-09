@@ -40,7 +40,7 @@ SIMU_OPTION += -DGRAVITY
 
 # enable particles
 # --> must enable GRAVITY
-SIMU_OPTION += -DPARTICLE
+#SIMU_OPTION += -DPARTICLE
 
 # support Grackle, a chemistry and radiative cooling library
 # --> must set NCOMP_PASSIVE_USER according to the primordial chemistry network set by GRACKLE_PRIMORDIAL
@@ -72,6 +72,16 @@ SIMU_OPTION += -DRSOLVER=ROE
 # --> set it to 0 or comment it out if none is required
 # --> useless for RTVD
 SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
+
+
+# equation of state: IDEAL_GAS/NUCLEAR
+SIMU_OPTION += -DEOS=NUCLEAR
+
+# enable Deleptonization
+SIMU_OPTION += -DDELEPTIONIZATION
+
+# nutrino transport scheme: LIGHTBULB/IDSA/M1
+SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
 
 
 # (b-2) MHD options
@@ -400,7 +410,7 @@ CC_FILE     += Aux_Check_Parameter.cpp  Aux_Check_Conservation.cpp  Aux_Check.cp
 
 CC_FILE     += CPU_FluidSolver.cpp  Flu_AdvanceDt.cpp  Flu_Prepare.cpp  Flu_Close.cpp  Flu_FixUp.cpp \
                Flu_Restrict.cpp  Flu_AllocateFluxArray.cpp  Flu_BoundaryCondition_User.cpp  Flu_ResetByUser.cpp \
-               Flu_CorrAfterAllSync.cpp  Flu_SwapFluxPointer.cpp  Flu_BoundaryCondition_Outflow.cpp
+               Flu_CorrAfterAllSync.cpp  Flu_SwapFluxPointer.cpp  
 
 CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopManually.cpp  End_User.cpp \
                Init_BaseLevel.cpp  Init_GAMER.cpp  Init_Load_DumpTable.cpp \
@@ -408,7 +418,7 @@ CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopMa
                Init_MemAllocate_Fluid.cpp  Init_Parallelization.cpp  Init_RecordBasePatch.cpp  Init_Refine.cpp \
                Init_ByRestart_v1.cpp  Init_ByFunction.cpp  Init_TestProb.cpp  Init_ByFile.cpp  Init_OpenMP.cpp \
                Init_ByRestart_HDF5.cpp  Init_ResetParameter.cpp  Init_ByRestart_v2.cpp  Init_MemoryPool.cpp \
-               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp  Init_User.cpp
+               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp  Init_User.cpp  Init_NuclearEos.cpp
 
 CC_FILE     += Interpolate.cpp  Int_CQuadratic.cpp  Int_MinMod1D.cpp  Int_MinMod3D.cpp  Int_vanLeer.cpp \
                Int_Quadratic.cpp  Int_Table.cpp  Int_CQuartic.cpp  Int_Quartic.cpp
@@ -445,7 +455,7 @@ CC_FILE     += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolve
                CPU_dtSolver_HydroCFL.cpp
 
 CC_FILE     += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
-               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_Flag_Vorticity.cpp
+               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp
 
 vpath %.cu     Model_Hydro/GPU_Hydro
 vpath %.cpp    Model_Hydro/CPU_Hydro  Model_Hydro
@@ -624,6 +634,24 @@ CC_FILE     += SF_CreateStar.cpp  SF_CreateStar_AGORA.cpp
 
 vpath %.cpp    StarFormation
 endif # STAR_FORMATION
+
+
+# Nuclear EOS source files (included only if "-DEOS=NUCLEAR")
+# ------------------------------------------------------------------------------------
+#
+# TODO: add nuclear eos files only if -DEOS=NUCLEAR
+
+CC_FILE += findtemp.cpp linterp_for_temp.cpp linterp_many.cpp linterp_some.cpp NuclearEos.cpp \
+                        readtable.cpp testing.cpp linterp_for_entr.cpp
+
+vpath %.cpp Eos/NuclearEos/CPU_Eos
+
+
+# local source terms source files
+# ------------------------------------------------------------------------------------
+ CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp Src_Deleptonization.cpp Src_Lightbulb.cpp
+
+vpath %.cpp    SourceTerms
 
 
 # test problem source files

@@ -54,6 +54,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    int keyerr;
    const double rfeps = 1.0e-10;
 
+   double debug1, debug2, debug3;
    double yout;
 
    dens  = fluid[DENS]; // code units
@@ -65,7 +66,8 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    ye    = fluid[YE]/dens;
    ener  = fluid[ENGY];
    ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
-   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy
+   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS]
+
 
    del_ye   = 0.0;
    del_entr = 0.0;
@@ -92,6 +94,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
       nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
           &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
+
       xmunu += Q;
 
       if ((xmunu < DELEP_ENU) || (xdens >= 2.e12))
@@ -105,8 +108,17 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
       fluid[ENTR] = dens*(entr + del_entr);
       fluid[YE]   = dens*(ye + del_ye);
 
+      //printf("debug: dens %13.7e, ye %13.7e, %13.7e \n",xdens,ye,(ye+del_ye));
+
+      xent = entr + del_entr;
+      ye   = ye + del_ye;
+
       nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
           &xdpdrhoe, &xmunu, 2, &keyerr, rfeps); // entropy mode
+
+      //printf("debug: ener %13.7e , %13.7e  \n",debug1, debug2);
+      //printf("debug: entr %13.7e , %13.7e  \n",debug3, entr);
+      //printf("debug: dens %13.7e, ye %13.7e, entr %13.7e, ener %13.7e %13.7e \n",xdens,ye,xent,xenr, debug1);
 
       fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
    }
@@ -119,11 +131,16 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 double YeOfRhoFunc(double xdens)
 {
   double xofrho, ye;
+
+  //printf("debug: DELPE %13.7e %13.7e \n",DELEP_RHO1, DELEP_RHO2);
+
   xofrho = 2.0*log10(xdens) - log10(DELEP_RHO2) - log10(DELEP_RHO1);
   xofrho = xofrho / (log10(DELEP_RHO2) - log10(DELEP_RHO1));
+  //printf("debug: DELPE %13.7e %13.7e \n",xdens,xofrho);
   xofrho = MAX(-1.0, MIN(1.0, xofrho));
   ye = 0.5*(DELEP_YE2 + DELEP_YE1) + 0.5*xofrho*(DELEP_YE2 - DELEP_YE1);
   ye = ye + DELEP_YEC*(1.0 - fabs(xofrho));
-  ye = ye + 4.0*fabs(xofrho)*(fabs(xofrho)-0.5)*(fabs(xofrho) - 1.0);
+  ye = ye + DELEP_YEC*4.0*fabs(xofrho)*(fabs(xofrho)-0.5)*(fabs(xofrho) - 1.0);
+  //printf("debug: DELPE %13.7e %13.7e %13.7e \n",xdens,ye,xofrho);
   return ye;
 }

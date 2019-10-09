@@ -298,8 +298,8 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
-   fluid[YE]   = ye*dens;    // electron fraction []
-   fluid[ENTR] = xent*dens;  // entropy [kB/baryon]
+   fluid[YE]   = ye*dens;    // electron fraction [dens]
+   fluid[ENTR] = xent*dens;  // entropy [kB/baryon * dens]
    //fluid[ENGY] = pres / ( GAMMA - 1.0 ) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
    fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
