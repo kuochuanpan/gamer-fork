@@ -29,7 +29,7 @@ extern double eos_yemin, eos_yemax;
 
 // some vectors for selecting variables for more
 // efficient interpolation
-extern int ivs_short[8];
+extern int ivs_short[19];
 
 // table key
 // 0 logpress

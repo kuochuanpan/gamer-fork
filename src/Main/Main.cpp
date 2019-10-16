@@ -367,7 +367,7 @@ double eos_rhomax, eos_rhomin;
 double eos_tempmin, eos_tempmax;
 double eos_yemin, eos_yemax;
 
-int ivs_short[8];
+int ivs_short[19];
 
 
 
