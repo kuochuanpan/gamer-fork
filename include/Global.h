@@ -216,6 +216,11 @@ extern double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 
 
 // (2-9) Supernova
+#if (EOS==NUCLEAR)
+extern bool   EOS_POSTBOUNCE;
+extern double EOS_BOUNCETIME;
+#endif
+
 #ifdef DELEPTIONIZATION
 extern double DELEP_ENU;
 extern double DELEP_RHO1;

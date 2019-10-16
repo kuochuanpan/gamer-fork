@@ -57,6 +57,13 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    double debug1, debug2, debug3;
    double yout;
 
+   if (EOS_POSTBOUNCE) 
+   {
+      return;
+   }
+
+   // Deleptonization
+
    dens  = fluid[DENS]; // code units
    xdens = dens*UNIT_D; // [g/cm^3]
    entr  = fluid[ENTR]/dens;

@@ -190,6 +190,11 @@ double                SF_CREATE_STAR_MIN_STAR_MASS;
 double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
+# if (EOS == NUCLEAR)
+bool   EOS_POSTBOUNCE;
+double EOS_BOUNCETIME;
+# endif
+
 #ifdef DELEPTIONIZATION
 double DELEP_ENU;
 double DELEP_RHO1;

@@ -9,8 +9,6 @@ static bool   var_bool;
 static double var_double;
 static int    var_int;
 static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
-static bool   bounce;                      // Core bounce
-static double bounce_time;                 // Core bounce time
 
 
 // Parameters for the progenitor model
@@ -120,6 +118,8 @@ void SetParameter()
    ReadPara->Add( "var_double",        &var_double,            1.0,           Eps_double,       NoMax_double      );
    ReadPara->Add( "var_int",           &var_int,               2,             0,                5                 );
    ReadPara->Add( "progenitor_file",   progenitor_file,        Useless_str,   Useless_str,      Useless_str       );
+   //ReadPara->Add( "bounce",            &bounce,                false,         Useless_bool,     Useless_bool      );
+   //ReadPara->Add( "bounce_time",       &bounce_time,           0.0,           Eps_double,       NoMax_double      );
 
    ReadPara->Read( FileName );
 
@@ -306,6 +306,87 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 } // FUNCTION : SetGridIC
 
 
+void Record_CoreCollapse()
+{
+    // Detect Core Boubce
+    if (!EOS_POSTBOUNCE) {
+
+        const int CountMPI = 2;
+        const double bounceDens = 2.0e14; // cgs
+        const double shockEntr  = 3.0;    // [kB/by]
+        
+        double dens, max_dens_loc=-__DBL_MAX__;
+        double entr, max_entr_loc=-__DBL_MAX__;
+        double send[CountMPI], recv[CountMPI];
+        double max_dens, max_entr;
+        double radius, xc, yc, zc;
+
+        const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+
+        // collect local data
+        for (int lv=0; lv<NLEVEL; lv++)
+        for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
+        {
+            // skip non-leaf patches
+            if ( amr->patch[0][lv][PID]->son != -1 )  continue;
+
+            
+            for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*amr->dh[lv];
+            for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*amr->dh[lv];
+            for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*amr->dh[lv];
+
+                xc = x - BoxCenter[0];
+                yc = y - BoxCenter[1];
+                zc = z - BoxCenter[2];
+
+                radius = sqrt(xc*xc + yc*yc + zc*zc);
+                radius = radius * UNIT_L; // [cm]
+            
+                dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+                entr = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENTR][k][j][i];
+                entr = entr/dens;     // [kb/by]
+                dens = dens * UNIT_D; // [g/cm^3]
+
+                if ( radius <= 3.e6) 
+                {
+                    if ( dens > max_dens_loc)
+                    {
+                        max_dens_loc  = dens;
+                    }
+                    if ( entr > max_entr_loc)
+                    {
+                        max_entr_loc  = entr;
+                    }
+                }
+            }}}
+        }
+
+        // gather data 
+
+        send[0] = max_dens_loc;
+        send[1] = max_entr_loc;
+        MPI_Allreduce( send, recv, CountMPI, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
+
+        max_dens = recv[0];
+        max_entr = recv[1];
+
+        //printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
+        if (max_dens > bounceDens && max_entr > shockEntr)
+        {
+            if (MPI_Rank ==0) 
+            {
+                printf("Bounce! time = %13.7e \n", Time[0]);
+                EOS_POSTBOUNCE = true;
+                EOS_BOUNCETIME = Time[0];
+            }
+        }
+    }
+    // other stuff here
+
+
+}  // FUNCTION Record CoreCollapse
+
+
 
 void End_CoreCollapse()
 {
@@ -355,7 +436,7 @@ void Init_TestProb_Hydro_CoreCollapse()
    BC_User_Ptr                 = NULL;    // option: OPT__BC_FLU_*=4;       example: TestProblem/ELBDM/ExtPot/Init_TestProb_ELBDM_ExtPot.cpp --> BC()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr             = NULL;    // option: OPT__OUTPUT_USER;      example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
-   Aux_Record_User_Ptr         = NULL;    // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
+   Aux_Record_User_Ptr         = Record_CoreCollapse; // option: OPT__RECORD_USER;      example: Auxiliary/Aux_Record_User.cpp
    Src_User_Ptr                = NULL;       //
    End_User_Ptr                = End_CoreCollapse;    // option: none;                  example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
 #  ifdef GRAVITY

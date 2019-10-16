@@ -207,6 +207,11 @@ void Init_Load_Parameter()
 
 
 // supernova
+#  if (EOS == NUCLEAR)
+   ReadPara->Add( "EOS_POSTBOUNCE",            &EOS_POSTBOUNCE,                false,         Useless_bool,     Useless_bool      );
+   ReadPara->Add( "EOS_BOUNCETIME",            &EOS_BOUNCETIME,                0.0,           0.0,              NoMax_double      );
+#  endif
+
 #  ifdef DELEPTIONIZATION
    ReadPara->Add( "DELEP_ENU",                      &DELEP_ENU,                     10.0,       0.0,           NoMax_double   );
    ReadPara->Add( "DELEP_RHO1",                     &DELEP_RHO1,                    4.e8,       0.0,           NoMax_double   );
