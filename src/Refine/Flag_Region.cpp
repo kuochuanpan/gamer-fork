@@ -44,7 +44,7 @@ bool Flag_Region( const int i, const int j, const int k, const int lv, const int
    const double dR[3]     = { Pos[0]-Center[0], Pos[1]-Center[1], Pos[2]-Center[2] };
    const double R         = sqrt( SQR(dR[0]) + SQR(dR[1]) + SQR(dR[2]) );
 
-   const double baseR     = 32.0e5/UNIT_L; // km
+   const double baseR     = 16.0e5/UNIT_L; // km
 
    double fmaxR;
 

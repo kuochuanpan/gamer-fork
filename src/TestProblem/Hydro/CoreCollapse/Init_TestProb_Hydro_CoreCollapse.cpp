@@ -308,6 +308,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
 void Record_CoreCollapse()
 {
+    //printf("debug: bounce %d \n",EOS_POSTBOUNCE);
     // Detect Core Boubce
     if (!EOS_POSTBOUNCE) {
 
@@ -370,7 +371,7 @@ void Record_CoreCollapse()
         max_dens = recv[0];
         max_entr = recv[1];
 
-        //printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
+        printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
         if (max_dens > bounceDens && max_entr > shockEntr)
         {
             if (MPI_Rank ==0) 

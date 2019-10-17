@@ -1,4 +1,5 @@
 #include "GAMER.h"
+#include "NuclearEos.h"
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Src_LightBulb( real fluid[], const double x, const double y, const double z, const double Time,
@@ -43,6 +44,77 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    fluid[ENGY] = Ek + Eint;
    */
 
-   //printf("debug: lightbulb\n");
+   const double mev_to_kelvin = 1.1604447522806e10; 
+   
+   double xdens,dens, ener, entr, ye;
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
+   double radius, xc, yc, zc;
+   int keyerr;
+   const double rfeps = 1.0e-10;
+
+   double xXp, xXn;
+   double dEneut, T6;
+
+   const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+
+   double logd, logt;
+   double res[19];
+
+   if (!EOS_POSTBOUNCE) 
+   {
+        return;
+   }
+
+   dEneut = 0.0 ;
+
+   dens  = fluid[DENS]; // code units
+   xdens = dens*UNIT_D; // [g/cm^3]
+   entr  = fluid[ENTR]/dens;
+   ye    = fluid[YE]/dens;
+   ener  = fluid[ENGY];
+   ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
+   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS] 
+
+   xtmp = 10.0; // trial value
+   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
+
+   logd = MIN(MAX(xdens, eos_rhomin), eos_rhomax);
+   logt = MIN(MAX(xtmp,  eos_tempmin), eos_tempmax);
+
+   logd = log10(logd);
+   logt = log10(logt);
+
+
+   // find xp xn
+   nuc_eos_C_linterp_some(logd, logt, ye, res, alltables, 
+           ivs_short, nrho, ntemp, nye, 19,
+           logrho, logtemp, yes);
+   
+   xXn = res[14];
+   xXp = res[15];
+
+   //printf("debug: xXp %13.7e  xXn %13.7e \n", xXp, xXn);
+
+   xc = x - BoxCenter[0];
+   yc = y - BoxCenter[1];
+   zc = z - BoxCenter[2];
+
+   radius = sqrt(xc*xc + yc*yc + zc*zc);
+   radius = radius * UNIT_L; // [cm]
+
+   // calculate heating
+   dEneut = 1.544e20 * (LB_LNU/1.e52) * SQR(1.e7 / radius) * SQR(LB_TNU / 4.);
+
+   // now subtract cooling 
+   T6 = (0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp);
+   dEneut = dEneut - 1.399e20 * T6;
+
+   dEneut = dEneut * exp(-xdens*1.e-11);
+   dEneut = dEneut * (xXp + xXn);
+
+   xenr = xenr + dEneut * dt;
+
+   fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS]; 
 
 } // FUNCTION : Src_User
