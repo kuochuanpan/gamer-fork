@@ -371,7 +371,7 @@ void Record_CoreCollapse()
         max_dens = recv[0];
         max_entr = recv[1];
 
-        printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
+        //printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
         if (max_dens > bounceDens && max_entr > shockEntr)
         {
             if (MPI_Rank ==0) 
@@ -382,7 +382,103 @@ void Record_CoreCollapse()
             }
         }
     }
+    // =====================================================================================
     // other stuff here
+    // Record time dependent quanitites here 
+    //
+    // Ex.  central density, shock radius, pns radius, neutirno luminosity, gw signals ....
+    //
+    const int CountMPI = 4;
+
+    const char filename_central_dens[] = "Record__CentralDens";
+
+    double dens, max_dens_loc=-__DBL_MAX__, max_dens_pos_loc[3];
+    double send[CountMPI], (*recv)[CountMPI]=new double [MPI_NRank][CountMPI];
+
+    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+    double radius, xc, yc, zc;
+
+    for (int lv=0; lv<NLEVEL; lv++)
+    for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
+    {
+        // skip non-leaf patches
+        if ( amr->patch[0][lv][PID]->son != -1 )  continue;
+
+            
+        for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*amr->dh[lv];
+        for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*amr->dh[lv];
+        for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*amr->dh[lv];
+
+            xc = x - BoxCenter[0]; // x-distance to the center
+            yc = y - BoxCenter[1];
+            zc = z - BoxCenter[2];
+            
+            dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+            dens = dens * UNIT_D; // [g/cm^3]
+
+            if ( dens > max_dens_loc)
+            {
+                max_dens_loc  = dens;
+                max_dens_pos_loc[0] = xc;
+                max_dens_pos_loc[1] = yc;
+                max_dens_pos_loc[2] = zc;
+            }
+        }}}
+    }
+
+    // gather data 
+
+    send[0] = max_dens_loc;
+    send[1] = max_dens_pos_loc[0];
+    send[2] = max_dens_pos_loc[1];
+    send[3] = max_dens_pos_loc[2];
+
+    MPI_Gather( send, CountMPI, MPI_DOUBLE, recv[0], CountMPI, MPI_DOUBLE, 0, MPI_COMM_WORLD );
+
+    double max_dens      = -__DBL_MAX__;
+    int    max_dens_rank = -1;
+
+    if ( MPI_Rank == 0 )
+    {
+        for (int r=0; r<MPI_NRank; r++)
+        {
+            if ( recv[r][0] > max_dens )
+            {
+                max_dens      = recv[r][0];
+                max_dens_rank = r;
+            }
+        }
+
+        if ( max_dens_rank < 0  ||  max_dens_rank >= MPI_NRank )
+        {
+            Aux_Error( ERROR_INFO, "incorrect max_dens_rank (%d) !!\n", max_dens_rank ); 
+        }
+
+        static bool FirstTime = true;
+
+        if ( FirstTime )
+        {
+            // Central Density
+            if ( Aux_CheckFileExist(filename_central_dens) )
+            {
+                Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_central_dens ); 
+            }
+            else
+            {
+                FILE *file_max_dens = fopen( filename_central_dens, "w" );
+                fprintf( file_max_dens, "#%19s   %10s   %14s   %14s   %14s   %14s\n", "Time", "Step", "Dens", "Posx", "Posy", "Posz" );
+                fclose( file_max_dens ); 
+            }
+
+            FirstTime = false;
+        } 
+
+        FILE *file_max_dens = fopen( filename_central_dens, "a" );
+        fprintf( file_max_dens, "%20.14e   %10ld   %14.7e   %14.7e   %14.7e   %14.7e\n",
+                               Time[0], Step, recv[max_dens_rank][0], recv[max_dens_rank][1], recv[max_dens_rank][2], recv[max_dens_rank][3] );
+        fclose( file_max_dens );
+
+    } // if ( MPI_Rank == 0 )
 
 
 }  // FUNCTION Record CoreCollapse
