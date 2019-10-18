@@ -60,6 +60,8 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    double logd, logt;
    double res[19];
 
+   const double Gamma_m1   = GAMMA - 1.0;
+
    if (!EOS_POSTBOUNCE) 
    {
         return;
@@ -75,7 +77,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
    xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS] 
 
-   xtmp = 10.0; // trial value
+   xtmp = 10.0; // trial value [MeV]
    nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
                      &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
@@ -96,7 +98,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 
    //printf("debug: xXp %13.7e  xXn %13.7e \n", xXp, xXn);
 
-   xc = x - BoxCenter[0];
+   xc = x - BoxCenter[0]; // [code unit]
    yc = y - BoxCenter[1];
    zc = z - BoxCenter[2];
 
@@ -111,10 +113,27 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    dEneut = dEneut - 1.399e20 * T6;
 
    dEneut = dEneut * exp(-xdens*1.e-11);
-   dEneut = dEneut * (xXp + xXn);
+   dEneut = dEneut * (xXp + xXn);  // [cgs]
 
-   xenr = xenr + dEneut * dt;
+   xenr = xenr + dEneut * (UNIT_T * dt);
 
    fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS]; 
+
+   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
+
+   // update entropy using the new energy
+   fluid[ENTR] = dens * xent ; 
+   fluid[YE]   = dens * ye;  // lb doesn't change ye
+
+   // if using Dual energy
+#  ifdef DUAL_ENERGY
+#  if (DUAL_ENERGY == DE_ENPY)
+   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
+   xprs = xprs * UNIT_P;
+   fluid[ENPY] = Hydro_DensPres2Entropy( dens, xprs, Gamma_m1 );
+#  endif
+#  endif
 
 } // FUNCTION : Src_User

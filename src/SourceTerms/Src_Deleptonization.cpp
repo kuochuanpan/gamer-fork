@@ -56,6 +56,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
    double debug1, debug2, debug3;
    double yout;
+   const double Gamma_m1   = GAMMA - 1.0;
 
    if (EOS_POSTBOUNCE) 
    {
@@ -118,6 +119,15 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
           &xdpdrhoe, &xmunu, 2, &keyerr, rfeps); // entropy mode
 
       fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+
+      // if using Dual energy
+#     ifdef DUAL_ENERGY
+#     if (DUAL_ENERGY == DE_ENPY) 
+      xprs = xprs * UNIT_P;
+      fluid[ENPY] = Hydro_DensPres2Entropy( dens, xprs, Gamma_m1 );
+#     endif
+#     endif
+
    }
 
 } // FUNCTION : Src_User
