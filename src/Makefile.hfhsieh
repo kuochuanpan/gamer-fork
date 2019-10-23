@@ -47,6 +47,9 @@ SIMU_OPTION += -DGRAVITY
 # --> please enable OpenMP when compiling Grackle (by "make omp-on")
 #SIMU_OPTION += -DSUPPORT_GRACKLE
 
+# enable GR effective potential
+SIMU_OPTION += -DGREP
+
 
 # (b) options of different physical modules
 # (b-1) hydro options

@@ -47,6 +47,7 @@ const TestProbID_t
    TESTPROB_HYDRO_PLUMMER                      =   11,
    TESTPROB_HYDRO_GRAVITY                      =   12,
    TESTPROB_HYDRO_CORE_COLLAPSE                =   17,
+   TESTPROB_HYDRO_NEUTRONSTAR_MIGRATIONTEST    =   20,
 
    TESTPROB_ELBDM_EXTPOT                       = 1000;
 

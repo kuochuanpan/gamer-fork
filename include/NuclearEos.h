@@ -52,6 +52,15 @@ extern int ivs_short[19];
 // 17 Zbar
 // 18 Gamma
 
+#if ( defined GRAVITY  &&  defined GREP )
+   extern int    GREP_Center_Method;
+   extern int    GREP_MaxIter;
+   extern bool   GREP_LogBin;
+   extern bool   GREP_RemoveEmptyBin;
+   extern double GREP_LogBinRatio;
+   extern double GREP_MaxRadius;
+   extern double GREP_MinBinSize;
+#endif
 
 
 // frontend function declarations
