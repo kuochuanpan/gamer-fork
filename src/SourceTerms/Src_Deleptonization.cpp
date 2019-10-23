@@ -33,6 +33,8 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
                const int lv, double AuxArray[], const double dt )
 {
 
+#  if ( EOS == NUCLEAR )
+
 // example
    /*
    const double CoolRate = 1.23; // set arbitrarily here
@@ -58,7 +60,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    double yout;
    const double Gamma_m1   = GAMMA - 1.0;
 
-   if (EOS_POSTBOUNCE) 
+   if (EOS_POSTBOUNCE)
    {
       return;
    }
@@ -122,7 +124,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
       // if using Dual energy
 #     ifdef DUAL_ENERGY
-#     if (DUAL_ENERGY == DE_ENPY) 
+#     if (DUAL_ENERGY == DE_ENPY)
       xprs = xprs * UNIT_P;
       fluid[ENPY] = Hydro_DensPres2Entropy( dens, xprs, Gamma_m1 );
 #     endif
@@ -130,10 +132,14 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
 
    }
 
+#  endif // # if ( EOS == NUCLEAR )
+
 } // FUNCTION : Src_User
 
 double YeOfRhoFunc(double xdens)
 {
+# ifdef DELEPTIONIZATION
+
   double xofrho, ye;
 
   xofrho = 2.0*log10(xdens) - log10(DELEP_RHO2) - log10(DELEP_RHO1);
@@ -143,4 +149,6 @@ double YeOfRhoFunc(double xdens)
   ye = ye + DELEP_YEC*(1.0 - fabs(xofrho));
   ye = ye + DELEP_YEC*4.0*fabs(xofrho)*(fabs(xofrho)-0.5)*(fabs(xofrho) - 1.0);
   return ye;
+
+# endif
 }

@@ -33,6 +33,8 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
                const int lv, double AuxArray[], const double dt )
 {
 
+#  if ( EOS == NUCLEAR )
+
 // example
    /*
    const double CoolRate = 1.23; // set arbitrarily here
@@ -44,8 +46,8 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    fluid[ENGY] = Ek + Eint;
    */
 
-   const double mev_to_kelvin = 1.1604447522806e10; 
-   
+   const double mev_to_kelvin = 1.1604447522806e10;
+
    double xdens,dens, ener, entr, ye;
    double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
    double radius, xc, yc, zc;
@@ -55,14 +57,14 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    double xXp, xXn;
    double dEneut, T6;
 
-   const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+   const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
 
    double logd, logt;
    double res[19];
 
    const double Gamma_m1   = GAMMA - 1.0;
 
-   if (!EOS_POSTBOUNCE) 
+   if (!EOS_POSTBOUNCE)
    {
         return;
    }
@@ -75,7 +77,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    ye    = fluid[YE]/dens;
    ener  = fluid[ENGY];
    ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
-   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS] 
+   xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS]
 
    xtmp = 10.0; // trial value [MeV]
    nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
@@ -89,10 +91,10 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 
 
    // find xp xn
-   nuc_eos_C_linterp_some(logd, logt, ye, res, alltables, 
+   nuc_eos_C_linterp_some(logd, logt, ye, res, alltables,
            ivs_short, nrho, ntemp, nye, 19,
            logrho, logtemp, yes);
-   
+
    xXn = res[14];
    xXp = res[15];
 
@@ -108,7 +110,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    // calculate heating
    dEneut = 1.544e20 * (LB_LNU/1.e52) * SQR(1.e7 / radius) * SQR(LB_TNU / 4.);
 
-   // now subtract cooling 
+   // now subtract cooling
    T6 = (0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp)*(0.5*xtmp);
    dEneut = dEneut - 1.399e20 * T6;
 
@@ -117,13 +119,13 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 
    xenr = xenr + dEneut * (UNIT_T * dt);
 
-   fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS]; 
+   fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
    nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
                      &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
    // update entropy using the new energy
-   fluid[ENTR] = dens * xent ; 
+   fluid[ENTR] = dens * xent ;
    fluid[YE]   = dens * ye;  // lb doesn't change ye
 
    // if using Dual energy
@@ -135,5 +137,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    fluid[ENPY] = Hydro_DensPres2Entropy( dens, xprs, Gamma_m1 );
 #  endif
 #  endif
+
+#  endif // #if ( EOS == NUCLEAR )
 
 } // FUNCTION : Src_User

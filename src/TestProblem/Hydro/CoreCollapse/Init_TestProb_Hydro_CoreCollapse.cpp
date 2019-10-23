@@ -298,8 +298,10 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[MOMX] = dens*velx;
    fluid[MOMY] = dens*vely;
    fluid[MOMZ] = dens*velz;
+#  if ( EOS == NUCLEAR )
    fluid[YE]   = ye*dens;    // electron fraction [dens]
    fluid[ENTR] = xent*dens;  // entropy [kB/baryon * dens]
+#  endif
    //fluid[ENGY] = pres / ( GAMMA - 1.0 ) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
    fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
@@ -310,19 +312,21 @@ void Record_CoreCollapse()
 {
     //printf("debug: bounce %d \n",EOS_POSTBOUNCE);
     // Detect Core Boubce
+
+#   if ( EOS == NUCLEAR )
     if (!EOS_POSTBOUNCE) {
 
         const int CountMPI = 2;
         const double bounceDens = 2.0e14; // cgs
         const double shockEntr  = 3.0;    // [kB/by]
-        
+
         double dens, max_dens_loc=-__DBL_MAX__;
         double entr, max_entr_loc=-__DBL_MAX__;
         double send[CountMPI], recv[CountMPI];
         double max_dens, max_entr;
         double radius, xc, yc, zc;
 
-        const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+        const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
 
         // collect local data
         for (int lv=0; lv<NLEVEL; lv++)
@@ -331,7 +335,7 @@ void Record_CoreCollapse()
             // skip non-leaf patches
             if ( amr->patch[0][lv][PID]->son != -1 )  continue;
 
-            
+
             for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*amr->dh[lv];
             for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*amr->dh[lv];
             for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*amr->dh[lv];
@@ -342,13 +346,13 @@ void Record_CoreCollapse()
 
                 radius = sqrt(xc*xc + yc*yc + zc*zc);
                 radius = radius * UNIT_L; // [cm]
-            
+
                 dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
                 entr = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENTR][k][j][i];
                 entr = entr/dens;     // [kb/by]
                 dens = dens * UNIT_D; // [g/cm^3]
 
-                if ( radius <= 3.e6) 
+                if ( radius <= 3.e6)
                 {
                     if ( dens > max_dens_loc)
                     {
@@ -362,7 +366,7 @@ void Record_CoreCollapse()
             }}}
         }
 
-        // gather data 
+        // gather data
 
         send[0] = max_dens_loc;
         send[1] = max_entr_loc;
@@ -374,7 +378,7 @@ void Record_CoreCollapse()
         //printf("debug: max dens %13.7e, max entr %13.7e, time %13.7e \n",max_dens, max_entr,Time[0]);
         if (max_dens > bounceDens && max_entr > shockEntr)
         {
-            if (MPI_Rank ==0) 
+            if (MPI_Rank ==0)
             {
                 printf("Bounce! time = %13.7e \n", Time[0]);
                 EOS_POSTBOUNCE = true;
@@ -382,9 +386,12 @@ void Record_CoreCollapse()
             }
         }
     }
+
+#   endif // if ( EOS == NUCLEAR )
+
     // =====================================================================================
     // other stuff here
-    // Record time dependent quanitites here 
+    // Record time dependent quanitites here
     //
     // Ex.  central density, shock radius, pns radius, neutirno luminosity, gw signals ....
     //
@@ -395,7 +402,7 @@ void Record_CoreCollapse()
     double dens, max_dens_loc=-__DBL_MAX__, max_dens_pos_loc[3];
     double send[CountMPI], (*recv)[CountMPI]=new double [MPI_NRank][CountMPI];
 
-    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] }; 
+    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
     double radius, xc, yc, zc;
 
     for (int lv=0; lv<NLEVEL; lv++)
@@ -404,7 +411,7 @@ void Record_CoreCollapse()
         // skip non-leaf patches
         if ( amr->patch[0][lv][PID]->son != -1 )  continue;
 
-            
+
         for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*amr->dh[lv];
         for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*amr->dh[lv];
         for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*amr->dh[lv];
@@ -412,7 +419,7 @@ void Record_CoreCollapse()
             xc = x - BoxCenter[0]; // x-distance to the center
             yc = y - BoxCenter[1];
             zc = z - BoxCenter[2];
-            
+
             dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
             dens = dens * UNIT_D; // [g/cm^3]
 
@@ -426,7 +433,7 @@ void Record_CoreCollapse()
         }}}
     }
 
-    // gather data 
+    // gather data
 
     send[0] = max_dens_loc;
     send[1] = max_dens_pos_loc[0];
@@ -451,7 +458,7 @@ void Record_CoreCollapse()
 
         if ( max_dens_rank < 0  ||  max_dens_rank >= MPI_NRank )
         {
-            Aux_Error( ERROR_INFO, "incorrect max_dens_rank (%d) !!\n", max_dens_rank ); 
+            Aux_Error( ERROR_INFO, "incorrect max_dens_rank (%d) !!\n", max_dens_rank );
         }
 
         static bool FirstTime = true;
@@ -461,17 +468,17 @@ void Record_CoreCollapse()
             // Central Density
             if ( Aux_CheckFileExist(filename_central_dens) )
             {
-                Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_central_dens ); 
+                Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_central_dens );
             }
             else
             {
                 FILE *file_max_dens = fopen( filename_central_dens, "w" );
                 fprintf( file_max_dens, "#%19s   %10s   %14s   %14s   %14s   %14s\n", "Time", "Step", "Dens", "Posx", "Posy", "Posz" );
-                fclose( file_max_dens ); 
+                fclose( file_max_dens );
             }
 
             FirstTime = false;
-        } 
+        }
 
         FILE *file_max_dens = fopen( filename_central_dens, "a" );
         fprintf( file_max_dens, "%20.14e   %10ld   %14.7e   %14.7e   %14.7e   %14.7e\n",

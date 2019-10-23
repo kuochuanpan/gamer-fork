@@ -96,7 +96,7 @@ void Init_Field()
 
 // TODO: add nuelcear eos here: KC
 
-# if ( defined NUCLEAR)
+# if ( EOS == NUCLEAR )
   Idx_Entr    = AddField( "Entr",  NORMALIZE_NO );
   Idx_Ye      = AddField( "Ye",    NORMALIZE_NO );
 # endif
