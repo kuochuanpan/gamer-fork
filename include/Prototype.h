@@ -340,6 +340,9 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 #ifdef STORE_POT_GHOST
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
+#ifdef GREP
+void CPU_ComputeEffPot();
+#endif
 #endif // #ifdef GRAVITY
 
 
