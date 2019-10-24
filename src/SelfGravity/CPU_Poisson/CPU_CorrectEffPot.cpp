@@ -56,12 +56,10 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
    for (int P=0; P<NPatchGroup*8; P++)
    {
 #     ifdef UNSPLIT_GRAVITY
-      real *pot_new = ( USG ) ? g_Pot_Array_USG[P]      : g_Pot_Array_New[P];
+      real *pot_new = ( USG ) ? g_Pot_Array_USG[P] : g_Pot_Array_New[P];
 #     else
       real *pot_new = g_Pot_Array_New[P];
 #     endif
-
-      double phi;
 
 //    correct potential (including ghost zone)
       for (int idx_g0=0; idx_g0<CUBE(IDX); idx_g0++)
@@ -89,8 +87,8 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
             if ( bin < 0 )    Aux_Error( ERROR_INFO, "bin (%d) < 0 !!\n", bin );
 #           endif
 
-            phi = ( bin == Phi_eff.NBin-1 ) ? Data[bin]
-                                            : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
+            double phi = ( bin == Phi_eff.NBin-1 ) ? Data[bin]
+                                                   : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
 
             pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
          } // if ( r2 < r_max2 )
