@@ -342,6 +342,11 @@ void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPat
 #endif
 #ifdef GREP
 void CPU_ComputeEffPot();
+void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
+                              real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
+                        const double g_Corner_Array [][3],
+                        const int    NPatchGroup,
+                        const real dh, const bool Undo, const bool USG);
 #endif
 #endif // #ifdef GRAVITY
 
