@@ -1,65 +1,70 @@
-# Plot the 1D denisty profile and generate movies
+#! /usr/bin/env python
+#
+# -*- coding: utf-8 -*-
+#
+#  Purpose:
+#    Plot the 1D denisty profile and generate movies
+#
+#  Last Updated: 2019/10/24
+#  He-Feng Hsieh
+
+
+import matplotlib
+matplotlib.use("Agg")
 
 import re, os
 import numpy as np
 from glob import glob
 from matplotlib import pyplot as plt
 
-#plt.ion()
-plt.ioff()
 
-### load required parameters
+# setting
+Gene_animation    = True  # generate animation
+
+
+# get the unit given in Input__Parameter
 parfile = "Input__Parameter"
 parinfo = open(parfile).read()
-
-output_part_y = re.findall(r"OUTPUT_PART_Y\s*(-?\d+\.?\d*[eE]?\d*)", parinfo)[0]
-output_part_z = re.findall(r"OUTPUT_PART_Z\s*(-?\d+\.?\d*[eE]?\d*)", parinfo)[0]
-output_part_y = float(output_part_y)
-output_part_z = float(output_part_z)
-
 
 unit_l = re.findall(r"UNIT_L\s*(-?\d+\.?\d*[eE]?\d*)", parinfo)[0]
 unit_m = re.findall(r"UNIT_M\s*(-?\d+\.?\d*[eE]?\d*)", parinfo)[0]
 unit_l = float(unit_l)
 unit_m = float(unit_m)
 
-file_fmt = "Xline_y{:.3f}_z{:.3f}_".format(output_part_y, output_part_z) + "{:06d}"
+
+# obtain all the Xline_* files
+fn_in = glob("Xline_*" + "[0-9]" * 6)
+fn_in.sort()
+
+fn_out_fmt = "{}.png"
 
 
-### plot function
-def plotdens(nout):
-    fn = file_fmt.format(nout)
-
+# plot
+for idx, fn in enumerate(fn_in):
     x, rho = np.genfromtxt(fn, usecols = [3, 6], unpack = 1)
 
-    x   *= unit_l / 1.e5
-    rho *= unit_m / unit_l**3
+    x   *= unit_l / 1.e5       # km
+    rho *= unit_m / unit_l**3  # cgs
 
     plt.figure()
     plt.scatter(x, rho)
 
     plt.xlabel("x (km)")
     plt.ylabel(r"Density (g/cm$^3$)")
-    plt.title("Nout = {}".format(nout))
+    plt.title("Nout = {}".format(idx))
 
     plt.tight_layout()
-    plt.savefig(fn + ".png")
+    plt.savefig(fn_out_fmt.format(fn))
 
     plt.close()
 
 
-fn_list = glob("Xline*")
-fn_num = len(fn_list)
+# generate animation
+if Gene_animation:
+    # use the first output (idx = 0), and replace 000000 by %6d
+    fn_in  = fn_in[0].replace("0" * 6, "%6d") + ".png"
+    fn_out = "line_density.mp4"
+    cmd = "ffmpeg -r 25 -i {} -vcodec h264 -pix_fmt yuv420p {}".format(fn_in, fn_out)
 
-for i in range(fn_num):
-    plotdens(i)
-
-
-### generate animation
-fn_in = "Xline_y{:.3f}_z{:.3f}_".format(output_part_y, output_part_z) \
-      + r"%6d.png"
-fn_out = "line_profile.mp4"
-cmd = "ffmpeg -r 25 -i {} -vcodec h264 -pix_fmt yuv420p {}".format(fn_in, fn_out)
-
-os.system(cmd)
+    os.system(cmd)
 
