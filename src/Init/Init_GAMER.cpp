@@ -77,7 +77,9 @@ void Init_GAMER( int *argc, char ***argv )
 #  endif
 
 // Initial the nuclear Eos solver
+#  if ( EOS == NUCLEAR )
    Init_NuclearEos();
+#  endif
 
 // initialize the test problem parameters
    Init_TestProb();
