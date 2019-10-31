@@ -65,7 +65,12 @@ for fn in fn_in:
         rhoc_all.append((time, rhoc))
 
     # free memory
-    del slc, ds
+    if Plot_Density or Plot_Density_grid:
+        del slc
+
+    del ds
+
+
 
 
 # plot the evolution of central density
