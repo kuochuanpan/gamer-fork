@@ -10,7 +10,6 @@ int    GREP_Center_Method;    // center of radial profile                       
 int    GREP_MaxIter;          // number of iteration for constructing mass_TOV and Gamma_TOV [1000]
 bool   GREP_LogBin;           // scale of bin in radila profile                              [true]
                               // (true=logarithmic, false=linear)
-bool   GREP_RemoveEmptyBin;   // remove empty bin?                                           [false]
 double GREP_LogBinRatio;      // ratio in logarithmic bin                                    [1.25]
 double GREP_MaxRadius;        // maximum radius in the radial profile                        [-1.0]
                               // (<0=spearation between vertex farthest from the center)
@@ -25,6 +24,7 @@ static char   NeutronStar_ICFile[MAX_STRING];  // Filename for initial condition
 static int    NeutronStar_NBin;                // number of radial bins in the progenitor model
 
 void LoadICTable();
+void Record_MigrationTest();
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -123,7 +123,6 @@ void SetParameter()
    ReadPara->Add( "GREP_Center_Method",  &GREP_Center_Method,    1,             0,                3                 );
    ReadPara->Add( "GREP_MaxIter",        &GREP_MaxIter,          1000,          100,              NoMax_int         );
    ReadPara->Add( "GREP_LogBin",         &GREP_LogBin,           true,          Useless_bool,     Useless_bool      );
-   ReadPara->Add( "GREP_RemoveEmptyBin", &GREP_RemoveEmptyBin,   false,         Useless_bool,     Useless_bool      );
    ReadPara->Add( "GREP_LogBinRatio",    &GREP_LogBinRatio,      1.25,          NoMin_double,     NoMax_double      );
    ReadPara->Add( "GREP_MaxRadius",      &GREP_MaxRadius,        -1.0,          NoMin_double,     NoMax_double      );
    ReadPara->Add( "GREP_MinBinSize",     &GREP_MinBinSize,       -1.0,          NoMin_double,     NoMax_double      );
@@ -166,7 +165,6 @@ void SetParameter()
       Aux_Message( stdout, "  GREP_Center_Method        = %d\n",      GREP_Center_Method );
       Aux_Message( stdout, "  GREP_MaxIter              = %d\n",      GREP_MaxIter );
       Aux_Message( stdout, "  GREP_LogBin               = %d\n",      GREP_LogBin );
-      Aux_Message( stdout, "  GREP_RemoveEmptyBin       = %d\n",      GREP_RemoveEmptyBin );
       Aux_Message( stdout, "  GREP_LogBinRatio          = %13.7e\n",  GREP_LogBinRatio );
       Aux_Message( stdout, "  GREP_MaxRadius            = %13.7e\n",  GREP_MaxRadius );
       Aux_Message( stdout, "  GREP_MinBinSize           = %13.7e\n",  GREP_MinBinSize );
@@ -274,7 +272,7 @@ void Init_TestProb_Hydro_NeutronStar_MigrationTest()
    BC_User_Ptr                    = NULL; // option: OPT__BC_FLU_*=4;         example: TestProblem/ELBDM/ExtPot/Init_TestProb_ELBDM_ExtPot.cpp --> BC()
    Flu_ResetByUser_Func_Ptr       = NULL; // option: OPT__RESET_FLUID;        example: Fluid/Flu_ResetByUser.cpp
    Output_User_Ptr                = NULL; // option: OPT__OUTPUT_USER;        example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
-   Aux_Record_User_Ptr            = NULL; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
+   Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
    Init_User_Ptr                  = NULL; // option: none;                    example: none
    End_User_Ptr                   = NULL; // option: none;                    example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
    Src_User_Ptr                   = NULL; // option: SRC_USER
@@ -296,6 +294,10 @@ void Init_TestProb_Hydro_NeutronStar_MigrationTest()
 
 
 
+//-------------------------------------------------------------------------------------------------------
+// Function    :  LoadICTable
+// Description :  Load inpu table file for initial condition
+//-------------------------------------------------------------------------------------------------------
 void LoadICTable()
 {
 
@@ -323,4 +325,140 @@ void LoadICTable()
    }
 
 } // FUNCTION : LoadICTable()
+
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Record_MigrationTest
+// Description :  Record the central density
+//-------------------------------------------------------------------------------------------------------
+void Record_MigrationTest()
+{
+
+   const char   filename_central_dens[] = "Record__CentralDens";
+   const double BoxCenter[3]            = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+// make sure that the central region is always resolved by the finest level
+   const double r_max2                  = SQR( amr->dh[NLEVEL - 1] );
+
+// allocate memory for per-thread arrays
+#  ifdef OPENMP
+   const int NT = OMP_NTHREAD;   // number of OpenMP threads
+#  else
+   const int NT = 1;
+#  endif
+
+   double DataCoord[4] = { -__DBL_MAX__ }, **OMP_DataCoord=NULL;
+   Aux_AllocateArray2D( OMP_DataCoord, NT, 4 );
+
+
+#  pragma omp parallel
+   {
+#     ifdef OPENMP
+      const int TID = omp_get_thread_num();
+#     else
+      const int TID = 0;
+#     endif
+
+//    initialize arrays
+      OMP_DataCoord[TID][0] = -__DBL_MAX__;
+      for (int b=1; b<4; b++)   OMP_DataCoord[TID][b] = 0.0;
+
+      for (int lv=0; lv<NLEVEL; lv++)
+      {
+         const double dh = amr->dh[lv];
+
+#        pragma omp for schedule( runtime )
+         for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
+         {
+            if ( amr->patch[0][lv][PID]->son != -1 )  continue;
+
+            for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*dh;
+            for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*dh;
+            for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*dh;
+
+               const double dx = x - BoxCenter[0];
+               const double dy = y - BoxCenter[1];
+               const double dz = z - BoxCenter[2];
+               const double r2 = SQR(dx) + SQR(dy) + SQR(dz);
+
+               if ( r2 < r_max2 )
+               {
+                  const double dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i] * UNIT_D;
+
+                  if ( dens > OMP_DataCoord[TID][0] )
+                  {
+                     OMP_DataCoord[TID][0] = dens;
+                     OMP_DataCoord[TID][1] = x;
+                     OMP_DataCoord[TID][2] = y;
+                     OMP_DataCoord[TID][3] = z;
+                  }
+
+               } // if ( r2 < r_max2 )
+            }}} // i,j,k
+         } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
+      } // for (int lv=0; lv<NLEVEL; lv++)
+   } // OpenMP parallel region
+
+
+// find the maximum over all OpenMP threads
+   for (int TID=0; TID<NT; TID++)
+   {
+      if ( OMP_DataCoord[TID][0] > DataCoord[0] )
+      {
+         for (int b=0; b<4; b++)   DataCoord[b] = OMP_DataCoord[TID][b];
+      }
+   }
+
+// free per-thread arrays
+   Aux_DeallocateArray2D( OMP_DataCoord );
+
+
+// collect data from all ranks
+# ifndef SERIAL
+   {
+      double DataCoord_All[4 * MPI_NRank] = { 0.0 };
+
+      MPI_Allgather( &DataCoord, 4, MPI_DOUBLE, &DataCoord_All, 4, MPI_DOUBLE, MPI_COMM_WORLD );
+
+      for (int i=0; i<MPI_NRank; i++)
+      {
+         if ( DataCoord_All[4 * i] > DataCoord[0] )
+            for (int b=0; b<4; b++)   DataCoord[b] = DataCoord_All[4 * i + b];
+      }
+   }
+# endif // ifndef SERIAL
+
+
+// output to file
+   if ( MPI_Rank == 0 )
+   {
+
+        static bool FirstTime = true;
+
+        if ( FirstTime )
+        {
+//          write header before the first output
+            if ( Aux_CheckFileExist(filename_central_dens) )
+            {
+                Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_central_dens );
+            }
+            else
+            {
+                FILE *file_max_dens = fopen( filename_central_dens, "w" );
+                fprintf( file_max_dens, "#%19s   %10s   %14s   %14s   %14s   %14s\n", "Time", "Step", "Dens", "Posx", "Posy", "Posz" );
+                fclose( file_max_dens );
+            }
+
+            FirstTime = false;
+        }
+
+     FILE *file_max_dens = fopen( filename_central_dens, "a" );
+     fprintf( file_max_dens,
+              "%20.14e   %10ld   %14.7e   %14.7e   %14.7e   %14.7e\n",
+              Time[0], Step, DataCoord[0], DataCoord[1], DataCoord[2], DataCoord[3] );
+     fclose( file_max_dens );
+
+   } // if ( MPI_Rank == 0 )
+
+} // FUNCTION : Record_MigrationTest()
 
