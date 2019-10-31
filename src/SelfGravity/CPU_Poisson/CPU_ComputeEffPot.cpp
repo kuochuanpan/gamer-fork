@@ -4,12 +4,12 @@
 
 #if ( defined GRAVITY  &&  defined GREP )
 
-static const int    INTENGY     = 97;
-static const int    VRAD        = 98;
-static const int    PRESSURE    = 99;
-static const double FourPI      = 4.0*M_PI;
-static const double FourThirdPI = FourPI/3.0;
-static const double tolerance   = 1.e-5;
+static const int    INTERNAL_ENGY = 97;
+static const int    VRAD          = 98;
+static const int    PRESSURE      = 99;
+static const double FourPI        = 4.0*M_PI;
+static const double FourThirdPI   = FourPI/3.0;
+static const double tolerance     = 1.e-5;
 
 static Profile_t DensAve, EngyAve, VrAve, PresAve;
        Profile_t Phi_eff;
