@@ -48,10 +48,10 @@ void CPU_ComputeEffPot()
    const double MinBinSize = ( GREP_MinBinSize > 0.0 ) ? GREP_MinBinSize
                                                        : amr->dh[MAX_LEVEL];
 
-   Aux_ComputeProfile( &DensAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, DENS     );
-   Aux_ComputeProfile( &EngyAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, INTENGY  );
-   Aux_ComputeProfile( &VrAve,   Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, VRAD     );
-   Aux_ComputeProfile( &PresAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, PRESSURE );
+   Aux_ComputeProfile( &DensAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, DENS          );
+   Aux_ComputeProfile( &EngyAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, INTERNAL_ENGY );
+   Aux_ComputeProfile( &VrAve,   Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, VRAD          );
+   Aux_ComputeProfile( &PresAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, PRESSURE      );
 
 
 // iteratively construct the m_TOV and Gamma
