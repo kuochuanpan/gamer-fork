@@ -11,15 +11,21 @@ extern Profile_t Phi_eff;
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  CPU_CorrectEffPot
-// Description :  Apply/Undo the GR potential correction
+// Description :  Do/Undo the GR potential correction
 //
-// Note        :  1. CPU only
+// Note        :  1. Support CPU only in current version
+//                2. The potential correction calculated at the current step is applied to
+//                   both g_Pot_Array_New and g_Pot_Array_USG in current version
 //
-// Parameter   :
+// Parameter   :  g_Pot_Array_New   : Array storing the input potential (at the current step)
+//                                    --> _New: to be distinguishable from g_Pot_Array_USG[], which is defined at the previous step
+//                g_Pot_Array_USG   : Array storing the input potential for UNSPLIT_GRAVITY (at the previous step)
+//                g_Corner_Array    : Array storing the physical corner coordinates of each patch
+//                NPatchGroup       : Number of input patch groups (for CPU only)
+//                dh                : Cell size
+//                Undo              : Add (true) or subtract (false) potential correction to the input potential
+//                USG               : Flag to indicate which potential is input
 //
-// TODO        :  1. clean up and add document
-//                2. Combine the two loops in lv = 0 case into one
-//                3. divide routine for lv > 0 into another file, and add GPU version
 //-------------------------------------------------------------------------------------------------------
 void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                               real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
@@ -29,16 +35,14 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
 {
 
 // Profile information
-   const double *Data                = Phi_eff.Data;
-         double *Center              = Phi_eff.Center;
-         double  r_max2              = SQR( Phi_eff.MaxRadius );
-         double  dr_min              = ( Phi_eff.LogBin ) ? Phi_eff.Radius[0] / pow( Phi_eff.LogBinRatio, -0.5 )
-                                                          : Phi_eff.Radius[0] * 2.0;
+   const double *Data   = Phi_eff.Data;
+   const double *Radius = Phi_eff.Radius;
+         double *Center = Phi_eff.Center;
+         double  r_max2 = SQR( Phi_eff.MaxRadius );
          double  EdgeL[Phi_eff.NBin] = { 0.0 };
 
-   for ( int i=0; i<Phi_eff.NBin; i++ )
-      EdgeL[i] = ( Phi_eff.LogBin ) ? dr_min*pow( Phi_eff.LogBinRatio, (real)(i - 1) )
-                                    : (real)i*dr_min;
+   for ( int i=1; i<Phi_eff.NBin; i++ )   EdgeL[i] = ( Phi_eff.LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
+                                                                        : 0.5*( Radius[i - 1] + Radius[i] );
 
 // declare index for loop
 #  ifdef UNSPLIT_GRAVITY
@@ -77,8 +81,16 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
          if ( r2 < r_max2 )
          {
             const double r   = SQRT( r2 );
-            const int    bin = ( Phi_eff.LogBin ) ? (  (r<dr_min) ? 0 : int( log(r/dr_min)/log(Phi_eff.LogBinRatio) ) + 1  )
-                                                  : int( r/dr_min );
+
+//          use binary search algorithm to find the index of bin
+            int bin;
+            for ( int i=0, j=Phi_eff.NBin - 1; j - i != 1; bin = (i + j) / 2 )
+            {
+               int mid = (i + j) / 2;
+               if ( r > EdgeL[mid] )   i = mid;
+               else                    j = mid;
+            }
+
 //          prevent from round-off errors
             if ( bin >= Phi_eff.NBin )   continue;
 
@@ -89,6 +101,9 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
 
             double phi = ( bin == Phi_eff.NBin-1 ) ? Data[bin]
                                                    : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
+
+            if ( (r < EdgeL[bin])  || ( r > EdgeL[bin + 1]) )
+            printf("r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e\n", r, EdgeL[bin], EdgeL[bin+1]);
 
             pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
          } // if ( r2 < r_max2 )
