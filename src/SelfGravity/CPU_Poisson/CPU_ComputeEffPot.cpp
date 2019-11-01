@@ -174,14 +174,13 @@ void CPU_ComputeEffPot()
    Phi_eff.Data[0] = Phi_eff.Data[1];
 
 
-#ifdef GAMER_DEBUG
+#ifdef GREP_DEBUG
    printf("\n# GREP_Center_Method: %d\n",                  GREP_Center_Method);
    printf("# Center              : %.15e\t%.15e\t%.15e\n", Center[0], Center[1], Center[2]);
    printf("# MaxRadius           : %.15e\n",               MaxRadius);
    printf("# MinBinSize          : %.15e\n",               MinBinSize);
    printf("# LogBin              : %d\n",                  GREP_LogBin);
    printf("# LogBinRatio         : %.15e\n",               GREP_LogBinRatio);
-   printf("# RemoveEmptyBin      : %d\n",                  GREP_RemoveEmptyBin);
    printf("# Num of Iteration    : %d\n",                  GREP_MaxIter - NIter);
    printf("# ============================================================");
    printf("# Profile info: NBin = %d\n", NBin);
