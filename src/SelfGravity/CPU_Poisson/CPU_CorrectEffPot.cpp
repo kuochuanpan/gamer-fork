@@ -102,6 +102,7 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
             double phi = ( bin == Phi_eff.NBin-1 ) ? Data[bin]
                                                    : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
 
+//          for debug, clean later
             if ( (r < EdgeL[bin])  || ( r > EdgeL[bin + 1]) )
             printf("r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e\n", r, EdgeL[bin], EdgeL[bin+1]);
 
