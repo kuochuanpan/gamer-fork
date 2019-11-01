@@ -6,7 +6,7 @@
 #    Plot the slice of density profile at the center (w/o grid)
 #    and generate the movies
 #
-#  Last Updated: 2019/10/24
+#  Last Updated: 2019/11/01
 #  He-Feng Hsieh
 
 
@@ -22,7 +22,6 @@ import matplotlib.pyplot as plt
 # setting
 Plot_Density      = True  # plot the slice of density at the center
 Plot_Density_grid = True  # plot the slice of density at the center with grid
-Plot_Rhoc         = True  # plot the evolution of central density
 Gene_animation    = True  # generate animation
 
 
@@ -32,8 +31,6 @@ fn_in.sort()
 
 fn_out_fmt      = "{}_Slice_x_density.png"
 fn_out_fmt_grid = "{}_Slice_x_density_grid.png"
-
-rhoc_all = list()  # store the central density, in format of (time, rhoc)
 
 
 # load data
@@ -58,35 +55,11 @@ for fn in fn_in:
 
         slc.save(fn_out_fmt_grid.format(fn))
 
-    if Plot_Rhoc:
-        center = ds.domain_center.tolist()
-        rhoc = ds.r[center]["density"]
-
-        rhoc_all.append((time, rhoc))
-
     # free memory
     if Plot_Density or Plot_Density_grid:
         del slc
 
     del ds
-
-
-
-
-# plot the evolution of central density
-if Plot_Rhoc:
-    rhoc_all.sort(key = lambda x: x[0])  # sort by simulation time
-
-    time, rhoc = zip(*rhoc_all)
-
-    fig, ax = plt.subplots()
-
-    ax.semilogy(time, rhoc, c = "k")
-    ax.set_xlabel("Time (ms)")
-    ax.set_ylabel(r"Central density (g/cm$^3$)")
-
-    fig.tight_layout()
-    plt.savefig("Rhoc_evolve.png")
 
 
 # generate animation
