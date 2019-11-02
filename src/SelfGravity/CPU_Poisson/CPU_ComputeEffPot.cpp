@@ -177,10 +177,10 @@ void CPU_ComputeEffPot()
 #ifdef GREP_DEBUG
    printf("\n# GREP_Center_Method: %d\n",                  GREP_Center_Method);
    printf("# Center              : %.15e\t%.15e\t%.15e\n", Center[0], Center[1], Center[2]);
-   printf("# MaxRadius           : %.15e\n",               MaxRadius);
+   printf("# MaxRadius           : %.15e\n",               Phi_eff.MaxRadius);
    printf("# MinBinSize          : %.15e\n",               MinBinSize);
-   printf("# LogBin              : %d\n",                  GREP_LogBin);
-   printf("# LogBinRatio         : %.15e\n",               GREP_LogBinRatio);
+   printf("# LogBin              : %d\n",                  Phi_eff.LogBin);
+   printf("# LogBinRatio         : %.15e\n",               Phi_eff.LogBinRatio);
    printf("# Num of Iteration    : %d\n",                  GREP_MaxIter - NIter);
    printf("# ============================================================");
    printf("# Profile info: NBin = %d\n", NBin);
