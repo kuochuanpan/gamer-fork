@@ -204,7 +204,7 @@ void Init_GAMER( int *argc, char ***argv )
    {
 //    construct the 1D GR potential correction
 #     ifdef GREP
-      CPU_ComputeEffPot();
+      Init_GREffPot();
 #     endif
 
 //    initialize the k-space Green's function for the isolated BC.

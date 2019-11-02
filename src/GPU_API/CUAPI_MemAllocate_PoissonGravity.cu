@@ -70,7 +70,12 @@ void CUAPI_MemAllocate_PoissonGravity( const int Pot_NPG )
 #  endif
    CUDA_CHECK_ERROR(  cudaMalloc( (void**) &d_Flu_Array_G,     Flu_MemSize_G     )  );
 
+#  ifdef GREP
+   if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||
+        OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#  else
    if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#  endif
    CUDA_CHECK_ERROR(  cudaMalloc( (void**) &d_Corner_Array_G,  Corner_MemSize    )  );
 
 #  ifdef DUAL_ENERGY
@@ -92,7 +97,12 @@ void CUAPI_MemAllocate_PoissonGravity( const int Pot_NPG )
 #     endif
       CUDA_CHECK_ERROR(  cudaMallocHost( (void**) &h_Flu_Array_G    [t], Flu_MemSize_G     )  );
 
-      if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#  ifdef GREP
+   if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||
+        OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#  else
+   if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#  endif
       CUDA_CHECK_ERROR(  cudaMallocHost( (void**) &h_Corner_Array_G [t], Corner_MemSize    )  );
 
 #     ifdef DUAL_ENERGY
