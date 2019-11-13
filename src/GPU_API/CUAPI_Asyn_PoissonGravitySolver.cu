@@ -62,7 +62,7 @@ __global__ void CUPOT_ELBDMGravitySolver(       real g_Flu_Array[][GRA_NIN][ PS1
 __global__ void CUPOT_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                                            real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
                                      const double g_Corner_Array [][3],
-                                     const real dh, const bool Undo, const bool USG, const int IDX, const int IDX_GZ );
+                                     const real dh, const bool Undo, const bool USG );
 #endif
 
 
@@ -321,7 +321,12 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
          CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_Flu_Array_G     + UsedPatch[s], h_Flu_Array     + UsedPatch[s],
                                              Flu_MemSize[s],     cudaMemcpyHostToDevice, Stream[s] )  );
 
+#        ifdef GREP
+         if ( GravityType == GRAVITY_SELF  ||  GravityType == GRAVITY_EXTERNAL  ||
+              GravityType == GRAVITY_BOTH  ||  ExtPot )
+#        else
          if ( GravityType == GRAVITY_EXTERNAL  ||  GravityType == GRAVITY_BOTH  ||  ExtPot )
+#        endif
          CUDA_CHECK_ERROR(  cudaMemcpyAsync( d_Corner_Array_G  + UsedPatch[s], h_Corner_Array  + UsedPatch[s],
                                              Corner_MemSize[s],  cudaMemcpyHostToDevice, Stream[s] )  );
 #        ifdef UNSPLIT_GRAVITY
@@ -389,17 +394,17 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 #        if   ( MODEL == HYDRO )
          {
 #        ifdef GREP
-         CUPOT_CorrectEffPot <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
-                             ( d_Pot_Array_P_Out + UsedPatch[s],
-                                                           NULL,
-                               d_Corner_Array_G  + UsedPatch[s],
-                                               dh, false, false, GRA_NXT, GRA_GHOST_SIZE );
+         CUPOT_CorrectEffPot      <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
+                                  ( d_Pot_Array_P_Out + UsedPatch[s],
+                                                                NULL,
+                                    d_Corner_Array_G  + UsedPatch[s],
+                                                    dh, false, false );
 #        ifdef UNSPLIT_GRAVITY
-         CUPOT_CorrectEffPot <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
-                             (                             NULL,
-                               d_Pot_Array_USG_G + UsedPatch[s],
-                               d_Corner_Array_G  + UsedPatch[s],
-                                               dh, false, true, USG_NXT_G, USG_GHOST_SIZE );
+         CUPOT_CorrectEffPot      <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
+                                  (                             NULL,
+                                    d_Pot_Array_USG_G + UsedPatch[s],
+                                    d_Corner_Array_G  + UsedPatch[s],
+                                                    dh, false,  true );
 #        endif
 #        endif
 
@@ -413,17 +418,17 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
                                     dt, dh, P5_Gradient, GravityType, TimeNew, TimeOld, MinEint );
 
 #        ifdef GREP
-         CUPOT_CorrectEffPot <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
-                             ( d_Pot_Array_P_Out + UsedPatch[s],
-                                                           NULL,
-                               d_Corner_Array_G  + UsedPatch[s],
-                                               dh, true, false, GRA_NXT, GRA_GHOST_SIZE  );
+         CUPOT_CorrectEffPot      <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
+                                  ( d_Pot_Array_P_Out + UsedPatch[s],
+                                                                NULL,
+                                    d_Corner_Array_G  + UsedPatch[s],
+                                                    dh,  true, false );
 #        ifdef UNSPLIT_GRAVITY
-         CUPOT_CorrectEffPot <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
-                             (                             NULL,
-                               d_Pot_Array_USG_G + UsedPatch[s],
-                               d_Corner_Array_G  + UsedPatch[s],
-                                               dh, true, true, USG_NXT_G, USG_GHOST_SIZE );
+         CUPOT_CorrectEffPot      <<< NPatch_per_Stream[s], Gra_Block_Dim, 0, Stream[s] >>>
+                                  (                             NULL,
+                                    d_Pot_Array_USG_G + UsedPatch[s],
+                                    d_Corner_Array_G  + UsedPatch[s],
+                                                    dh,  true,  true );
 #        endif
 #        endif
          }

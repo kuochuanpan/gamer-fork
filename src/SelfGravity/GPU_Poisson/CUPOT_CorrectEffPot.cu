@@ -84,53 +84,30 @@ __global__
 void CUPOT_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                                 real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
                           const double g_Corner_Array [][3],
-                          const real dh, const bool Undo, const bool USG, const int IDX, const int IDX_GZ )
+                          const real dh, const bool Undo, const bool USG )
 {
 
-   int IDX_sqr = SQR (IDX);
-
-// load potential from global to shared memory to improve the GPU performance
-   __shared__ real s_pot_new[ CUBE(GRA_NXT) ];
-   __shared__ real s_pot_old[ CUBE(USG_NXT_G) ];
-
+// declare index for loop
 #  ifdef UNSPLIT_GRAVITY
-   if ( USG )
-      for (int t=threadIdx.x; t<CUBE(USG_NXT_G); t+=GRA_BLOCK_SIZE)
-         s_pot_old[t] = g_Pot_Array_USG[blockIdx.x][t];
-   else
-      for (int t=threadIdx.x; t<CUBE(GRA_NXT); t+=GRA_BLOCK_SIZE)
-         s_pot_new[t] = g_Pot_Array_New[blockIdx.x][t];
+   const int IDX    = ( USG ) ? USG_NXT_G      : GRA_NXT;
+   const int IDX_GZ = ( USG ) ? USG_GHOST_SIZE : GRA_GHOST_SIZE;
 #  else
-      for (int t=threadIdx.x; t<CUBE(GRA_NXT); t+=GRA_BLOCK_SIZE)
-         s_pot_new[t] = g_Pot_Array_New[blockIdx.x][t];
+   const int IDX    = GRA_NXT;
+   const int IDX_GZ = GRA_GHOST_SIZE;
 #  endif
 
-   __syncthreads();
+   const int IDX_sqr = SQR (IDX);
 
-
-// loop over all patches
    const int P = blockIdx.x;
-
    {
-//    point to the potential array of the target patch
-      real *pot;
-//      const real *const pot = s_pot;
-#     ifdef UNSPLIT_GRAVITY
-         if ( USG )  pot = s_pot_old;
-         else        pot = s_pot_new;
-#     else
-                     pot = s_pot_new;
-#     endif
-
-
 //    loop over all cells of the target patch
 //    _g0: indices for the arrays without any ghost zone
-      CGPU_LOOP( t, CUBE(IDX) )
+      CGPU_LOOP( idx_g0, CUBE(IDX) )
       {
 
-         const int i_g0 = t % IDX;
-         const int j_g0 = t % IDX_sqr / IDX;
-         const int k_g0 = t / IDX_sqr;
+         const int i_g0 = idx_g0 % IDX;
+         const int j_g0 = idx_g0 % IDX_sqr / IDX;
+         const int k_g0 = idx_g0 / IDX_sqr;
 
          const double dx = g_Corner_Array[P][0] + (double)((i_g0-IDX_GZ)*dh) - c_GREP_Center[0];
          const double dy = g_Corner_Array[P][1] + (double)((j_g0-IDX_GZ)*dh) - c_GREP_Center[1];
@@ -156,17 +133,20 @@ void CUPOT_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                                                   : LinearInterp( r, c_GREP_Edge[bin], c_GREP_Edge[bin+1],
                                                                      c_GREP_Data[bin], c_GREP_Data[bin+1] );
 
-//CHECK       some cells are outside the outermost EdgeR (Edge[bin + 1]), but why?
-//            if ( (r < c_GREP_Edge[bin])  || ( r > c_GREP_Edge[bin + 1]) )
-//            printf( "Incorrect index of bin %d for radius %.6e, EdgeL = %.6e and EdgeR = %.6e\n",
-//                    bin, r, c_GREP_Edge[bin], c_GREP_Edge[bin+1]);
+            if ( Undo )   phi = -phi;
 
-            if ( Undo )  pot[t] -= (real)phi;
-            else         pot[t] += (real)phi;
+#           ifdef UNSPLIT_GRAVITY
+            if ( USG )
+               g_Pot_Array_USG[P][idx_g0] += (real)phi;
+            else
+               g_Pot_Array_New[P][idx_g0] += (real)phi;
+#           else
+               g_Pot_Array_New[P][idx_g0] += (real)phi;
+#           endif
          } // if ( r2 < r_max2 )
 
       } // CGPU_LOOP( idx_g0, CUBE(PS1) )
-   }
+   } // for (int P=0; P<NPatchGroup*8; P++)
 
 } // FUNCTION : CPU_CorrectEffPot
 
