@@ -21,7 +21,7 @@ static Profile_t DensAve, EngyAve, VrAve, PresAve;
 //
 // Note        :  1. Phi_eff is declared in NuclearEos.h and initialized here
 //                2. Enabled if macro GRAVITY and GREP are set
-//                3. The profile Phi_eff store the value of -Phi_NW(r) + -Phi_TOV(r)
+//                3. The profile Phi_eff store the value of -Phi_NW(r) + Phi_TOV(r)
 //                   at the left edge of bins
 //-------------------------------------------------------------------------------------------------------
 void CPU_ComputeEffPot()
@@ -48,10 +48,11 @@ void CPU_ComputeEffPot()
    const double MinBinSize = ( GREP_MinBinSize > 0.0 ) ? GREP_MinBinSize
                                                        : amr->dh[MAX_LEVEL];
 
-   Aux_ComputeProfile( &DensAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, DENS          );
-   Aux_ComputeProfile( &EngyAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, INTERNAL_ENGY );
-   Aux_ComputeProfile( &VrAve,   Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, VRAD          );
-   Aux_ComputeProfile( &PresAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, PRESSURE      );
+   const int  NProf = 4;
+   Profile_t *Prof_all[NProf] = { &DensAve, &EngyAve,      &VrAve, &PresAve  };
+   const int  Quantity[NProf] = {  DENS,     INTERNAL_ENGY, VRAD,   PRESSURE };
+
+   Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, Quantity, NProf );
 
 
 // iteratively construct the m_TOV and Gamma
