@@ -67,7 +67,7 @@ static const int PRESSURE      = 99;
 //-------------------------------------------------------------------------------------------------------
 void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double r_max_input, const double dr_min,
                          const bool LogBin, const double LogBinRatio, const bool RemoveEmpty, const int Quantity[],
-                         const int NProf )
+                         const int NProf, const int lv )
 {
 
 // check
@@ -157,8 +157,8 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
          OMP_NCell [PROFID][TID][b] = 0;
       }
 
-      for (int lv=0; lv<NLEVEL; lv++)
-      {
+//      for (int lv=0; lv<NLEVEL; lv++)
+//      {
          const double dh = amr->dh[lv];
          const double dv = CUBE( dh );
 
@@ -260,7 +260,7 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
                } // if ( r2 < r_max2 )
             }}} // i,j,k
          } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
-      } // for (int lv=0; lv<NLEVEL; lv++)
+//      } // for (int lv=0; lv<NLEVEL; lv++)
    } // OpenMP parallel region
 
 
