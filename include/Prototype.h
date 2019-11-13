@@ -342,8 +342,8 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
 #ifdef GREP
-void Init_GREffPot();
-void CPU_ComputeEffPot();
+void Init_GREffPot( const int lv );
+void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve, Profile_t *Phi_eff );
 void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                               real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
                         const double g_Corner_Array [][3],
