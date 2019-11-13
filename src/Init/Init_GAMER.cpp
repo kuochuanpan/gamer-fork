@@ -202,6 +202,11 @@ void Init_GAMER( int *argc, char ***argv )
 #  ifdef GRAVITY
    if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
    {
+//    construct the 1D GR potential correction
+#     ifdef GREP
+      Init_GREffPot();
+#     endif
+
 //    initialize the k-space Green's function for the isolated BC.
       if ( OPT__BC_POT == BC_POT_ISOLATED )  Init_GreenFuncK();
 

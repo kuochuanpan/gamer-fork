@@ -185,6 +185,9 @@
 #define EXT_POT_NAUX_MAX            10
 #define EXT_ACC_NAUX_MAX            10
 
+#ifdef GREP
+#define GR_POT_NAUX_MAX           3500
+#endif
 
 // warp size (which must be the same as the CUDA predefined constant "warpSize")
 // --> please refer to https://en.wikipedia.org/wiki/CUDA#Version_features_and_specifications
