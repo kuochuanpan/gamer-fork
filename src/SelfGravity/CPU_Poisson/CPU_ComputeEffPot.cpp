@@ -48,10 +48,11 @@ void CPU_ComputeEffPot()
    const double MinBinSize = ( GREP_MinBinSize > 0.0 ) ? GREP_MinBinSize
                                                        : amr->dh[MAX_LEVEL];
 
-   Profile_t *Prof_all = { &DensAve, &EngyAve,      &VrAve, &PresAve };
-   const int  Quantity = {  DENS,     INTERNAL_ENGY, VRAD,   PRESSURE};
+   const int  NProf = 4;
+   Profile_t *Prof_all[NProf] = { &DensAve, &EngyAve,      &VrAve, &PresAve  };
+   const int  Quantity[NProf] = {  DENS,     INTERNAL_ENGY, VRAD,   PRESSURE };
 
-   Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, Quantity );
+   Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, Quantity, NProf );
 
 //   Aux_ComputeProfile( &DensAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, DENS          );
 //   Aux_ComputeProfile( &EngyAve, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio, true, INTERNAL_ENGY );
