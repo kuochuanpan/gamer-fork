@@ -17,7 +17,7 @@ static const int    PRESSURE         = 99;
 static const int    NProf            = 4;
 static const int    Quantity [NProf] = { DENS, INTERNAL_ENGY, VRAD, PRESSURE };
 
-static       int    lv_USG;
+static       int    lv_USG           = -1;
 static       double Center   [3]     = { 0.0 };
 static       double MaxRadius;
 static       double MinBinSize;
