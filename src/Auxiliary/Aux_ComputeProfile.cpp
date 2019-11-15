@@ -41,8 +41,8 @@ static const int PRESSURE      = 99;
 //                              Support field indicies defined in Macro.h, and VRAD (98) and PRESSURE (99)
 //                              The weight function is the cell volume.
 //                NProf       : Number of Profile_t object in Prof.
-//                lv          : The level of Patches to be considered.
-//                              If lv = -1, loop over all levels
+//                level       : The level of Patches to be considered.
+//                              If level = -1, loop over all levels
 //
 // Example     :  Profile_t *Prof[] = { &Prof_Dens, &Prof_Pres };
 //
@@ -54,10 +54,10 @@ static const int PRESSURE      = 99;
 //                const bool   RemoveEmptyBin = true;
 //                const int    Quantity[]     = { DENS, PRESSURE };
 //                const int    NProf          = 2;
-//                const int    lv             = -1;
+//                const int    level          = -1;
 //
 //                Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, LogBin, LogBinRatio, RemoveEmptyBin,
-//                                    Quantity, NProf, lv );
+//                                    Quantity, NProf, level );
 //
 //                if ( MPI_Rank == 0 )
 //                {
@@ -73,7 +73,7 @@ static const int PRESSURE      = 99;
 //-------------------------------------------------------------------------------------------------------
 void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double r_max_input, const double dr_min,
                          const bool LogBin, const double LogBinRatio, const bool RemoveEmpty, const int Quantity[],
-                         const int NProf, const int lv )
+                         const int NProf, const int level )
 {
 
 // check
@@ -164,11 +164,11 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
       }
 
 //    determine which levels to be considered
-      const int lv_max = ( lv < 0 ) ? NLEVEL
-                                    : lv + 1;
+      const int lv_max = ( level < 0 ) ? NLEVEL
+                                       : level + 1;
 
 //      for (int lv=0; lv<NLEVEL; lv++)
-      for (int lv=MAX(0, lv); lv<lv_max; lv++)
+      for (int lv=MAX(0, level); lv<lv_max; lv++)
       {
          const double dh = amr->dh[lv];
          const double dv = CUBE( dh );
