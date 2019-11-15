@@ -403,7 +403,7 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
    {
       const int b = Prof[PROFID]->NBin;
 
-      Prof[PROFID]->MaxRadius = ( LogBin ) ? SQR ( Prof[PROFID]->Radius[b - 1] ) / Prof[PROFID]->Radius[b - 2];
+      Prof[PROFID]->MaxRadius = ( LogBin ) ? SQR ( Prof[PROFID]->Radius[b - 1] ) / Prof[PROFID]->Radius[b - 2]
                                            : 2.0 * Prof[PROFID]->Radius[b - 1]   - Prof[PROFID]->Radius[b - 2];
    }
 
