@@ -37,7 +37,7 @@ void Aux_Record_CorrUnphy();
 int  Aux_CountRow( const char *FileName );
 void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double r_max_input, const double dr_min,
                          const bool LogBin, const double LogBinRatio, const bool RemoveEmpty, const int Quantity[],
-                         const int NProf );
+                         const int NProf, const int lv );
 #ifndef SERIAL
 void Aux_Record_BoundaryPatch( const int lv, int *NList, int **IDList, int **PosList );
 #endif
@@ -342,8 +342,8 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
 #ifdef GREP
-void Init_GREffPot();
-void CPU_ComputeEffPot();
+void Init_GREffPot( const int level );
+void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve, Profile_t *Phi_eff );
 void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                               real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
                         const double g_Corner_Array [][3],
