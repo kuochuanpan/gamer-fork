@@ -36,7 +36,7 @@ COMPILE_VERBOSE := 0
 SIMU_OPTION += -DMODEL=HYDRO
 
 # enable gravity
-#SIMU_OPTION += -DGRAVITY
+SIMU_OPTION += -DGRAVITY
 
 # enable particles
 # --> must enable GRAVITY
@@ -72,6 +72,15 @@ SIMU_OPTION += -DRSOLVER=ROE
 # --> set it to 0 or comment it out if none is required
 # --> useless for RTVD
 SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
+
+# equation of state: IDEAL_GAS/NUCLEAR
+SIMU_OPTION += -DEOS=NUCLEAR
+
+# enable Deleptonization
+SIMU_OPTION += -DDELEPTIONIZATION
+
+# nutrino transport scheme: LIGHTBULB/IDSA/M1
+SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
 
 
 # (b-2) MHD options
@@ -141,7 +150,7 @@ endif # PARTICLE
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
-SIMU_OPTION += -DNLEVEL=10
+SIMU_OPTION += -DNLEVEL=8
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
@@ -151,7 +160,7 @@ SIMU_OPTION += -DMAX_PATCH=1000000
 # --> must set GPU_ARCH as well
 #SIMU_OPTION += -DGPU
 
-# GPU architecture: FERMI/KEPLER/MAXWELL/PASCAL/VOLTA
+# GPU architecture: FERMI/KEPLER/MAXWELL/PASCAL/VOLTA/TURING
 SIMU_OPTION += -DGPU_ARCH=KEPLER
 
 # debug mode
@@ -172,11 +181,11 @@ SIMU_OPTION += -DTIMING
 
 # serial mode (in which no MPI libraries are required)
 # --> must disable LOAD_BALANCE
-SIMU_OPTION += -DSERIAL
+#SIMU_OPTION += -DSERIAL
 
 # load-balance parallelization: HILBERT
 # --> must disable SERIAL
-#SIMU_OPTION += -DLOAD_BALANCE=HILBERT
+SIMU_OPTION += -DLOAD_BALANCE=HILBERT
 
 # overlap MPI communication with computation
 # --> NOT supported yet; must enable LOAD_BALANCE
@@ -189,7 +198,7 @@ SIMU_OPTION += -DOPENMP
 #SIMU_OPTION += -DLAOHU
 
 # support HDF5 format
-#SIMU_OPTION += -DSUPPORT_HDF5
+SIMU_OPTION += -DSUPPORT_HDF5
 
 # support GNU scientific library
 #SIMU_OPTION += -DSUPPORT_GSL
@@ -200,7 +209,8 @@ SIMU_OPTION += -DOPENMP
 # random number implementation: RNG_GNU_EXT/RNG_CPP11 (GNU extension drand48_r/c++11 <random>)
 # --> use RNG_GNU_EXT for compilers supporting GNU extensions (**not supported on some macOS**)
 #     use RNG_CPP11   for compilers supporting c++11 (**may need to add -std=c++11 to CXXFLAG**)
-SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
+#SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
+SIMU_OPTION += -DRANDOM_NUMBER=RNG_CPP11
 
 
 
@@ -235,11 +245,11 @@ SIMU_OPTION += -DRANDOM_NUMBER=RNG_GNU_EXT
 
 # gnu
 # -------------------------------------------------------------------------------
- CXX         = g++                                       # serial compiler
-#CXX         = $(MPI_PATH)/bin/mpicxx                    # MPI compiler
+# CXX         = g++-8                                       # serial compiler
+CXX         = $(MPI_PATH)/bin/mpicxx                    # MPI compiler
 #CXX         = CC                                        # cray wrapper script
- CXXFLAG     = -g -O3                                    # general flags
-#CXXFLAG     = -g -O3 -std=c++11
+# CXXFLAG     = -g -O3                                    # general flags
+CXXFLAG     = -g -O3 -std=c++11
 #CXXFLAG     = -g -Ofast
  CXXFLAG    += -Wall -Wextra                             # warning flags
  CXXFLAG    += -Wno-unused-variable -Wno-unused-parameter \
@@ -347,6 +357,14 @@ LIBYT_PATH   :=
 #MPI_PATH     := /opt/mpi/openmpi/1.8.1-gcc-qlc
 #CUDA_PATH    := /usr/local/cuda-7.5
 
+# NTHU-fomalhaut (openmpi-gnu)
+#CUDA_PATH    := /usr/local/cuda-10.0
+#FFTW_PATH    := /home/hyschive/software/fftw/2.1.5-openmpi-gnu
+#MPI_PATH     := /storage/app/gnu/openmpi-3.1.3-gcc8
+#HDF5_PATH    := /storage/app/gnu/hdf5-1.8.21-gcc8
+#GRACKLE_PATH :=
+#GSL_PATH     :=
+
 # NAOC-laohu (OpenMPI-1.3.2-intel)
 #CUDA_PATH    := $(CUDA_INSTALL_PATH)
 #FFTW_PATH    := /ifs/data/hsiyu/Software/fftw/2.1.5-openmpi-1.3.2-intel
@@ -361,8 +379,15 @@ LIBYT_PATH   :=
 #GRACKLE_PATH :=
 #GSL_PATH     := /usr/local/gsl-1.16
 
-
-
+# NTHU- Kuo-Chuan Pan (iMac Pro/ GNU)
+#CUDA_PATH    :=
+#FFTW_PATH    := /Users/pan/tools/fftw-2.1.5-gnu
+##FFTW_PATH    := /Users/pan/tools/fftw-2.1.5-float8-gnu
+#MPI_PATH     := /Users/pan/tools/openmpi-3.1.2-gnu
+#HDF5_PATH    := /Users/pan/tools/hdf5-1.8.21-gnu
+#GRACKLE_PATH :=
+#GSL_PATH     :=
+#LIBYT_PATH   :=
 
 
 
@@ -387,7 +412,7 @@ CC_FILE     += Aux_Check_Parameter.cpp  Aux_Check_Conservation.cpp  Aux_Check.cp
                Aux_GetMemInfo.cpp  Aux_Message.cpp  Aux_Record_PatchCount.cpp  Aux_TakeNote.cpp  Aux_Timing.cpp \
                Aux_Check_MemFree.cpp  Aux_Record_Performance.cpp  Aux_CheckFileExist.cpp  Aux_Array.cpp \
                Aux_Record_User.cpp  Aux_Record_CorrUnphy.cpp  Aux_SwapPointer.cpp  Aux_Check_NormalizePassive.cpp \
-               Aux_LoadTable.cpp  Aux_IsFinite.cpp
+               Aux_LoadTable.cpp  Aux_IsFinite.cpp  Aux_ComputeProfile.cpp
 
 CC_FILE     += CPU_FluidSolver.cpp  Flu_AdvanceDt.cpp  Flu_Prepare.cpp  Flu_Close.cpp  Flu_FixUp.cpp \
                Flu_Restrict.cpp  Flu_AllocateFluxArray.cpp  Flu_BoundaryCondition_User.cpp  Flu_ResetByUser.cpp \
@@ -399,6 +424,7 @@ CC_FILE     += End_GAMER.cpp  End_MemFree.cpp  End_MemFree_Fluid.cpp  End_StopMa
                Init_MemAllocate_Fluid.cpp  Init_Parallelization.cpp  Init_RecordBasePatch.cpp  Init_Refine.cpp \
                Init_ByRestart_v1.cpp  Init_ByFunction.cpp  Init_TestProb.cpp  Init_ByFile.cpp  Init_OpenMP.cpp \
                Init_ByRestart_HDF5.cpp  Init_ResetParameter.cpp  Init_ByRestart_v2.cpp  Init_MemoryPool.cpp \
+               Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp Init_NuclearEos.cpp Init_User.cpp
                Init_Unit.cpp  Init_UniformGrid.cpp  Init_Field.cpp  Init_User.cpp
 
 CC_FILE     += Interpolate.cpp  Int_CQuadratic.cpp  Int_MinMod1D.cpp  Int_MinMod3D.cpp  Int_vanLeer.cpp \
@@ -616,6 +642,22 @@ CC_FILE     += SF_CreateStar.cpp  SF_CreateStar_AGORA.cpp
 vpath %.cpp    StarFormation
 endif # STAR_FORMATION
 
+# Nuclear EOS source files (included only if "-DEOS=NUCLEAR")
+# ------------------------------------------------------------------------------------
+#
+# TODO: add nuclear eos files only if -DEOS=NUCLEAR
+
+ CC_FILE += findtemp.cpp linterp_for_temp.cpp linterp_many.cpp linterp_some.cpp NuclearEos.cpp \
+					 readtable.cpp testing.cpp linterp_for_entr.cpp
+
+vpath %.cpp Eos/NuclearEos/CPU_Eos
+
+# local source terms source files
+# ------------------------------------------------------------------------------------
+ CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp Src_Deleptonization.cpp Src_Lightbulb.cpp
+
+vpath %.cpp    SourceTerms
+
 
 # test problem source files
 # --> note that here we simply compile all .cpp files under TestProblem/*/*/
@@ -749,6 +791,8 @@ else ifeq "$(filter -DGPU_ARCH=PASCAL,  $(SIMU_OPTION))" "-DGPU_ARCH=PASCAL"
    NVCCFLAG_COM += -gencode arch=compute_61,code=\"compute_61,sm_61\"
 else ifeq "$(filter -DGPU_ARCH=VOLTA,  $(SIMU_OPTION))" "-DGPU_ARCH=VOLTA"
    NVCCFLAG_COM += -gencode arch=compute_70,code=\"compute_70,sm_70\"
+else ifeq "$(filter -DGPU_ARCH=TURING,  $(SIMU_OPTION))" "-DGPU_ARCH=TURING"
+   NVCCFLAG_COM += -gencode arch=compute_75,code=\"compute_75,sm_75\"
 else ifeq "$(filter -DGPU, $(SIMU_OPTION))" "-DGPU"
    $(error unknown GPU_ARCH (please set it in the Makefile))
 endif
@@ -785,6 +829,12 @@ else ifeq "$(filter -DGPU_ARCH=PASCAL, $(SIMU_OPTION))" "-DGPU_ARCH=PASCAL"
      NVCCFLAG_FLU += --maxrregcount=128
    endif
 else ifeq "$(filter -DGPU_ARCH=VOLTA, $(SIMU_OPTION))" "-DGPU_ARCH=VOLTA"
+   ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
+     NVCCFLAG_FLU += --maxrregcount=192
+   else
+     NVCCFLAG_FLU += --maxrregcount=128
+   endif
+else ifeq "$(filter -DGPU_ARCH=TURING, $(SIMU_OPTION))" "-DGPU_ARCH=TURING"
    ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
      NVCCFLAG_FLU += --maxrregcount=192
    else
@@ -865,6 +915,3 @@ clean :
 	@rm -f $(OBJ_PATH)/*
 	@rm -f $(EXECUTABLE)
 	@rm -f ./*.linkinfo
-
-
-

@@ -61,6 +61,7 @@ bool                 OPT__CK_RESTRICT, OPT__CK_PATCH_ALLOCATE, OPT__FIXUP_FLUX, 
 bool                 OPT__UM_IC_DOWNGRADE, OPT__UM_IC_REFINE, OPT__TIMING_MPI;
 bool                 OPT__CK_CONSERVATION, OPT__RESET_FLUID, OPT__RECORD_USER, OPT__NORMALIZE_PASSIVE, AUTO_REDUCE_DT;
 bool                 OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_FLAG_NEAR_BOUNDARY;
+bool                 SRC_USER, SRC_DELEPTONIZATION;
 bool                 OPT__RECORD_NOTE, OPT__RECORD_UNPHY;
 UM_IC_Format_t       OPT__UM_IC_FORMAT;
 TestProbID_t         TESTPROB_ID;
@@ -189,6 +190,25 @@ double                SF_CREATE_STAR_MIN_STAR_MASS;
 double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
+# if (EOS == NUCLEAR)
+bool   EOS_POSTBOUNCE;
+double EOS_BOUNCETIME;
+# endif
+
+#ifdef DELEPTIONIZATION
+double DELEP_ENU;
+double DELEP_RHO1;
+double DELEP_RHO2;
+double DELEP_YE1;
+double DELEP_YE2;
+double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+double LB_LNU;
+double LB_TNU;
+double LB_HEATFACTOR;
+#endif
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // =======================================================================================================
@@ -301,6 +321,7 @@ Timer_t *Timer_MPI[3];
 Timer_t *Timer_dt         [NLEVEL];
 Timer_t *Timer_Flu_Advance[NLEVEL];
 Timer_t *Timer_Gra_Advance[NLEVEL];
+Timer_t *Timer_Src_Advance[NLEVEL];
 Timer_t *Timer_Che_Advance[NLEVEL];
 Timer_t *Timer_SF         [NLEVEL];
 Timer_t *Timer_FixUp      [NLEVEL];
@@ -324,6 +345,30 @@ Timer_t *Timer_Poi_PreFlu  [NLEVEL];
 Timer_t *Timer_Poi_PrePot_C[NLEVEL];
 Timer_t *Timer_Poi_PrePot_F[NLEVEL];
 #endif
+
+
+// 6. Nuclear EoS
+int nrho;
+int ntemp;
+int nye;
+
+double *alltables;
+double *logrho;
+double *logtemp;
+double *yes;
+double energy_shift;
+double dtemp, dtempi;
+double drho, drhoi;
+double dye, dyei;
+
+// min and max values
+
+double eos_rhomax, eos_rhomin;
+double eos_tempmin, eos_tempmax;
+double eos_yemin, eos_yemax;
+
+int ivs_short[19];
+
 
 
 // function pointer for recording the user-specified info
@@ -558,4 +603,3 @@ int main( int argc, char *argv[] )
    return 0;
 
 } // FUNCTION : Main
-

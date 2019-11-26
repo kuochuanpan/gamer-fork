@@ -1316,6 +1316,8 @@ void Check_Makefile( const char *FileName, const int FormatVersion )
    LoadField( "RSolver",                &RS.RSolver,                SID, TID, NonFatal, &RT.RSolver,                1, NonFatal );
 #  endif
    LoadField( "DualEnergy",             &RS.DualEnergy,             SID, TID, NonFatal, &RT.DualEnergy,             1, NonFatal );
+   LoadField( "EoS",                    &RS.EoS,                    SID, TID, NonFatal, &RT.EoS,                    1, NonFatal );
+   LoadField( "NeutrinoScheme",         &RS.NeutrinoScheme,         SID, TID, NonFatal, &RT.NeutrinoScheme,         1,    Fatal );
 
 #  elif ( MODEL == MHD )
 #  warning : WAIT MHD !!!
@@ -1732,6 +1734,10 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
    LoadField( "Opt__ExternalPot",        &RS.Opt__ExternalPot,        SID, TID, NonFatal, &RT.Opt__ExternalPot,         1, NonFatal );
    LoadField( "Opt__GravityExtraMass",   &RS.Opt__GravityExtraMass,   SID, TID, NonFatal, &RT.Opt__GravityExtraMass,    1, NonFatal );
 #  endif
+
+// source terms
+   LoadField( "Src_Deleptonization",     &RS.Src_Deleptonization,     SID, TID, NonFatal, &RT.Src_Deleptonization,      1, NonFatal );
+   LoadField( "Src_User",                &RS.Src_User,                SID, TID, NonFatal, &RT.Src_User,                 1, NonFatal );
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE

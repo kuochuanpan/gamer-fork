@@ -35,6 +35,9 @@ void Aux_Record_PatchCount();
 void Aux_Record_Performance( const double ElapsedTime );
 void Aux_Record_CorrUnphy();
 int  Aux_CountRow( const char *FileName );
+void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double r_max_input, const double dr_min,
+                         const bool LogBin, const double LogBinRatio, const bool RemoveEmpty, const int Quantity[],
+                         const int NProf, const int lv );
 #ifndef SERIAL
 void Aux_Record_BoundaryPatch( const int lv, int *NList, int **IDList, int **PosList );
 #endif
@@ -158,6 +161,7 @@ void Init_ByRestart();
 void Init_Unit();
 void Init_Reload_OldFormat();
 void Init_ByFunction();
+void Init_NuclearEos();
 void Init_TestProb();
 void Init_ByFile();
 void Init_UniformGrid( const int lv, const bool FindHomePatchForPar );
@@ -337,6 +341,15 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 #ifdef STORE_POT_GHOST
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
+#ifdef GREP
+void Init_GREffPot( const int level );
+void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve, Profile_t *Phi_eff );
+void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
+                              real   g_Pot_Array_USG[][ CUBE(USG_NXT_G) ],
+                        const double g_Corner_Array [][3],
+                        const int    NPatchGroup,
+                        const real dh, const bool Undo, const bool USG);
+#endif
 #endif // #ifdef GRAVITY
 
 
@@ -470,6 +483,9 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
 void CUAPI_MemAllocate_PoissonGravity( const int Pot_NPatchGroup );
 void CUAPI_MemFree_PoissonGravity();
 #endif // #ifdef GRAVITY
+#ifdef GREP
+void CUAPI_Init_GREffPot();
+#endif // #ifdef GREP
 #endif // #ifdef GPU
 
 
@@ -545,6 +561,10 @@ void YT_Init( int argc, char *argv[] );
 void YT_End();
 void YT_Inline();
 #endif // #ifdef SUPPORT_LIBYT
+
+
+// source terms
+void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, const double dt, const int FluSg );
 
 
 // Grackle

@@ -305,7 +305,12 @@ void Preparation_Step( const Solver_t TSolver, const int lv, const double TimeNe
          TIMING_SYNC(   Gra_Prepare_Pot( lv, TimeNew, h_Pot_Array_P_Out[ArrayID], NPG, PID0_List ),
                         Timer_Poi_PrePot_F[lv]   );
 
+#        ifdef GREP
+         if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||
+              OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#        else
          if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#        endif
          TIMING_SYNC(   Gra_Prepare_Corner( lv, h_Corner_Array_G[ArrayID], NPG, PID0_List ),
                         Timer_Poi_PreFlu[lv]   );
 
@@ -328,7 +333,12 @@ void Preparation_Step( const Solver_t TSolver, const int lv, const double TimeNe
                                                       h_DE_Array_G    [ArrayID], NPG, PID0_List ),
                         Timer_Poi_PreFlu[lv]   );
 
+#        ifdef GREP
+         if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||
+              OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#        else
          if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
+#        endif
          TIMING_SYNC(   Gra_Prepare_Corner( lv, h_Corner_Array_G[ArrayID], NPG, PID0_List ),
                         Timer_Poi_PreFlu[lv]   );
 

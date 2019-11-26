@@ -67,6 +67,7 @@ extern bool       OPT__CK_RESTRICT, OPT__CK_PATCH_ALLOCATE, OPT__FIXUP_FLUX, OPT
 extern bool       OPT__UM_IC_DOWNGRADE, OPT__UM_IC_REFINE, OPT__TIMING_MPI;
 extern bool       OPT__CK_CONSERVATION, OPT__RESET_FLUID, OPT__RECORD_USER, OPT__NORMALIZE_PASSIVE, AUTO_REDUCE_DT;
 extern bool       OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_FLAG_NEAR_BOUNDARY;
+extern bool       SRC_USER, SRC_DELEPTONIZATION;
 extern bool       OPT__RECORD_NOTE, OPT__RECORD_UNPHY;
 
 extern UM_IC_Format_t     OPT__UM_IC_FORMAT;
@@ -214,6 +215,26 @@ extern double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
 
+// (2-9) Supernova
+#if (EOS==NUCLEAR)
+extern bool   EOS_POSTBOUNCE;
+extern double EOS_BOUNCETIME;
+#endif
+
+#ifdef DELEPTIONIZATION
+extern double DELEP_ENU;
+extern double DELEP_RHO1;
+extern double DELEP_RHO2;
+extern double DELEP_YE1;
+extern double DELEP_YE2;
+extern double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+extern double LB_LNU;
+extern double LB_TNU;
+extern double LB_HEATFACTOR;
+#endif
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // ============================================================================================================
@@ -269,6 +290,7 @@ extern real       (*h_Pot_Array_T[2])[ CUBE(GRA_NXT) ];
 // 5. global variables related to different fields
 // ============================================================================================================
 /*** Defined in Field.h ***/
+
 
 
 

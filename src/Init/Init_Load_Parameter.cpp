@@ -171,6 +171,11 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__MINIMIZE_MPI_BARRIER",  &OPT__MINIMIZE_MPI_BARRIER,       true,            Useless_bool,  Useless_bool   );
 
 
+// source terms
+   ReadPara->Add( "SRC_DELEPTONIZATION",        &SRC_DELEPTONIZATION,             false,           Useless_bool,  Useless_bool   );
+   ReadPara->Add( "SRC_USER",                   &SRC_USER,                        false,           Useless_bool,  Useless_bool   );
+
+
 // Grackle
 #  ifdef SUPPORT_GRACKLE
    ReadPara->Add( "GRACKLE_ACTIVATE",           &GRACKLE_ACTIVATE,                true,            Useless_bool,  Useless_bool   );
@@ -201,6 +206,27 @@ void Init_Load_Parameter()
    ReadPara->Add( "SF_CREATE_STAR_MAX_STAR_MFRAC", &SF_CREATE_STAR_MAX_STAR_MFRAC, 0.5,            Eps_double,    1.0            );
 #  endif
 
+
+// supernova
+#  if (EOS == NUCLEAR)
+   ReadPara->Add( "EOS_POSTBOUNCE",            &EOS_POSTBOUNCE,                false,         Useless_bool,     Useless_bool      );
+   ReadPara->Add( "EOS_BOUNCETIME",            &EOS_BOUNCETIME,                0.0,           0.0,              NoMax_double      );
+#  endif
+
+#  ifdef DELEPTIONIZATION
+   ReadPara->Add( "DELEP_ENU",                      &DELEP_ENU,                     10.0,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO1",                     &DELEP_RHO1,                    4.e8,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO2",                     &DELEP_RHO2,                    7.e12,      0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YE1",                      &DELEP_YE1,                     0.5,        0.0,           1.0   );
+   ReadPara->Add( "DELEP_YE2",                      &DELEP_YE2,                     0.275,      0.0,           1.0   );
+   ReadPara->Add( "DELEP_YEC",                      &DELEP_YEC,                     0.015,      0.0,           1.0   );
+#  endif
+
+#  ifdef NEUTRINO_SCHEME
+   ReadPara->Add( "LB_LNU",                      &LB_LNU,                     2.2e52,           0.0,           NoMax_double   );
+   ReadPara->Add( "LB_TNU",                      &LB_TNU,                     4.0,              0.0,           NoMax_double   );
+   ReadPara->Add( "LB_HEATFACTOR",               &LB_HEATFACTOR,              1.0,              0.0,           NoMax_double   );
+#  endif
 
 // fluid solvers in HYDRO and MHD
 #  if ( MODEL == HYDRO )
@@ -395,4 +421,3 @@ void Init_Load_Parameter()
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
 
 } // FUNCTION : Init_Load_Parameter
-

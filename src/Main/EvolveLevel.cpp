@@ -4,6 +4,7 @@
 extern Timer_t *Timer_dt         [NLEVEL];
 extern Timer_t *Timer_Flu_Advance[NLEVEL];
 extern Timer_t *Timer_Gra_Advance[NLEVEL];
+extern Timer_t *Timer_Src_Advance[NLEVEL];
 extern Timer_t *Timer_Che_Advance[NLEVEL];
 extern Timer_t *Timer_SF         [NLEVEL];
 extern Timer_t *Timer_FixUp      [NLEVEL];
@@ -280,6 +281,13 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
       if ( OPT__VERBOSE  &&  MPI_Rank == 0 )
          Aux_Message( stdout, "   Lv %2d: Gra_AdvanceDt, counter = %8ld ... ", lv, AdvanceCounter[lv] );
 
+//    construct the 1D GR potential correction
+//    use Timer_SF to record the execution time temporarily
+#     ifdef GREP
+      TIMING_FUNC( Init_GREffPot( lv ),
+                   Timer_SF[lv]   );
+#     endif
+
       if ( lv == 0 )
          Gra_AdvanceDt( lv, TimeNew, TimeOld, dt_SubStep, SaveSg_Flu, SaveSg_Pot, SelfGravity, true, false, false );
 
@@ -420,7 +428,17 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 // ===============================================================================================
 
 // *********************************
-//    6-1. Grackle cooling/heating
+//    6-1. local source terms
+// *********************************
+   const int InOutSg_Src = SaveSg_Flu;    // save in the same FluSg
+
+// we have assumed that Src_AdvanceDt() requires no ghost zones
+   TIMING_FUNC(   Src_AdvanceDt( lv, TimeNew, TimeOld, dt_SubStep, SaveSg_Flu ),
+                  Timer_Src_Advance[lv]   );
+
+
+// *********************************
+//    6-2. Grackle cooling/heating
 // *********************************
 #     ifdef SUPPORT_GRACKLE
       if ( GRACKLE_ACTIVATE )
@@ -456,7 +474,7 @@ void EvolveLevel( const int lv, const double dTime_FaLv )
 
 
 // *********************************
-//    6-2. star formation
+//    6-3. star formation
 // *********************************
 #     ifdef STAR_FORMATION
       if ( SF_CREATE_STAR_SCHEME != SF_CREATE_STAR_SCHEME_NONE )

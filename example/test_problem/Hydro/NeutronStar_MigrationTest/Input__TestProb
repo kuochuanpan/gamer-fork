@@ -1,0 +1,12 @@
+# problem-specific runtime parameters
+GREP_Center_Method   1              # center of radial profile                                    [1]
+                                    # (1=box center)
+GREP_MaxIter         1000           # number of iteration for constructing mass_TOV and Gamma_TOV [1000]
+GREP_LogBin          1              # scale of bin in radila profile                              [true]
+                                    # (true=logarithmic, false=linear)
+GREP_LogBinRatio     1.002          # ratio in logarithmic bin                                    [1.25]
+GREP_MaxRadius       -1.0           # maximum radius in the radial profile                        [-1.0]
+                                    # (<0=spearation between vertex farthest from the center)
+GREP_MinBinSize      -1.0           # minimum bin size                                            [-1.0]
+                                    # (<0=use amr->dh[MAX_LEVEL])
+NeutronStar_ICFile   tovstar_short  # input file for initial condition

@@ -160,6 +160,8 @@ Procedure for outputting new variables:
 //                2301 : 2018/07/24 --> add OPT__UM_IC_FORMAT, PAR_IC_FORMAT, and PAR_IC_MASS
 //                2302 : 2018/07/24 --> Replace GRACKLE_MODE by GRACKLE_ACTIVATE
 //                2303 : 2018/10/04 --> Set "CodeVersion" to VERSION defined in Macro.h
+//                2304 : 2018/11/02 --> output SRC_USER
+//                2305 : 2018/11/03 --> output SRC_DELEPTONIZATION, NEUTRINO_SCHEME, EOS
 //                2304 : 2018/12/10 --> Remove EP_Coeff that no longer exists
 //                2305 : 2018/12/15 --> Remove variables related to the WAF scheme
 //                2306 : 2018/12/25 --> Replace DT_GRA_BLOCK_SIZE_Z by DT_GRA_BLOCK_SIZE
@@ -1445,6 +1447,18 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.DualEnergy             = 0;
 #  endif
 
+#  ifdef EOS
+   Makefile.EoS                    = EOS;
+#  else
+   Makefile.EoS                    = 0;
+#  endif
+
+#  ifdef NEUTRINO_SCHEME
+   Makefile.NeutrinoScheme         = NEUTRINO_SCHEME;
+#  else
+   Makefile.NeutrinoScheme         = 0;
+#  endif
+
 #  elif ( MODEL == MHD )
 #  warning : WAIT MHD !!!
 
@@ -1885,6 +1899,10 @@ void FillIn_InputPara( InputPara_t &InputPara )
    InputPara.Opt__GravityExtraMass   = OPT__GRAVITY_EXTRA_MASS;
 #  endif
 
+// source terms
+   InputPara.Src_Deleptonization     = SRC_DELEPTONIZATION;
+   InputPara.Src_User                = SRC_USER;
+
 // Grackle
 #  ifdef SUPPORT_GRACKLE
    InputPara.Grackle_Activate        = GRACKLE_ACTIVATE;
@@ -2171,6 +2189,8 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "RSolver",                HOFFSET(Makefile_t,RSolver                ), H5T_NATIVE_INT );
 #  endif
    H5Tinsert( H5_TypeID, "DualEnergy",             HOFFSET(Makefile_t,DualEnergy             ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "EoS",                    HOFFSET(Makefile_t,EoS                    ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "NeutrinoScheme",         HOFFSET(Makefile_t,NeutrinoScheme         ), H5T_NATIVE_INT );
 
 #  elif ( MODEL == MHD )
 #  warning : WAIT MHD !!!
@@ -2572,6 +2592,10 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Opt__ExternalPot",        HOFFSET(InputPara_t,Opt__ExternalPot       ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Opt__GravityExtraMass",   HOFFSET(InputPara_t,Opt__GravityExtraMass  ), H5T_NATIVE_INT     );
 #  endif
+
+// source terms
+   H5Tinsert( H5_TypeID, "Src_Deleptonization",     HOFFSET(InputPara_t,Src_Deleptonization    ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "Src_User",                HOFFSET(InputPara_t,Src_User               ), H5T_NATIVE_INT     );
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE

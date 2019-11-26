@@ -31,6 +31,8 @@ extern void (*BC_User_Ptr)( real fluid[], const double x, const double y, const 
 extern bool (*Flu_ResetByUser_Func_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
                                          const int lv, double AuxArray[] );
 extern void (*End_User_Ptr)();
+extern void (*Src_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
+                             const int lv, double AuxArray[], const double dt );
 #ifdef GRAVITY
 extern void (*Init_ExternalAcc_Ptr)();
 extern void (*Init_ExternalPot_Ptr)();

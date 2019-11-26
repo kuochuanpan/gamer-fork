@@ -161,6 +161,28 @@ void Aux_TakeNote()
       fprintf( Note, "DUAL_ENERGY                     UNKNOWN\n" );
 #     endif
 
+#     if   ( EOS == IDEAL_GAS )
+      fprintf( Note, "EOS                             IDEAL_GAS\n" );
+#     elif ( EOS == NUCLEAR )
+      fprintf( Note, "EOS                             NUCLEAR\n" );
+#     else
+      fprintf( Note, "EOS                             UNKNOWN\n" );
+#     endif
+
+#     ifdef NEUTRINO_SCHEME
+#     if   ( NEUTRINO_SCHEME == LIGHTBULB )
+      fprintf( Note, "NEUTRINO_SCHEME                 LIGHTBULB\n" );
+#     elif ( NEUTRINO_SCHEME == IDSA )
+      fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
+#     elif ( NEUTRINO_SCHEME == M1 )
+      fprintf( Note, "NEUTRINO_SCHEME                 M1\n" );
+#     else
+      fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
+#     endif
+#     else // #ifdef NEUTRINO_SCHEME
+      fprintf( Note, "NEUTRINO_SCHEME                 OFF\n" );
+#     endif // #ifdef NEUTRINO_SCHEME ... else ...
+
 //    c. options in MHD
 #     elif ( MODEL == MHD )
 #     warning : WAIT MHD !!!
@@ -288,6 +310,8 @@ void Aux_TakeNote()
       fprintf( Note, "GPU_ARCH                        PASCAL\n" );
 #     elif ( GPU_ARCH == VOLTA )
       fprintf( Note, "GPU_ARCH                        VOLTA\n" );
+#     elif ( GPU_ARCH == TURING )
+      fprintf( Note, "GPU_ARCH                        TURING\n" );
 #     else
       fprintf( Note, "GPU_ARCH                        UNKNOWN\n" );
 #     endif
@@ -731,6 +755,15 @@ void Aux_TakeNote()
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
 #     endif // #ifndef SERIAL
+
+
+//    record the parameters of source terms
+      fprintf( Note, "Parameters of Source Terms\n" );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "SRC_DELEPTONIZATION             %d\n",      SRC_DELEPTONIZATION     );
+      fprintf( Note, "SRC_USER                        %d\n",      SRC_USER                );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "\n\n");
 
 
 //    record the parameters of Grackle

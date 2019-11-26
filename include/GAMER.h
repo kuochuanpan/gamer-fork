@@ -62,10 +62,12 @@ extern "C" {
 #include "AMR.h"
 #include "Timer.h"
 #include "RandomNumber.h"
+#include "Profile.h"
 #include "Global.h"
 #include "Field.h"
 #include "Prototype.h"
 #include "PhysicalConstant.h"
+#include "NuclearEos.h"
 
 #ifdef SERIAL
 #  include "Serial.h"

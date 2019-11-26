@@ -40,8 +40,39 @@ bool Flag_Region( const int i, const int j, const int k, const int lv, const int
 */
 // ##########################################################################################################
 
+   const double Center[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+   const double dR[3]     = { Pos[0]-Center[0], Pos[1]-Center[1], Pos[2]-Center[2] };
+   const double R         = sqrt( SQR(dR[0]) + SQR(dR[1]) + SQR(dR[2]) );
 
-   return Within;
+   const double baseR     = 16.0e5/UNIT_L; // km
+
+   double fmaxR;
+
+   // For Core Collapse Supernova Problem
+   if (TESTPROB_ID == 17) {
+
+        if  (lv >= NLEVEL -1) {
+            fmaxR = baseR;
+        } else if (lv >= NLEVEL-2) {
+            fmaxR = baseR*2.0 ;
+        } else if (lv >= NLEVEL-3) {
+            fmaxR = baseR*4.0 ;
+        } else if (lv >= NLEVEL-4) {
+            fmaxR = baseR*8.0 ;
+        } else if (lv >= NLEVEL-5) {
+            fmaxR = baseR*16.0 ;
+        } else if (lv >= NLEVEL-6) {
+            fmaxR = baseR*32.0 ;
+        } else if (lv >= NLEVEL-7) {
+            fmaxR = baseR*64.0 ;
+        } else {
+            fmaxR = baseR*128.0 ;
+        }
+        Within = R <= fmaxR;
+        return Within;
+   }else {
+        return Within;
+   }
 
 } // FUNCTION : Flag_Region
 

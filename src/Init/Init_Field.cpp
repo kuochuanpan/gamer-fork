@@ -94,7 +94,12 @@ void Init_Field()
    Idx_Eint    = AddField( "Eint",     NORMALIZE_NO );
 #  endif
 
+// TODO: add nuelcear eos here: KC
 
+# if ( EOS == NUCLEAR )
+  Idx_Entr    = AddField( "Entr",  NORMALIZE_NO );
+  Idx_Ye      = AddField( "Ye",    NORMALIZE_NO );
+# endif
 
 // 5. validate if all fields have been set properly
    if ( NDefinedField != NCOMP_TOTAL )
