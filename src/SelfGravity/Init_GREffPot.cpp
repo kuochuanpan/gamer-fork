@@ -10,12 +10,6 @@ Profile_t *PresAve [NLEVEL+1];
 
 Profile_t *Phi_eff [2];
 
-// debug
-Profile_t DensAve_t [NLEVEL+1];
-Profile_t EngyAve_t [NLEVEL+1];
-Profile_t VrAve_t   [NLEVEL+1];
-Profile_t PresAve_t [NLEVEL+1];
-
 static const int    INTERNAL_ENGY    = 97;
 static const int    VRAD             = 98;
 static const int    PRESSURE         = 99;
@@ -29,7 +23,6 @@ static       double MinBinSize;
 void CombineProfile( Profile_t *Prof[], const bool RemoveEmpty );
 
 
-
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Init_GREffPot
 // Description :  Compute the spherical-averaged profile, and GR effective potential.
@@ -41,6 +34,8 @@ void CombineProfile( Profile_t *Prof[], const bool RemoveEmpty );
 //-------------------------------------------------------------------------------------------------------
 void Init_GREffPot( const int level )
 {
+   int NPatch_TopLv_new;
+
 
 // Initialize the Center, MaxRadius, and MinBinSize at the first call;
    if ( level == -1 )
@@ -87,6 +82,7 @@ void Init_GREffPot( const int level )
                              false, Quantity, 4, lv );
       }
    }
+
    else
    {
 //    update the profile at the current level
@@ -99,20 +95,38 @@ void Init_GREffPot( const int level )
                              false, Quantity, 4, lv );
       }
 
-//    update velocity and energy at level level_old when entering finer / coarser level
+//    update profiles related to momentum and energy at last level when entering finer / coarser level
       if ( level_old != -1  &&  level_old != level )
       {
-         int              lv    = level_old;
-         int        Quantity [] = { INTERNAL_ENGY, VRAD,      PRESSURE    };
-         Profile_t *Prof_all [] = { EngyAve[lv],   VrAve[lv], PresAve[lv] };
+//       collect the number of Patches at TOP_LEVEL
+         MPI_Allreduce( &amr->NPatchComma[TOP_LEVEL][1], &NPatch_TopLv_new, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD );
 
-         Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                             false, Quantity, 3, lv );
+         if ( level_old == TOP_LEVEL  &&  NPatch_TopLv_new != NPatch_TopLv_old )
+         {
+//          also update the density if new Patches are created in TOP_LEVEL (Step 9 in EvolveLevel()).
+//          For new patches created in other level, the profile will be updated in code below.
+            int              lv    = TOP_LEVEL;
+            int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
+            Profile_t *Prof_all [] = { DensAve[lv], EngyAve[lv],   VrAve[lv], PresAve[lv] };
+
+            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                                false, Quantity, 4, lv );
+         }
+         else
+         {
+            int              lv    = level_old;
+            int        Quantity [] = { INTERNAL_ENGY, VRAD,      PRESSURE    };
+            Profile_t *Prof_all [] = { EngyAve[lv],   VrAve[lv], PresAve[lv] };
+
+            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                                false, Quantity, 3, lv );
+         }
       }
 
+//    update correction from finer level in Step 8 of EvolveLevel()
+//           new patches                    Step 9
       if ( level_old > level )
       {
-//       update correction in density, energy, vrad and pressure from Step 8 in EvolveLevel()
          for (int lv=level+1; lv<TOP_LEVEL; lv++)
          {
             int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
@@ -121,58 +135,7 @@ void Init_GREffPot( const int level )
             Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
                                 false, Quantity, 4, lv );
          }
-
-//       check if there are new patches in lv = TOP_LEVEL (Step 9), which is not updated in above for loop
-         if ( amr->NPatchComma[TOP_LEVEL][1] != NPatch_TopLv_old )
-         {
-            int              lv    = TOP_LEVEL;
-            int        Quantity [] = { DENS        };
-            Profile_t *Prof_all [] = { DensAve[lv] };
-
-            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                                false, Quantity, 1, lv );
-         }
       }
-
-
-//    for debug: compute the profile at all levels, and compare them to profile obtained from optimized algorithm
-//               currently, no difference found to be larger than 1e-8.
-//    clean the code later
-/*
-      if ( false )
-      {
-
-         printf("Current level: %d.  Previous level: %d\n", level, level_old);
-
-         for (int lv=0; lv<NLEVEL; lv++)
-         {
-            int        Quantity  [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-            Profile_t *Prof_all_t[] = { &( DensAve_t[lv] ), &( EngyAve_t[lv] ), &( VrAve_t[lv] ), &( PresAve_t[lv] ) };
-
-            Aux_ComputeProfile( Prof_all_t, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                                false, Quantity, 4, lv );
-         }
-
-         for (int lv=0; lv<NLEVEL; lv++)
-         {
-         for (int b=0; b < DensAve_t[lv].NBin; b++)
-         if ( FABS( (DensAve_t[lv].Data[b] - DensAve[lv]->Data[b]) / DensAve_t[lv].Data[b] ) > 1.e-8 )
-            Aux_Error( ERROR_INFO, "Dens differs at bin %d, current lv = %d and different level = %d, Values are %.7e  %.7e\n", b, level, lv, DensAve[lv]->Data[b], DensAve_t[lv].Data[b]);
-
-         for (int b=0; b < EngyAve_t[lv].NBin; b++)
-         if ( FABS( (EngyAve_t[lv].Data[b] - EngyAve[lv]->Data[b]) / EngyAve_t[lv].Data[b] ) > 1.e-8 )
-            Aux_Error( ERROR_INFO, "Engy differs at bin %d, current lv = %d and different level = %d, Values are %.7e  %.7e\n", b, level, lv, EngyAve[lv]->Data[b], EngyAve_t[lv].Data[b]);
-
-         for (int b=0; b < VrAve_t[lv].NBin; b++)
-         if ( FABS( (VrAve_t[lv].Data[b] - VrAve[lv]->Data[b]) / VrAve_t[lv].Data[b] ) > 1.e-8 )
-            Aux_Error( ERROR_INFO, "Vrad differs at bin %d, current lv = %d and different level = %d, Values are %.7e  %.7e\n", b, level, lv, VrAve[lv]->Data[b], VrAve_t[lv].Data[b]);
-
-         for (int b=0; b < PresAve_t[lv].NBin; b++)
-         if ( FABS( (PresAve_t[lv].Data[b] - PresAve[lv]->Data[b]) / PresAve_t[lv].Data[b] ) > 1.e-8 )
-            Aux_Error( ERROR_INFO, "Pres differs at bin %d, current lv = %d and different level = %d, Values are %.7e  %.7e\n", b, level, lv, PresAve[lv]->Data[b], PresAve_t[lv].Data[b]);
-         }
-      }
-*/
    }
 
 
@@ -182,58 +145,10 @@ void Init_GREffPot( const int level )
    CombineProfile( VrAve,   true );
    CombineProfile( PresAve, true );
 
-// for debug: compute the profile summed over all levels, and compare them to profile obtained from optimized algorithm
-//            currently, no difference found to be larger than 1e-8.
-// clean the code later
-/*
-   if ( level != -1 )
-   if ( false )
-   {
-      printf("Current level: %d.  Previous level: %d\n", level, level_old);
-
-      int        Quantity  [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-      Profile_t *Prof_all_t[] = { &( DensAve_t[NLEVEL] ), &( EngyAve_t[NLEVEL] ), &( VrAve_t[NLEVEL] ), &( PresAve_t[NLEVEL] ) };
-
-      Aux_ComputeProfile( Prof_all_t, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                          true, Quantity, 4, -1 );
-
-      if ( DensAve_t[NLEVEL].NBin - DensAve[NLEVEL]->NBin )
-         Aux_Error( ERROR_INFO, "# of Bin differs in Dens");
-
-      if ( EngyAve_t[NLEVEL].NBin - EngyAve[NLEVEL]->NBin )
-         Aux_Error( ERROR_INFO, "# of Bin differs in Engy");
-
-      if ( VrAve_t[NLEVEL].NBin - VrAve[NLEVEL]->NBin )
-         Aux_Error( ERROR_INFO, "# of Bin differs in Vrad");
-
-      if ( PresAve_t[NLEVEL].NBin - PresAve[NLEVEL]->NBin )
-         Aux_Error( ERROR_INFO, "# of Bin differs in Pres");
-
-      for (int b=0; b < DensAve_t[NLEVEL].NBin; b++)
-      if ( FABS( (DensAve_t[NLEVEL].Data[b] - DensAve[NLEVEL]->Data[b]) / DensAve_t[NLEVEL].Data[b] ) > 1.e-8 )
-         Aux_Error( ERROR_INFO, "Dens differs at bin %d, current lv = %d, Values are %.7e  %.7e\n", b, level, DensAve[NLEVEL]->Data[b], DensAve_t[NLEVEL].Data[b]);
-
-      for (int b=0; b < EngyAve_t[NLEVEL].NBin; b++)
-      if ( FABS( (EngyAve_t[NLEVEL].Data[b] - EngyAve[NLEVEL]->Data[b]) / EngyAve_t[NLEVEL].Data[b] ) > 1.e-8 )
-         Aux_Error( ERROR_INFO, "Engy differs at bin %d, current lv = %d, Values are %.7e  %.7e\n", b, level, EngyAve[NLEVEL]->Data[b], EngyAve_t[NLEVEL].Data[b]);
-
-      for (int b=0; b < VrAve_t[NLEVEL].NBin; b++)
-      if ( FABS( (VrAve_t[NLEVEL].Data[b] - VrAve[NLEVEL]->Data[b]) / VrAve_t[NLEVEL].Data[b] ) > 1.e-8 )
-         Aux_Error( ERROR_INFO, "Vrad differs at bin %d, current lv = %d, Values are %.7e  %.7e\n", b, level, VrAve[NLEVEL]->Data[b], VrAve_t[NLEVEL].Data[b]);
-
-      for (int b=0; b < PresAve_t[NLEVEL].NBin; b++)
-      if ( FABS( (PresAve_t[NLEVEL].Data[b] - PresAve[NLEVEL]->Data[b]) / PresAve_t[NLEVEL].Data[b] ) > 1.e-8 )
-         Aux_Error( ERROR_INFO, "Pres differs at bin %d, current lv = %d, Values are %.7e  %.7e\n", b, level, PresAve[NLEVEL]->Data[b], PresAve_t[NLEVEL].Data[b]);
-   }
-*/
-
-
 //REVISE: copy Phi_eff[1] to Phi_eff[0] to support the feature Unsplit_Gravity
-
 
 // compute the GR effective potential
    CPU_ComputeEffPot( DensAve[NLEVEL], EngyAve[NLEVEL], VrAve[NLEVEL], PresAve[NLEVEL], Phi_eff[1] );
-
 
 // initialize the auxiliary GPU arrays
 #  ifdef GPU
@@ -241,8 +156,8 @@ void Init_GREffPot( const int level )
 #  endif
 
 // record the level and number of patches in finest level
+   if ( level_old != level )   NPatch_TopLv_old = NPatch_TopLv_new;
    level_old = level;
-   NPatch_TopLv_old = amr->NPatchComma[TOP_LEVEL][1];
 
 } // FUNCTION : Init_GREffPot
 
@@ -323,7 +238,8 @@ void CombineProfile( Profile_t *Prof[], const bool RemoveEmpty )
    Prof[NLEVEL]->MaxRadius = ( Prof[NLEVEL]->LogBin ) ? SQR ( Prof[NLEVEL]->Radius[b - 1] ) / Prof[NLEVEL]->Radius[b - 2]
                                                       : 2.0 * Prof[NLEVEL]->Radius[b - 1]   - Prof[NLEVEL]->Radius[b - 2];
 
-}
+} // FUNCTION : CombineProfile
+
 
 
 #endif // #if ( defined GRAVITY  &&  defined GREP )
