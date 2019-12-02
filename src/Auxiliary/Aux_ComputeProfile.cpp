@@ -143,7 +143,7 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
    Aux_AllocateArray3D( OMP_NCell,  NProf, NT, Prof[0]->NBin );
 
 
-// collect profile dat in this rank
+// collect profile data in this rank
    const double r_max2 = SQR( Prof[0]->MaxRadius );
 
 #  pragma omp parallel
