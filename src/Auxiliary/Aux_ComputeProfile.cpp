@@ -238,12 +238,30 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
 
                         case PRESSURE:
                         {
+#                          ifdef MHD
+                           real B[3], Bx2, By2, Bz2, B2, EngyB;
+
+                           MHD_GetCellCenteredBField( B,
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[0],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[1],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[2],
+                                                      PS1, PS1, PS1, i, j, k );
+
+                           Bx2   = SQR( B[MAGX] );
+                           By2   = SQR( B[MAGY] );
+                           Bz2   = SQR( B[MAGZ] );
+                           B2    = Bx2 + By2 + Bz2;
+                           EngyB = (real)0.5*B2;
+#                          else
+                           real EngyB = NULL_REAL;
+#                          endif
+
                            const double Pres = Hydro_GetPressure(amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i],
                                                                  amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMX][k][j][i],
                                                                  amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMY][k][j][i],
                                                                  amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMZ][k][j][i],
                                                                  amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENGY][k][j][i],
-                                                                 GAMMA - (real)1.0, false, NULL_REAL);
+                                                                 GAMMA - (real)1.0, false, NULL_REAL, EngyB);
                            OMP_Data  [PROFID][TID][bin] += Pres*dv;
                            OMP_Weight[PROFID][TID][bin] += dv;
                         }

@@ -46,6 +46,12 @@ const TestProbID_t
    TESTPROB_HYDRO_COLLIDING_JETS               =   10,
    TESTPROB_HYDRO_PLUMMER                      =   11,
    TESTPROB_HYDRO_GRAVITY                      =   12,
+
+   TESTPROB_HYDRO_MHD_ABC                      =   13,
+   TESTPROB_HYDRO_MHD_ORSZAG_TANG_VORTEX       =   14,
+   TESTPROB_HYDRO_MHD_LINEAR_WAVE              =   15,
+   TESTPROB_HYDRO_JEANS_INSTABILITY            =   16,
+
    TESTPROB_HYDRO_CORE_COLLAPSE                =   17,
    TESTPROB_HYDRO_NEUTRONSTAR_MIGRATIONTEST    =   20,
 
@@ -150,7 +156,7 @@ const NSide_t
    NSIDE_26 = 26;
 
 
-// use the load-balance alternative function in "Buf_GetBufferData" and "Flag_Real"
+// use the load-balance alternative functions
 typedef int UseLBFunc_t;
 const UseLBFunc_t
    USELB_NO  = 0,
@@ -164,7 +170,7 @@ const Check_t
    CHECK_ON  = 1;
 
 
-// target solver in "InvokeSolvers"
+// target solver in InvokeSolver()
 // --> must start from 0 because of the current TIMING_SOLVER implementation
 // --> when adding new solvers, please modify the NSOLVER constant accordingly
 const int NSOLVER = 7;
@@ -187,24 +193,22 @@ const Solver_t
   ;
 
 
-// target mode in "Buf_GetBufferData and LB_GetBufferData"
+// target mode in Buf_GetBufferData() and LB_GetBufferData()
 typedef int GetBufMode_t;
 const GetBufMode_t
+   DATA_GENERAL         = 1
+  ,DATA_AFTER_FIXUP     = 2
+  ,DATA_AFTER_REFINE    = 3
+  ,DATA_RESTRICT        = 4
+  ,COARSE_FINE_FLUX     = 5
 #ifdef GRAVITY
-   DATA_GENERAL      = 1,
-   DATA_AFTER_FIXUP  = 2,
-   DATA_AFTER_REFINE = 3,
-   DATA_RESTRICT     = 4,
-   COARSE_FINE_FLUX  = 5,
-   POT_FOR_POISSON   = 6,
-   POT_AFTER_REFINE  = 7;
-#else
-   DATA_GENERAL      = 1,
-   DATA_AFTER_FIXUP  = 2,
-   DATA_AFTER_REFINE = 3,
-   DATA_RESTRICT     = 4,
-   COARSE_FINE_FLUX  = 5;
-#endif // #ifdef GRAVITY ... else ...
+  ,POT_FOR_POISSON      = 6
+  ,POT_AFTER_REFINE     = 7
+#endif
+#ifdef MHD
+  ,COARSE_FINE_ELECTRIC = 8
+#endif
+  ;
 
 
 // fluid boundary conditions
@@ -295,7 +299,7 @@ const OptLohnerForm_t
 
 
 // OPT__1ST_FLUX_CORR and OPT__1ST_FLUX_CORR_SCHEME options
-#if ( MODEL == HYDRO || MODEL == MHD )
+#if ( MODEL == HYDRO )
 typedef int Opt1stFluxCorr_t;
 const Opt1stFluxCorr_t
    FIRST_FLUX_CORR_NONE    = 0,
@@ -304,11 +308,13 @@ const Opt1stFluxCorr_t
 
 typedef int OptRSolver1st_t;
 const OptRSolver1st_t
-   RSOLVER_1ST_NONE    = 0,
-   RSOLVER_1ST_ROE     = 1,
-   RSOLVER_1ST_HLLC    = 2,
-   RSOLVER_1ST_HLLE    = 3;
-#endif // #if ( MODEL == HYDRO || MODEL == MHD )
+   RSOLVER_1ST_NONE    = 0
+  ,RSOLVER_1ST_ROE     = 1
+  ,RSOLVER_1ST_HLLC    = 2
+  ,RSOLVER_1ST_HLLE    = 3
+  ,RSOLVER_1ST_HLLD    = 4
+  ;
+#endif // #if ( MODEL == HYDRO )
 
 
 // OPT__CORR_AFTER_ALL_SYNC options
