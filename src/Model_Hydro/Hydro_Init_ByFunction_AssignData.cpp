@@ -1,6 +1,6 @@
 #include "GAMER.h"
-
 #if ( MODEL == HYDRO )
+
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Init_Function_User( real fluid[], const double x, const double y, const double z, const double Time,
@@ -15,11 +15,11 @@ extern bool (*Flu_ResetByUser_Func_Ptr)( real fluid[], const double x, const dou
 
 #ifdef MHD
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
-static real Init_Function_BField_User( const int comp, const double x, const double y, const double z, const double Time,
+static void Init_Function_BField_User( real magnetic[], const double x, const double y, const double z, const double Time,
                                        const int lv, double AuxArray[] );
 
 // this function pointer may be overwritten by various test problem initializers
-real (*Init_Function_BField_User_Ptr)( const int comp, const double x, const double y, const double z, const double Time,
+void (*Init_Function_BField_User_Ptr)( real magnetic[], const double x, const double y, const double z, const double Time,
                                        const int lv, double AuxArray[] ) = Init_Function_BField_User;
 #endif
 
@@ -34,7 +34,7 @@ real (*Init_Function_BField_User_Ptr)( const int comp, const double x, const dou
 //                   --> The function pointer may be reset by various test problem initializers, in which case
 //                       this funtion will become useless
 //                2. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
-//                   (uless OPT__INIT_GRID_WITH_OMP is disabled)
+//                   (unless OPT__INIT_GRID_WITH_OMP is disabled)
 //                   --> Please ensure that everything here is thread-safe
 //                3. Even when DUAL_ENERGY is adopted, one does NOT need to set the dual-energy variable here
 //                   --> It will be set automatically in Hydro_Init_ByFunction_AssignData()
@@ -53,25 +53,18 @@ void Init_Function_User( real fluid[], const double x, const double y, const dou
                          const int lv, double AuxArray[] )
 {
 
-   const double Gamma2  = 1.0/GAMMA/(GAMMA-1.0);
-   const double C1[3] = { 0.5*amr->BoxSize[0]+100.0,
-                          0.5*amr->BoxSize[1]+200.0,
-                          0.5*amr->BoxSize[2]+300.0 };
-   const double C2[3] = { 20.0, 40.0, 10.0 };
+   const real P0   = 1.0;
+   const real Rho0 = 1.0;
+   const real Vx   = 1.25e-1;
+   const real Vy   = 2.30e-1;
+   const real Vz   = 3.70e-1;
 
-   const double Cs      =   1.0;
-   const double Height1 = 100.0;
-   const double Height2 = 400.0;
-   const double Width1  = 640.0;
-   const double Width2  = 512.0;
-
-// set active variables
-   fluid[DENS] = 1.0 + Height1*exp(  -( SQR(x-C1[0])+ SQR(y-C1[1]) + SQR(z-C1[2]) ) / SQR(Width1)  );
-   fluid[DENS] +=      Height2*exp(  -( SQR(x-C2[0])+ SQR(y-C2[1]) + SQR(z-C2[2]) ) / SQR(Width2)  );
-   fluid[MOMX] = 1.0;
-   fluid[MOMY] = 2.0;
-   fluid[MOMZ] = 3.0;
-   fluid[ENGY] = Cs*Cs*fluid[DENS]*Gamma2 + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   fluid[DENS] = Rho0 + 0.2*exp( -( SQR(1.1*x-0.5*amr->BoxSize[0])+SQR(2.2*y-0.5*amr->BoxSize[1])+SQR(3.3*z-0.5*amr->BoxSize[2]) ) / SQR(1.8*amr->BoxSize[2]) );
+   fluid[MOMX] = fluid[DENS]*Vx + 0.1;
+   fluid[MOMY] = fluid[DENS]*Vy + 0.2;
+   fluid[MOMZ] = fluid[DENS]*Vz + 0.3;
+   fluid[ENGY] = (P0)/(GAMMA-1.0)*(2.0+sin(2.0*M_PI*(4.5*x+5.5*y*6.5*z)/amr->BoxSize[2]))
+                 + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 // set passive scalars
 
@@ -90,48 +83,22 @@ void Init_Function_User( real fluid[], const double x, const double y, const dou
 //                2. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
 //                   (uless OPT__INIT_GRID_WITH_OMP is disabled)
 //                   --> Please ensure that everything here is thread-safe
-//                3. Only return one component at a time
-//                   --> Target component is determined by "comp"
-//                   --> Return either B_X, B_Y, or B_Z, where X/Y/Z depends on the adopted coordinate system
-//                       --> Cartesian   coordinates: B_x, B_y, or B_z
-//                       --> Cylindrical coordinates: B_r, B_phi, or B_z
 //
-// Parameter   :  comp     : Target magnetic field component (0/1/2 -> B_X/B_Y/B_Z)
+// Parameter   :  magnetic : Array to store the output magnetic field
 //                x/y/z    : Target physical coordinates
 //                Time     : Target physical time
 //                lv       : Target refinement level
 //                AuxArray : Auxiliary array
 //
-// Return      :  B_comp
+// Return      :  magnetic
 //-------------------------------------------------------------------------------------------------------
-real Init_Function_BField_User( const int comp, const double x, const double y, const double z, const double Time,
+void Init_Function_BField_User( real magnetic[], const double x, const double y, const double z, const double Time,
                                 const int lv, double AuxArray[] )
 {
 
-   real B_comp;
-
-   switch ( comp )
-   {
-//    B_X
-      case 0:
-         B_comp = (real)1.0;
-         break;
-
-//    B_Y
-      case 1:
-         B_comp = (real)2.0;
-         break;
-
-//    B_Z
-      case 2:
-         B_comp = (real)3.0;
-         break;
-
-      default :
-         Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "comp", comp );
-   } // switch ( comp )
-
-   return B_comp;
+   magnetic[MAGX] = 1.0;
+   magnetic[MAGY] = 2.0;
+   magnetic[MAGZ] = 3.0;
 
 } // FUNCTION : Init_Function_BField_User
 #endif // #ifdef MHD
@@ -161,7 +128,8 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
    if ( Init_Function_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_Function_User_Ptr == NULL !!\n" );
 
 #  ifdef MHD
-   if ( Init_Function_BField_User_Ptr == NULL )    Aux_Error( ERROR_INFO, "Init_Function_BField_User_Ptr == NULL !!\n" );
+   if ( Init_Function_BField_User_Ptr == NULL && !OPT__INIT_BFIELD_BYFILE )  
+      Aux_Error( ERROR_INFO, "Init_Function_BField_User_Ptr == NULL !!\n" );
 #  endif
 
 
@@ -169,7 +137,6 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
 #  ifdef OPENMP
    const int OMP_NThread = ( OPT__INIT_GRID_WITH_OMP ) ? OMP_NTHREAD : 1;
 #  endif
-
 
    const int    NSub     = ( INIT_SUBSAMPLING_NCELL <= 0 ) ? 1 : INIT_SUBSAMPLING_NCELL;
    const double dh       = amr->dh[lv];
@@ -181,59 +148,75 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
    const double _NSub2   = 1.0/SQR(NSub);
 #  endif
 
-   real   fluid[NCOMP_TOTAL], fluid_sub[NCOMP_TOTAL];
-   double x, y, z, x0, y0, z0;
 
+#  ifdef MHD
 
-#  pragma omp parallel for private( fluid, fluid_sub, x, y, z, x0, y0, z0 ) schedule( runtime ) num_threads( OMP_NThread )
+   if ( OPT__INIT_BFIELD_BYFILE )
+     MHD_Init_BField_ByFile(lv);
+
+#  endif
+
+#  pragma omp parallel for schedule( runtime ) num_threads( OMP_NThread )
    for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
    {
 //    1. set the magnetic field
 #     ifdef MHD
-//    loop over B_X/Y/Z
-      for (int v=0; v<NCOMP_MAGNETIC; v++)
-      {
-         int    ijk_end[3], sub_end[3], id=0;
-         double dxyz0[3];
 
-         for (int d=0; d<3; d++)
+      if ( !OPT__INIT_BFIELD_BYFILE ) {
+
+         real magnetic_1v, magnetic_sub[NCOMP_MAG];
+
+   //    loop over B_X/Y/Z to set one component at a time
+   //    --> because different components are defined at different cell faces
+         for (int v=0; v<NCOMP_MAG; v++)
          {
-            ijk_end[d] = ( d == v ) ? PS1+1 : PS1;
-            sub_end[d] = ( d == v ) ? 1     : NSub;
-            dxyz0  [d] = ( d == v ) ? 0.0   : 0.5*dh_sub;
-         }
+            int    ijk_end[3], sub_end[3], idx=0;
+            double dxyz0[3];
 
-         for (int k=0; k<ijk_end[2]; k++)    {  z0 = amr->patch[0][lv][PID]->EdgeL[2] + k*dh + dxyz0[2];
-         for (int j=0; j<ijk_end[1]; j++)    {  y0 = amr->patch[0][lv][PID]->EdgeL[1] + j*dh + dxyz0[1];
-         for (int i=0; i<ijk_end[0]; i++)    {  x0 = amr->patch[0][lv][PID]->EdgeL[0] + i*dh + dxyz0[0];
+            for (int d=0; d<3; d++)
+            {
+               ijk_end[d] = ( d == v ) ? PS1+1 : PS1;
+               sub_end[d] = ( d == v ) ? 1     : NSub;
+               dxyz0  [d] = ( d == v ) ? 0.0   : 0.5*dh_sub;
+            }
 
-            real B_sub = (real)0.0;
+            for (int k=0; k<ijk_end[2]; k++)    {  const double z0 = amr->patch[0][lv][PID]->EdgeL[2] + k*dh + dxyz0[2];
+            for (int j=0; j<ijk_end[1]; j++)    {  const double y0 = amr->patch[0][lv][PID]->EdgeL[1] + j*dh + dxyz0[1];
+            for (int i=0; i<ijk_end[0]; i++)    {  const double x0 = amr->patch[0][lv][PID]->EdgeL[0] + i*dh + dxyz0[0];
 
-            for (int kk=0; kk<sub_end[2]; kk++)    {  z = z0 + kk*dh_sub;
-            for (int jj=0; jj<sub_end[1]; jj++)    {  y = y0 + jj*dh_sub;
-            for (int ii=0; ii<sub_end[0]; ii++)    {  x = x0 + ii*dh_sub;
+               magnetic_1v = (real)0.0;
 
-               B_sub += Init_Function_BField_User( v, x, y, z, Time[lv], lv, NULL );
+               for (int kk=0; kk<sub_end[2]; kk++)    {  const double z = z0 + kk*dh_sub;
+               for (int jj=0; jj<sub_end[1]; jj++)    {  const double y = y0 + jj*dh_sub;
+               for (int ii=0; ii<sub_end[0]; ii++)    {  const double x = x0 + ii*dh_sub;
 
-            }}}
+                  Init_Function_BField_User_Ptr( magnetic_sub, x, y, z, Time[lv], lv, NULL );
 
-            amr->patch[ amr->MagSg[lv] ][lv][PID]->magnetic[v][ id ++ ] = B_sub*_NSub2;
-         }}} // i,j,k
-      } // for (int v=0; v<3; v++)
+                  magnetic_1v += magnetic_sub[v];
+
+               }}}
+
+               amr->patch[ amr->MagSg[lv] ][lv][PID]->magnetic[v][ idx ++ ] = magnetic_1v*_NSub2;
+            }}} // i,j,k
+         } // for (int v=0; v<NCOMP_MAG; v++)
+      } // if ( !OPT__INIT_BFIELD_BY_FILE )
+
 #     endif // #ifdef MHD
 
 
 
 //    2. set the fluid field
-      for (int k=0; k<PS1; k++)  {  z0 = amr->patch[0][lv][PID]->EdgeL[2] + k*dh + 0.5*dh_sub;
-      for (int j=0; j<PS1; j++)  {  y0 = amr->patch[0][lv][PID]->EdgeL[1] + j*dh + 0.5*dh_sub;
-      for (int i=0; i<PS1; i++)  {  x0 = amr->patch[0][lv][PID]->EdgeL[0] + i*dh + 0.5*dh_sub;
+      real fluid[NCOMP_TOTAL], fluid_sub[NCOMP_TOTAL];
+
+      for (int k=0; k<PS1; k++)  {  const double z0 = amr->patch[0][lv][PID]->EdgeL[2] + k*dh + 0.5*dh_sub;
+      for (int j=0; j<PS1; j++)  {  const double y0 = amr->patch[0][lv][PID]->EdgeL[1] + j*dh + 0.5*dh_sub;
+      for (int i=0; i<PS1; i++)  {  const double x0 = amr->patch[0][lv][PID]->EdgeL[0] + i*dh + 0.5*dh_sub;
 
          for (int v=0; v<NCOMP_TOTAL; v++)   fluid[v] = (real)0.0;
 
-         for (int kk=0; kk<NSub; kk++)    {  z = z0 + kk*dh_sub;
-         for (int jj=0; jj<NSub; jj++)    {  y = y0 + jj*dh_sub;
-         for (int ii=0; ii<NSub; ii++)    {  x = x0 + ii*dh_sub;
+         for (int kk=0; kk<NSub; kk++)    {  const double z = z0 + kk*dh_sub;
+         for (int jj=0; jj<NSub; jj++)    {  const double y = y0 + jj*dh_sub;
+         for (int ii=0; ii<NSub; ii++)    {  const double x = x0 + ii*dh_sub;
 
             Init_Function_User_Ptr( fluid_sub, x, y, z, Time[lv], lv, NULL );
 
@@ -250,7 +233,7 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
 
 //       add the magnetic energy
 #        ifdef MHD
-         const real EngyB = MHD_GetCellCenteredBEnergy( lv, PID, i, j, k, amr->MagSg[lv] );
+         const real EngyB = MHD_GetCellCenteredBEnergyInPatch( lv, PID, i, j, k, amr->MagSg[lv] );
          fluid[ENGY] += EngyB;
 #        else
          const real EngyB = NULL_REAL;
@@ -259,12 +242,12 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
 
 //       check minimum density and pressure
          fluid[DENS] = FMAX( fluid[DENS], (real)MIN_DENS );
-         fluid[ENGY] = CPU_CheckMinPresInEngy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
-                                               Gamma_m1, _Gamma_m1, MIN_PRES, EngyB );
+         fluid[ENGY] = Hydro_CheckMinPresInEngy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
+                                                 Gamma_m1, _Gamma_m1, MIN_PRES, EngyB );
 
 //       calculate the dual-energy variable (entropy or internal energy)
 #        if   ( DUAL_ENERGY == DE_ENPY )
-         fluid[ENPY] = CPU_Fluid2Entropy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], Gamma_m1 );
+         fluid[ENPY] = Hydro_Fluid2Entropy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], Gamma_m1, EngyB );
 #        elif ( DUAL_ENERGY == DE_EINT )
 #        error : DE_EINT is NOT supported yet !!
 #        endif
@@ -274,7 +257,7 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
          for (int v=NCOMP_FLUID; v<NCOMP_TOTAL; v++)  fluid[v] = FMAX( fluid[v], TINY_NUMBER );
 
          if ( OPT__NORMALIZE_PASSIVE )
-            CPU_NormalizePassive( fluid[DENS], fluid+NCOMP_FLUID, PassiveNorm_NVar, PassiveNorm_VarIdx );
+            Hydro_NormalizePassive( fluid[DENS], fluid+NCOMP_FLUID, PassiveNorm_NVar, PassiveNorm_VarIdx );
 #        endif
 
          for (int v=0; v<NCOMP_TOTAL; v++)   amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[v][k][j][i] = fluid[v];

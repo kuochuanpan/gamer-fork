@@ -65,7 +65,7 @@ static real (*GetCellB[3])( const real [], const real, const real ) = { GetCellB
 //                3. Use the input parameter "IntScheme" to determine the adopted interpolation scheme
 //                4. Must apply to all three magnetic components at once
 //                   --> To preserve the divergence-free condition
-//                5. Strickly speaking, the adopted scheme is divergence-preserving instead of divergence-free
+//                5. Strictly speaking, the adopted scheme is divergence-preserving instead of divergence-free
 //                   --> In other words, the output B field will be divergence-free only if the input B field
 //                       is divergence-free
 //                6. Assuming (0th/1th/2th) B field array index = (x/y/z) B component
@@ -79,6 +79,7 @@ static real (*GetCellB[3])( const real [], const real, const real ) = { GetCellB
 //                FSize      : Size of FData[]
 //                FStart     : (x,y,z) starting indices to store the interpolation results
 //                FInterface : B field to be fixed on the coarse-fine interfaces
+//                             --> Set "FInterface[sib] == NULL" for coarse-coarse interfaces
 //                IntScheme  : Interpolation scheme
 //                Monotonic  : Ensure that all interpolation results are monotonic
 //
@@ -178,7 +179,7 @@ void MHD_InterpolateBField( const real **CData, const int CSize[3][3], const int
 
 
 //    3. fill in FData[] using the interpolation polynomial
-      for (int v=0; v<NCOMP_MAGNETIC; v++)
+      for (int v=0; v<NCOMP_MAG; v++)
       {
          const int Offset_F0   = IDX321( i_F[v], j_F[v], k_F[v], FSize[v][0], FSize[v][1] );
          const int Offset_F[4] = { Offset_F0,
@@ -243,7 +244,7 @@ void MHD_InterpolateBField( const real **CData, const int CSize[3][3], const int
                FData[v][ Offset_F[3] + Offset_Normal ] = GetFaceB_C( FaceCoeff[f], p1_4, p1_4 );
             }
          }
-      } // for (int v=0; v<NCOMP_MAGNETIC; v++)
+      } // for (int v=0; v<NCOMP_MAG; v++)
 
    }}} // IJK loop
 

@@ -70,7 +70,7 @@ void Init_Refine( const int lv )
 
 //          pass particles from father to son
 #           ifdef PARTICLE
-            Par_PassParticle2Son( lv, PID );
+            Par_PassParticle2Son_SinglePatch( lv, PID );
 #           endif
          } // if ( amr->patch[0][lv][PID]->flag )
       } // for (int PID=amr->NPatchComma[lv][s+1]; PID<amr->NPatchComma[lv][s+2]; PID++)
@@ -89,8 +89,14 @@ void Init_Refine( const int lv )
 // get the patch IDs for sending and receiving data between neighboring ranks
    Buf_RecordExchangeDataPatchID( lv+1 );
 
-// allocate flux arrays at the level "lv"
+// allocate flux arrays on level "lv"
    if ( amr->WithFlux )
    Flu_AllocateFluxArray( lv );
+
+// allocate electric arrays on level "lv"
+#  ifdef MHD
+   if ( amr->WithElectric )
+   MHD_AllocateElectricArray( lv );
+#  endif
 
 } // FUNCTION : Init_Refine

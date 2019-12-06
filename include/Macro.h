@@ -14,6 +14,10 @@
 // ## Symbolic Constants ##
 // ########################
 
+// current version
+#define VERSION      "gamer-2.1.0.dev"
+
+
 // option == NONE --> the option is turned off
 #define NONE         0
 
@@ -35,7 +39,6 @@
 
 // hydrodynamic schemes
 #define RTVD         1
-#define WAF          2
 #define MHM          3
 #define MHM_RP       4
 #define CTU          5
@@ -80,18 +83,21 @@
 #define RNG_CPP11    2
 
 
-// NCOMP_FLUID    : number of active components in each cell (for patch->fluid[])
-//                  --> do not include passive components here, which is set by NCOMP_PASSIVE
-// NFLUX_FLUID    : number of active components in patch->flux[]
-//                  --> do not include passive components here, which is set by NFLUX_PASSIVE
-// NCOMP_MAGNETIC : number of magnetic fields in each cell (for patch->magnetic[])
-// NELECTRIC      : number of transverse magnetic fields on each cell face (for patch->electric[])
+// NCOMP_FLUID : number of active components in each cell (for patch->fluid[])
+//               --> do not include passive components here, which is set by NCOMP_PASSIVE
+// NFLUX_FLUID : number of active components in patch->flux[]
+//               --> do not include passive components here, which is set by NFLUX_PASSIVE
+// NCOMP_MAG   : number of magnetic field components (for patch->magnetic[])
+// NCOMP_ELE   : number of electric field components on each cell face (for patch->electric[])
 #if   ( MODEL == HYDRO )
 #  define NCOMP_FLUID         5
 #  define NFLUX_FLUID         NCOMP_FLUID
 # ifdef MHD
-#  define NCOMP_MAGNETIC      3
-#  define NELECTRIC           2
+#  define NCOMP_MAG           3
+#  define NCOMP_ELE           2
+# else
+#  define NCOMP_MAG           0
+#  define NCOMP_ELE           0
 # endif
 
 // for ELBDM, we only need the density flux
@@ -133,10 +139,6 @@
 #if   ( MODEL == HYDRO )
 #  define FLU_NIN             NCOMP_TOTAL
 #  define FLU_NOUT            NCOMP_TOTAL
-# ifdef MHD
-#  define MAG_NIN             NCOMP_MAGNETIC
-#  define MAG_NOUT            NCOMP_MAGNETIC
-# endif
 
 // for ELBDM, we do not need to transfer the density component into GPU
 #elif ( MODEL == ELBDM )
@@ -152,53 +154,46 @@
 #endif // MODEL
 
 
-// main variables in different models
-// --> note that we must set "_VAR_NAME = 1<<VAR_NAME" (e.g., _DENS == 1<<DENS)
+// built-in fields in different models
 #if   ( MODEL == HYDRO )
-
-// variable indices in patch->fluid[0 ... NCOMP_FLUID-1]
+// field indices of fluid[] --> element of [0 ... NCOMP_FLUID-1]
+// --> must NOT modify their values
+// --> in addition, they must be consistent with the order these fields are declared in Init_Field()
 #  define  DENS               0
 #  define  MOMX               1
 #  define  MOMY               2
 #  define  MOMZ               3
 #  define  ENGY               4
 
-// variable indices in patch->fluid[NCOMP_FLUID ... NCOMP_TOTAL-1]
+// field indices of passive[] --> element of [NCOMP_FLUID ... NCOMP_TOTAL-1]
 #if ( NCOMP_PASSIVE > 0 )
-// example for NCOMP_PASSIVE == 3
-#  define  METAL              ( NCOMP_FLUID + 0 )
-#  define  HI                 ( NCOMP_FLUID + 1 )
-#  define  HII                ( NCOMP_FLUID + 2 )
-
-// always store entropy (or internal energy) for the dual energy formalism as the last passive variable
+// always put the dual-energy variable at the END of the field list
+// --> so that ENPY/EINT can be determined during compilation
+// --> convenient (and probably also more efficient) for the fluid solver
 # if   ( DUAL_ENERGY == DE_ENPY )
 #  define  ENPY               ( NCOMP_TOTAL - 1 )
-#  elif ( DUAL_ENERGY == DE_EINT )
+# elif ( DUAL_ENERGY == DE_EINT )
 #  define  EINT               ( NCOMP_TOTAL - 1 )
 # endif
 #endif
 
-// variable indices in patch->magnetic[0 ... NCOMP_MAGNETIC-1]
+// field indices of magnetic --> element of [0 ... NCOMP_MAG-1]
 # ifdef MHD
 #  define  MAGX               0
 #  define  MAGY               1
 #  define  MAGZ               2
 # endif
 
-// variable indices in patch->flux[0 ... NFLUX_FLUID-1]
+// flux indices of flux[] --> element of [0 ... NFLUX_FLUID-1]
 #  define  FLUX_DENS          0
 #  define  FLUX_MOMX          1
 #  define  FLUX_MOMY          2
 #  define  FLUX_MOMZ          3
 #  define  FLUX_ENGY          4
 
-// variable indices in patch->flux[NFLUX_FLUID ... NFLUX_TOTAL-1]
+// flux indices of flux_passive[] --> element of [NFLUX_FLUID ... NFLUX_TOTAL-1]
 #if ( NCOMP_PASSIVE > 0 )
-// example for NCOMP_PASSIVE == 3
-#  define  FLUX_METAL         ( NFLUX_FLUID + 0 )
-#  define  FLUX_HI            ( NFLUX_FLUID + 1 )
-#  define  FLUX_HII           ( NFLUX_FLUID + 2 )
-// always store entropy (or internal energy) for the dual energy formalism as the last passive variable
+// always put the dual-energy variable at the END of the list
 # if   ( DUAL_ENERGY == DE_ENPY )
 #  define  FLUX_ENPY          ( NFLUX_TOTAL - 1 )
 # elif ( DUAL_ENERGY == DE_EINT )
@@ -206,7 +201,10 @@
 # endif
 #endif
 
-// symbolic constants used as function parameters (e.g., Prepare_PatchData)
+// bitwise field indices
+// --> must have "_VAR_NAME = 1<<VAR_NAME" (e.g., _DENS == 1<<DENS)
+// --> convenient for determining subsets of fields (e.g., _DENS|_ENGY)
+// --> used as function parameters (e.g., Prepare_PatchData(), Flu_FixUp(), Flu_FixUp_Restrict(), Buf_GetBufferData())
 #  define _DENS               ( 1 << DENS )
 #  define _MOMX               ( 1 << MOMX )
 #  define _MOMY               ( 1 << MOMY )
@@ -214,11 +212,6 @@
 #  define _ENGY               ( 1 << ENGY )
 
 #if ( NCOMP_PASSIVE > 0 )
-// example for NCOMP_PASSIVE == 3
-#  define _METAL              ( 1 << METAL  )
-#  define _HI                 ( 1 << HI     )
-#  define _HII                ( 1 << HII    )
-// always store entropy (or internal energy) for the dual energy formalism as the last passive variable
 # if   ( DUAL_ENERGY == DE_ENPY )
 #  define _ENPY               ( 1 << ENPY )
 # elif ( DUAL_ENERGY == DE_EINT )
@@ -236,7 +229,7 @@
 #  define _MAG                0
 # endif
 
-// symbolic constants of flux used as function parameters (e.g., Buf_GetBufferData)
+// bitwise flux indices
 #  define _FLUX_DENS          ( 1 << FLUX_DENS )
 #  define _FLUX_MOMX          ( 1 << FLUX_MOMX )
 #  define _FLUX_MOMY          ( 1 << FLUX_MOMY )
@@ -244,11 +237,6 @@
 #  define _FLUX_ENGY          ( 1 << FLUX_ENGY )
 
 #if ( NFLUX_PASSIVE > 0 )
-// example for NFLUX_PASSIVE == 3
-#  define _FLUX_METAL         ( 1 << FLUX_METAL  )
-#  define _FLUX_HI            ( 1 << FLUX_HI     )
-#  define _FLUX_HII           ( 1 << FLUX_HII    )
-// always store entropy (or internal energy) for the dual energy formalism as the last passive variable
 # if   ( DUAL_ENERGY == DE_ENPY )
 #  define _FLUX_ENPY          ( 1 << FLUX_ENPY )
 # elif ( DUAL_ENERGY == DE_EINT )
@@ -256,47 +244,55 @@
 # endif
 #endif // #if ( NFLUX_PASSIVE > 0 )
 
-// derived variables
-// note that _POTE = ( 1 << NCOMP_TOTAL )
-#  define _VELX               ( 1 << (NCOMP_TOTAL+1) )
-#  define _VELY               ( 1 << (NCOMP_TOTAL+2) )
-#  define _VELZ               ( 1 << (NCOMP_TOTAL+3) )
-#  define _PRES               ( 1 << (NCOMP_TOTAL+4) )
-#  define _TEMP               ( 1 << (NCOMP_TOTAL+5) )
+// bitwise indices of derived fields
+// --> start from (1<<NCOMP_TOTAL) to distinguish from the intrinsic fields
+// --> remember to define NDERIVE = total number of derived fields
+#  define _VELX               ( 1 << (NCOMP_TOTAL+0) )
+#  define _VELY               ( 1 << (NCOMP_TOTAL+1) )
+#  define _VELZ               ( 1 << (NCOMP_TOTAL+2) )
+#  define _PRES               ( 1 << (NCOMP_TOTAL+3) )
+#  define _TEMP               ( 1 << (NCOMP_TOTAL+4) )
 # ifdef MHD
 #  define _MAGX_CC            ( 1 << (NCOMP_TOTAL+6) )
 #  define _MAGY_CC            ( 1 << (NCOMP_TOTAL+7) )
 #  define _MAGZ_CC            ( 1 << (NCOMP_TOTAL+8) )
 #  define _MAG_ENGY_CC        ( 1 << (NCOMP_TOTAL+9) )
 #  define _DERIVED            ( _VELX | _VELY | _VELZ | _PRES | _TEMP | _MAGX_CC | _MAGY_CC | _MAGZ_CC | _MAG_ENGY_CC )
+#  define NDERIVE             9
 # else
 #  define _DERIVED            ( _VELX | _VELY | _VELZ | _PRES | _TEMP )
+#  define NDERIVE             5
 # endif
 
 
 #elif ( MODEL == ELBDM )
-// variable indices patch->fluid[0 ... NCOMP_FLUID-1]
+// field indices of fluid[] --> element of [0 ... NCOMP_FLUID-1]
 #  define  DENS               0
 #  define  REAL               1
 #  define  IMAG               2
 
-// variable indices in patch->flux[0 ... NFLUX_FLUID-1]
+// field indices of passive[] --> element of [NCOMP_FLUID ... NCOMP_TOTAL-1]
+// none for ELBDM
+
+// flux indices of flux[] --> element of [0 ... NFLUX_FLUID-1]
 #  define  FLUX_DENS          0
 
-// symbolic constants used as function parameters (e.g., Prepare_PatchData)
+// bitwise field indices
 #  define _DENS               ( 1 << DENS )
 #  define _REAL               ( 1 << REAL )
 #  define _IMAG               ( 1 << IMAG )
 
-// symbolic constants of flux used as function parameters (e.g., Buf_GetBufferData)
+// bitwise flux indices
 #  define _FLUX_DENS          ( 1 << FLUX_DENS )
 
-// derived variables
+// bitwise indices of derived fields
 #  define _DERIVED            0
+#  define NDERIVE             0
 
 
 #elif ( MODEL == PAR_ONLY )
 #  define _DERIVED            0
+#  define NDERIVE             0
 
 
 #else
@@ -304,31 +300,63 @@
 #endif // MODEL
 
 
-// symbolic constants used by all models
+// bitwise field indices used by all models
 #  define _NONE               0
+# ifdef GRAVITY
+#  define _POTE               ( 1 << (NCOMP_TOTAL+NDERIVE) )
+# endif
 #  define _FLUID              (  ( 1 << NCOMP_FLUID ) - 1           )
 #  define _PASSIVE            (  ( 1 << NCOMP_TOTAL ) - 1 - _FLUID  )
 #  define _TOTAL              (  ( 1 << NCOMP_TOTAL ) - 1           )
-#  ifdef GRAVITY
-#  define _POTE               (  ( 1 << NCOMP_TOTAL )               )
-#  endif
 
 #  define _FLUX_FLUID         (  ( 1 << NFLUX_FLUID ) - 1                )
 #  define _FLUX_PASSIVE       (  ( 1 << NFLUX_TOTAL ) - 1 - _FLUX_FLUID  )
 #  define _FLUX_TOTAL         (  ( 1 << NFLUX_TOTAL ) - 1                )
 
 
+
 // symbolic constants for particles
 #ifdef PARTICLE
 
-// number of variables stored in each particle (excluding the passive variables)
-#  ifdef STORE_PAR_ACC
-#  define PAR_NVAR            ( 11 + 0 )
-#  else
-#  define PAR_NVAR            (  8 + 0 )
-#  endif
+// number of built-in particle attributes
+// (1) mass, position*3, velocity*3, and time
+#  define PAR_NATT_BUILTIN0   8
 
-// variable indices in the array "ParVar" [0 ... PAR_NVAR-1]
+// acceleration*3 when STORE_PAR_ACC is adopted
+# ifdef STORE_PAR_ACC
+#  define PAR_NATT_BUILTIN1   3
+# else
+#  define PAR_NATT_BUILTIN1   0
+# endif
+
+// particle creation time when STAR_FORMATION is adopted
+# ifdef STAR_FORMATION
+#  define PAR_NATT_BUILTIN2   1
+# else
+#  define PAR_NATT_BUILTIN2   0
+# endif
+
+// **total** number of bulit-in particle attributes
+#  define PAR_NATT_BUILTIN    ( PAR_NATT_BUILTIN0 + PAR_NATT_BUILTIN1 + PAR_NATT_BUILTIN2 )
+
+
+// number of particle attributes that we do not want to store on disk (currently time + acceleration*3)
+#  define PAR_NATT_UNSTORED   ( 1 + PAR_NATT_BUILTIN1 )
+#  define PAR_NATT_STORED     ( PAR_NATT_TOTAL - PAR_NATT_UNSTORED )
+
+
+// define PAR_NATT_USER if not set in the Makefile
+# ifndef PAR_NATT_USER
+#  define PAR_NATT_USER       0
+# endif
+
+
+// total number of particle attributes (built-in + user-defined)
+#  define PAR_NATT_TOTAL      ( PAR_NATT_BUILTIN + PAR_NATT_USER )
+
+
+// indices of built-in particle attributes in Par->Attribute[]
+// --> must NOT modify their values
 #  define  PAR_MASS           0
 #  define  PAR_POSX           1
 #  define  PAR_POSY           2
@@ -336,99 +364,67 @@
 #  define  PAR_VELX           4
 #  define  PAR_VELY           5
 #  define  PAR_VELZ           6
-#  define  PAR_TIME           7
-#  define  PAR_ACCX           8
-#  define  PAR_ACCY           9
-#  define  PAR_ACCZ          10
 
-// number of passive particle attributes
-// --> define PAR_NPASSIVE_USER if not set in the Makefile
-#ifndef PAR_NPASSIVE_USER
-#  define PAR_NPASSIVE_USER   0
-#endif
-// --> including PAR_CREATION_TIME when STAR_FORMATION is adopted
-#ifdef STAR_FORMATION
-#  define PAR_NPASSIVE        ( PAR_NPASSIVE_USER + 1 )
-#else
-#  define PAR_NPASSIVE        ( PAR_NPASSIVE_USER     )
-#endif
+// always put acceleration and time at the END of the particle attribute list
+// --> make it easier to discard them when storing data on disk (see Output_DumpData_Total(_HDF5).cpp)
+# ifdef STORE_PAR_ACC
+#  define  PAR_ACCX           ( PAR_NATT_TOTAL - 4 )
+#  define  PAR_ACCY           ( PAR_NATT_TOTAL - 3 )
+#  define  PAR_ACCZ           ( PAR_NATT_TOTAL - 2 )
+# endif
+#  define  PAR_TIME           ( PAR_NATT_TOTAL - 1 )
 
-// passive variable indices in the array "Passive" [0 ... PAR_NPASSIVE-1]
-// --> note that unlike the passive scalars on cells, the indices of passive particle attributes start from 0
-// --> this may be modified in the future
-#if ( PAR_NPASSIVE > 0 )
-// example for PAR_NPASSIVE == 3
-#  define  PAR_METAL_FRAC     0
-#  define  PAR_HI_FRAC        1
-#  define  PAR_HII_FRAC       2
 
-// always store PAR_CREATION_TIME as the last passive attribute
-#  ifdef STAR_FORMATION
-#  define  PAR_CREATION_TIME  ( PAR_NPASSIVE - 1 )
-#  endif
-#endif
+// bitwise field indices related to particles
+// --> note that _POTE = ( 1 << (NCOMP_TOTAL+NDERIVE) )
+#  define _PAR_DENS           ( 1 << (NCOMP_TOTAL+NDERIVE+1) )
 
-// symbolic constants used as function parameters (e.g., Prepare_PatchData)
-#  if ( MODEL == PAR_ONLY )
-// note that _POTE == ( 1 << 0 )
-#  define _PAR_DENS           ( 1 << 1 )
+# if ( MODEL == PAR_ONLY )
 #  define _TOTAL_DENS         ( _PAR_DENS )
-
-#  else
-
-// note that _MAG_ENGY_CC == ( 1 << (NCOMP_TOTAL+9) )
-#  define _PAR_DENS           ( 1 << (NCOMP_TOTAL+10) )
-#  define _TOTAL_DENS         ( 1 << (NCOMP_TOTAL+11) )
-
-#  endif // if ( MODEL == PAR_ONLY ) ... else ...
+# else
+#  define _TOTAL_DENS         ( 1 << (NCOMP_TOTAL+NDERIVE+2) )
+# endif
 
 #else // #ifdef PARTICLE
 
-// set _TOTAL_DENS == _DENS if PARTICLE is off
+// total density equals gas density if there is no particle
 #  define _TOTAL_DENS         ( _DENS )
 
 #endif // #ifdef PARTICLE ... else ...
 
 
+
 // number of fluid ghost zones for the fluid solver
 #if   ( MODEL == HYDRO )   // hydro
+#  if ( FLU_SCHEME == MHM  ||  FLU_SCHEME == MHM_RP  ||  FLU_SCHEME == CTU )
+#    if   ( LR_SCHEME == PLM )
+#     define LR_GHOST_SIZE          1
+#    elif ( LR_SCHEME == PPM )
+#     define LR_GHOST_SIZE          2
+#    else
+#     error : ERROR : unsupported LR_SCHEME !!
+#    endif
+#  endif // MHM/MHM_RP/CTU
+
 #  if   ( FLU_SCHEME == RTVD )
-#        define FLU_GHOST_SIZE      3
-#  elif ( FLU_SCHEME == WAF )
-#        define FLU_GHOST_SIZE      2
+#     define FLU_GHOST_SIZE         3
 #  elif ( FLU_SCHEME == MHM )
-#     if ( LR_SCHEME == PLM )
-#        define FLU_GHOST_SIZE      2
-#     else // PPM
-#        define FLU_GHOST_SIZE      3
-#     endif
+#     define FLU_GHOST_SIZE         ( 1 + LR_GHOST_SIZE )
 #  elif ( FLU_SCHEME == MHM_RP )
-#     if ( LR_SCHEME == PLM )
-#        define FLU_GHOST_SIZE      3
-#     else // PPM
-#        define FLU_GHOST_SIZE      4
-#     endif
+#     define FLU_GHOST_SIZE         ( 2 + LR_GHOST_SIZE )
 #  elif ( FLU_SCHEME == CTU )
-#     if ( LR_SCHEME == PLM )
-#       ifdef MHD
-#        define FLU_GHOST_SIZE      3
-#       else
-#        define FLU_GHOST_SIZE      2
-#       endif
-#     else // PPM
-#       ifdef MHD
-#        define FLU_GHOST_SIZE      4
-#       else
-#        define FLU_GHOST_SIZE      3
-#       endif
-#     endif
-#  endif
+#    ifdef MHD
+#     define FLU_GHOST_SIZE         ( 2 + LR_GHOST_SIZE )
+#    else
+#     define FLU_GHOST_SIZE         ( 1 + LR_GHOST_SIZE )
+#    endif // MHD
+#  endif // FLU_SCHEME
 
 #elif ( MODEL == ELBDM )   // ELBDM
 #  ifdef LAPLACIAN_4TH
-#        define FLU_GHOST_SIZE      6
+#     define FLU_GHOST_SIZE         6
 #  else
-#        define FLU_GHOST_SIZE      3
+#     define FLU_GHOST_SIZE         3
 #  endif
 
 #else
@@ -441,11 +437,11 @@
 
 // number of input and output variables in the gravity solver
 #  if   ( MODEL == HYDRO )
-#     define GRA_NIN             NCOMP_FLUID
+#        define GRA_NIN             NCOMP_FLUID
 
 // for ELBDM, we do not need to transfer the density component
 #  elif ( MODEL == ELBDM )
-#     define GRA_NIN             ( NCOMP_FLUID - 1 )
+#        define GRA_NIN             ( NCOMP_FLUID - 1 )
 
 #  else
 #     error Error : unsupported MODEL (please edit GRA_NIN in the new MODEL) !!
@@ -453,30 +449,30 @@
 
 
 // number of potential ghost zones for evaluating potential (maximum=5) ~ Poisson solver
-#     define POT_GHOST_SIZE      5
+#        define POT_GHOST_SIZE      5
 
 
 // number of potential ghost zones for advancing fluid by gravity ~ Gravity solver
 #  if   ( MODEL == HYDRO )
 #     ifdef STORE_POT_GHOST
-#     define GRA_GHOST_SIZE      2
+#        define GRA_GHOST_SIZE      2
 #     else
-#     define GRA_GHOST_SIZE      1
-//#   define GRA_GHOST_SIZE      2
+#        define GRA_GHOST_SIZE      1
+//#      define GRA_GHOST_SIZE      2
 #     endif
 
 #  elif ( MODEL == ELBDM )
 #     ifdef STORE_POT_GHOST
-#     define GRA_GHOST_SIZE      2
+#        define GRA_GHOST_SIZE      2
 #     else
-#     define GRA_GHOST_SIZE      0
+#        define GRA_GHOST_SIZE      0
 #     endif
 
 #  elif ( MODEL == PAR_ONLY )
 #     ifdef STORE_POT_GHOST
-#     define GRA_GHOST_SIZE      2
+#        define GRA_GHOST_SIZE      2
 #     else
-#     define GRA_GHOST_SIZE      0
+#        define GRA_GHOST_SIZE      0
 #     endif
 
 #  else
@@ -485,70 +481,67 @@
 
 
 // number of potential ghost zones for correcting the half-step velocity if UNSPLIT_GRAVITY is on
+// _F/_G: fluid/gravity solvers
 #  ifdef UNSPLIT_GRAVITY
-#  if   ( MODEL == HYDRO )
-#     define USG_GHOST_SIZE      1
-#  elif ( MODEL == ELBDM )
-#     define USG_GHOST_SIZE      0
-#  else
-#     error : ERROR : unsupported MODEL !!
-#  endif // MODEL
+#     if   ( MODEL == HYDRO )
+#       ifdef MHD
+#        define USG_GHOST_SIZE_F    2
+#        define USG_GHOST_SIZE_G    1
+#       else
+#        define USG_GHOST_SIZE_F    1
+#        define USG_GHOST_SIZE_G    1
+#       endif
+#     elif ( MODEL == ELBDM )
+#        define USG_GHOST_SIZE_F    0
+#        define USG_GHOST_SIZE_G    0
+#     else
+#        error : ERROR : unsupported MODEL !!
+#     endif // MODEL
 #  endif // #ifdef UNSPLIT_GRAVITY
 
 
 // number of density ghost zones for storing the temporary particle mass density in rho_ext[]
 #  ifdef PARTICLE
-#     define RHOEXT_GHOST_SIZE   2
+#        define RHOEXT_GHOST_SIZE   2
 #  endif
 
 
 // number of density ghost zones for the Poisson solver
-#     define RHO_GHOST_SIZE      ( POT_GHOST_SIZE-1 )
+#        define RHO_GHOST_SIZE      ( POT_GHOST_SIZE-1 )
 
 #endif // #ifdef GRAVITY
-
-
-// Grackle constants
-#ifdef SUPPORT_GRACKLE
-
-#  define CHE_NPREP              4
-#  define CHE_NIN                3
-#  define CHE_NOUT               1
-
-#endif // #ifdef SUPPORT_GRACKLE
 
 
 // patch size (number of cells of a single patch in the x/y/z directions)
 #define PATCH_SIZE                   8
 #define PS1             ( 1*PATCH_SIZE )
 #define PS2             ( 2*PATCH_SIZE )
-#define PS2_P1          ( PS2 + 1 )
-#define PS2_P2          ( PS2 + 2 )
-#define PS2_P3          ( PS2 + 3 )
-#define PS1_M1          ( PS1 - 1 )
-#define PS1_P1          ( PS1 + 1 )
+#define PS2P1           ( PS2 + 1 )
+#define PS1M1           ( PS1 - 1 )
+#define PS1P1           ( PS1 + 1 )
 
 
 // the size of arrays (in one dimension) sending into GPU
 //###REVISE: support interpolation schemes requiring 2 ghost cells on each side for POT_NXT
-#  define FLU_NXT       ( 2*(PATCH_SIZE+FLU_GHOST_SIZE)   )             // use patch group as the unit
+#  define FLU_NXT       ( PS2 + 2*FLU_GHOST_SIZE )                // use patch group as the unit
+#  define FLU_NXT_P1    ( FLU_NXT + 1 )
 #ifdef GRAVITY
-#  define POT_NXT       ( PATCH_SIZE/2 + 2*( (POT_GHOST_SIZE+3)/2 ) )   // assuming interpolation ghost zone == 1
-#  define RHO_NXT       ( PATCH_SIZE   + 2*RHO_GHOST_SIZE )             // POT/RHO/GRA_NXT use patch as the unit
-#  define GRA_NXT       ( PATCH_SIZE   + 2*GRA_GHOST_SIZE )
+#  define POT_NXT       ( PS1/2 + 2*( (POT_GHOST_SIZE+3)/2 ) )    // assuming interpolation ghost zone == 1
+#  define RHO_NXT       ( PS1 + 2*RHO_GHOST_SIZE )                // POT/RHO/GRA_NXT use patch as the unit
+#  define GRA_NXT       ( PS1 + 2*GRA_GHOST_SIZE )
 #  ifdef UNSPLIT_GRAVITY
-#  define USG_NXT_F     ( 2*(PATCH_SIZE+USG_GHOST_SIZE)   )             // we use patch group as unit for the fluid   solver
-#  define USG_NXT_G     ( PATCH_SIZE   + 2*USG_GHOST_SIZE )             // we use patch       as unit for the gravity solver
+#  define USG_NXT_F     ( PS2 + 2*USG_GHOST_SIZE_F )              // we use patch group as unit for the fluid   solver
+#  define USG_NXT_G     ( PS1 + 2*USG_GHOST_SIZE_G )              // we use patch       as unit for the gravity solver
 #  else
-#  define USG_NXT_F     ( 1 )                                           // still define USG_NXT_F/G since many function prototypes
-#  define USG_NXT_G     ( 1 )                                           // require it
+#  define USG_NXT_F     ( 1 )                                     // still define USG_NXT_F/G since many function prototypes
+#  define USG_NXT_G     ( 1 )                                     // require it
 #  endif
 #else
-#  define GRA_NXT       ( 1 )                                           // still define GRA_NXT   ...
-#  define USG_NXT_F     ( 1 )                                           // still define USG_NXT_F ...
+#  define GRA_NXT       ( 1 )                                     // still define GRA_NXT   ...
+#  define USG_NXT_F     ( 1 )                                     // still define USG_NXT_F ...
 #endif
 #ifdef PARTICLE
-#  define RHOEXT_NXT    ( PATCH_SIZE   + 2*RHOEXT_GHOST_SIZE )          // array rho_ext of each patch
+#  define RHOEXT_NXT    ( PS1 + 2*RHOEXT_GHOST_SIZE )             // array rho_ext of each patch
 #endif
 
 
@@ -661,7 +654,7 @@
 #define GAMER_FAILED       0
 
 
-// macro for the function "Aux_Error"
+// symbolic constant for Aux_Error()
 #define ERROR_INFO         __FILE__, __LINE__, __FUNCTION__
 
 
@@ -730,9 +723,9 @@
 
 // 3D to 1D array indices transformation for patch->magnetic[]
 #ifdef MHD
-#define IDX321_BX( i, j, k )        (  ( (k)*PS1    + (j) )*PS1_P1 + (i)  )
-#define IDX321_BY( i, j, k )        (  ( (k)*PS1_P1 + (j) )*PS1    + (i)  )
-#define IDX321_BZ( i, j, k )        (  ( (k)*PS1    + (j) )*PS1    + (i)  )
+#define IDX321_BX( i, j, k, Ni, Nj )   (  ( (k)*((Nj)  ) + (j) )*((Ni)+1) + (i)  )
+#define IDX321_BY( i, j, k, Ni, Nj )   (  ( (k)*((Nj)+1) + (j) )*((Ni)  ) + (i)  )
+#define IDX321_BZ( i, j, k, Ni, Nj )   (  ( (k)*((Nj)  ) + (j) )*((Ni)  ) + (i)  )
 #endif
 
 
@@ -740,6 +733,29 @@
 // ref: https://stackoverflow.com/questions/3419332/c-preprocessor-stringify-the-result-of-a-macro
 #  define QUOTE( str )              #str
 #  define EXPAND_AND_QUOTE( str )   QUOTE( str )
+
+
+// convenient macros for defining and declaring global variables
+// ==> predefine DEFINE_GLOBAL in the file actually **defines** these global variables
+// ==> there should be one and only one file that defines DEFINE_GLOBAL
+
+// SET_GLOBAL will invoke either SET_GLOBAL_INIT or SET_GLOBAL_NOINIT depending on the number of arguments
+// ==> http://stackoverflow.com/questions/11761703/overloading-macro-on-number-of-arguments
+#define GET_MACRO( _1, _2, TARGET_MACRO, ... )  TARGET_MACRO
+#define SET_GLOBAL( ... )   GET_MACRO( __VA_ARGS__, SET_GLOBAL_INIT, SET_GLOBAL_NOINIT ) ( __VA_ARGS__ )
+
+// SET_GLOBAL_INIT/NOINIT are for global variables with/without initialization
+#ifdef DEFINE_GLOBAL
+# define SET_GLOBAL_INIT( declaration, init_value )   declaration = init_value
+# define SET_GLOBAL_NOINIT( declaration )             declaration
+#else
+# define SET_GLOBAL_INIT( declaration, init_value )   extern declaration
+# define SET_GLOBAL_NOINIT( declaration )             extern declaration
+#endif
+
+
+// macro converting an array index (e.g., DENS) to bitwise index (e.g., _DENS=(1<<DENS))
+#define BIDX( idx )     ( 1 << (idx) )
 
 
 
@@ -751,7 +767,7 @@
 #  undef LR_SCHEME
 #  endif
 
-#  if ( FLU_SCHEME != MHM  &&  FLU_SCHEME != MHM_RP  &&  FLU_SCHEME != CTU  &&  FLU_SCHEME != WAF )
+#  if ( FLU_SCHEME != MHM  &&  FLU_SCHEME != MHM_RP  &&  FLU_SCHEME != CTU )
 #  undef RSOLVER
 #  endif
 #endif

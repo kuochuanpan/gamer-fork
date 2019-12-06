@@ -1,10 +1,11 @@
 #include "GAMER.h"
 
+extern void (*Init_User_Ptr)();
 #ifdef PARTICLE
 extern void (*Par_Init_ByFunction_Ptr)( const long NPar_ThisRank, const long NPar_AllRank,
                                         real *ParMass, real *ParPosX, real *ParPosY, real *ParPosZ,
                                         real *ParVelX, real *ParVelY, real *ParVelZ, real *ParTime,
-                                        real *ParPassive[PAR_NPASSIVE] );
+                                        real *AllAttribute[PAR_NATT_TOTAL] );
 #endif
 
 
@@ -62,7 +63,7 @@ void Init_GAMER( int *argc, char ***argv )
 
 // initialize Grackle
 #  ifdef SUPPORT_GRACKLE
-   if ( GRACKLE_MODE != GRACKLE_MODE_NONE )  Grackle_Init();
+   if ( GRACKLE_ACTIVATE )    Grackle_Init();
 #  endif
 
 
@@ -80,6 +81,14 @@ void Init_GAMER( int *argc, char ***argv )
    Init_TestProb();
 
 
+// initialize all fields and particle attributes
+// --> Init_Field() must be called BEFORE CUAPI_Set_Default_GPU_Parameter()
+   Init_Field();
+#  ifdef PARTICLE
+   Par_Init_Attribute();
+#  endif
+
+
 // initialize the external potential and acceleration parameters
 // --> must be called AFTER Init_TestProb()
 #  ifdef GRAVITY
@@ -87,13 +96,8 @@ void Init_GAMER( int *argc, char ***argv )
 #  endif
 
 
-// initialize settings for the passive variables
-// --> must be called BEFORE CUAPI_Set_Default_GPU_Parameter()
-   Init_PassiveVariable();
-
-
 // set the GPU ID and several GPU parameters
-// --> must be called AFTER Init_PassiveVariable()
+// --> must be called AFTER Init_Field()
 #  ifdef GPU
 #  ifndef GRAVITY
    int POT_GPU_NPGROUP = NULL_INT;
@@ -149,7 +153,7 @@ void Init_GAMER( int *argc, char ***argv )
          Par_Init_ByFunction_Ptr( amr->Par->NPar_Active, amr->Par->NPar_Active_AllRank,
                                   amr->Par->Mass, amr->Par->PosX, amr->Par->PosY, amr->Par->PosZ,
                                   amr->Par->VelX, amr->Par->VelY, amr->Par->VelZ, amr->Par->Time,
-                                  amr->Par->Passive );
+                                  amr->Par->Attribute );
          break;
 
       case PAR_INIT_BY_RESTART:
@@ -181,6 +185,10 @@ void Init_GAMER( int *argc, char ***argv )
    }
 
 
+// user-defined initialization
+   if ( Init_User_Ptr != NULL )  Init_User_Ptr();
+
+
 // record the initial weighted load-imbalance factor
 #  ifdef LOAD_BALANCE
    if ( OPT__RECORD_LOAD_BALANCE )  LB_EstimateLoadImbalance();
@@ -205,12 +213,12 @@ void Init_GAMER( int *argc, char ***argv )
       {
          if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Lv %2d ... ", lv );
 
-         Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, DATA_GENERAL, _DENS, Rho_ParaBuf, USELB_YES );
+         Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, NULL_INT, DATA_GENERAL, _DENS, _NONE, Rho_ParaBuf, USELB_YES );
 
          Gra_AdvanceDt( lv, Time[lv], NULL_REAL, NULL_REAL, NULL_INT, amr->PotSg[lv], true, false, false, false );
 
          if ( lv > 0 )
-         Buf_GetBufferData( lv, NULL_INT, amr->PotSg[lv], POT_FOR_POISSON, _POTE, Pot_ParaBuf, USELB_YES );
+         Buf_GetBufferData( lv, NULL_INT, NULL_INT, amr->PotSg[lv], POT_FOR_POISSON, _POTE, _NONE, Pot_ParaBuf, USELB_YES );
 
          if ( MPI_Rank == 0 )    Aux_Message( stdout, "done\n" );
       } // for (int lv=0; lv<NLEVEL; lv++)

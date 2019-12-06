@@ -4,6 +4,7 @@
 
 
 #include "Macro.h"
+#include "CUFLU.h"
 
 #ifdef PARTICLE
 #  include <math.h>
@@ -54,9 +55,23 @@ long  LB_Corner2Index( const int lv, const int Corner[], const Check_t Check );
 //                flux_bitrep[6]  : Fluid flux for achieving bitwise reproducibility (i.e., ensuring that the round-off errors are
 //                                  exactly the same in different parallelization parameters/strategies)
 //                electric        : Electric field for the MHD fix-up operation
+///                                 --> Array structure = [sibling index][E field index][cell index]
+//                                  --> For sibling indices 0-5, there are two E fields on each face
+//                                      --> E field index on x faces: [0/1] = Ey/Ez
+//                                                           y faces: [0/1] = Ez/Ex
+//                                                           z faces: [0/1] = Ex/Ey
+//                                          Cell index dimension on x faces: [Nz][Ny] (= [PS1-1][PS1] for Ey and [PS1][PS1-1] for Ez)
+//                                                     dimension on y faces: [Nx][Nz] (= [PS1-1][PS1] for Ez and [PS1][PS1-1] for Ex)
+//                                                     dimension on z faces: [Ny][Nx] (= [PS1-1][PS1] for Ex and [PS1][PS1-1] for Ey)
+//                                  --> For sibling indices 6-17, there is only one E field on each edge
+//                                      --> E field index is always 0 (6-9->Ez, 10-13->Ex, 14-17->Ey)
+//                                          Cell index dimension is always [PS1]
+//                                  --> To unify the array structure of sibling indices 0-5 and 6-17, we actually convert the
+//                                      2D array [E field index][cell index] into a 1D array
 //                electric_tmp    : Temporary electric field for the option "AUTO_REDUCE_DT"
 //                electric_bitrep : Electric field for achieving bitwise reproducibility in MHD (i.e., ensuring that the
 //                                  round-off errors are exactly the same in different parallelization parameters/strategies)
+//                ele_corrected   : Array recording whether each component in electric[] has been corrected by the fix-up operation
 //                corner[3]       : Grid indices of the cell at patch corner
 //                                  --> Note that for an external patch its recorded "corner" will lie outside
 //                                      the simulation domain. In other words, periodicity is NOT used to
@@ -105,7 +120,7 @@ long  LB_Corner2Index( const int lv, const int Corner[], const Check_t Check );
 //                                  --> Each PaddedCr1D defines a unique 3D position
 //                                  --> Patches at different levels with the same PaddedCr1D have the same
 //                                      3D corner coordinates
-//                                  --> this number is independent of periodicity (because of the padded patches)
+//                                  --> This number is independent of periodicity (because of the padded patches)
 //                LB_Idx          : Space-filling-curve index for load balance
 //                NPar            : Number of particles belonging to this leaf patch
 //                ParListSize     : Size of the array ParList (ParListSize can be >= NPar)
@@ -122,7 +137,7 @@ long  LB_Corner2Index( const int lv, const int Corner[], const Check_t Check );
 //                                  --> **Leaf real** patches will always have NPar_Copy == -1
 //                                  --> In SERIAL mode, these non-leaf real patches will have their particle
 //                                      IDs stored in ParList_Copy, which points to the same particle repository
-//                                      (i.e., the amr->Par->ParVar/Passive arrays). In comparison, in LOAD_BALANCE mode,
+//                                      (i.e., the amr->Par->Attribute[]). In comparison, in LOAD_BALANCE mode,
 //                                      since particles corresponding to NPar_Copy may be collected from other ranks,
 //                                      these patches will allocate a local particle attribute array called ParMassPos_Copy
 //                                      (since currently we only collect mass and position for these particles).
@@ -169,39 +184,40 @@ struct patch_t
 
 // data members
 // ===================================================================================
-   real (*fluid)[PATCH_SIZE][PATCH_SIZE][PATCH_SIZE];
+   real (*fluid)[PS1][PS1][PS1];
 
 #  ifdef MHD
-   real (*magnetic)[PS1_P1*PATCH_SIZE*PATCH_SIZE];
+   real (*magnetic)[ PS1P1*SQR(PS1) ];
 #  endif
 
 #  ifdef GRAVITY
-   real (*pot)[PATCH_SIZE][PATCH_SIZE];
+   real (*pot)[PS1][PS1];
 #  ifdef STORE_POT_GHOST
    real (*pot_ext)[GRA_NXT][GRA_NXT];
 #  endif
 #  endif // GRAVITY
 
 #  ifdef DUAL_ENERGY
-   char (*de_status)[PATCH_SIZE][PATCH_SIZE];
+   char (*de_status)[PS1][PS1];
 #  endif
 
 #  ifdef PARTICLE
    real (*rho_ext)[RHOEXT_NXT][RHOEXT_NXT];
 #  endif
 
-   real (*flux       [6])[PATCH_SIZE][PATCH_SIZE];
-   real (*flux_tmp   [6])[PATCH_SIZE][PATCH_SIZE];
-#  ifdef BITWISE_REPRODUCIBILITY
-   real (*flux_bitrep[6])[PATCH_SIZE][PATCH_SIZE];
+   real (*flux       [6])[PS1][PS1];
+   real (*flux_tmp   [6])[PS1][PS1];
+#  ifdef BIT_REP_FLUX
+   real (*flux_bitrep[6])[PS1][PS1];
 #  endif
 
 #  ifdef MHD
    real (*electric       [18]);
    real (*electric_tmp   [18]);
-#  ifdef BITWISE_REPRODUCIBILITY
+#  ifdef BIT_REP_ELECTRIC
    real (*electric_bitrep[18]);
 #  endif
+   bool ele_corrected[12];
 #  endif
 
    int    corner[3];
@@ -318,11 +334,11 @@ struct patch_t
       for (int s=0; s<26; s++ )  sibling[s] = -1;     // -1 <--> NO sibling
 
       const int Padded              = 1<<NLEVEL;
-      const int BoxNScale_Padded[3] = { BoxScale[0]/PATCH_SIZE + 2*Padded,
-                                        BoxScale[1]/PATCH_SIZE + 2*Padded,
-                                        BoxScale[2]/PATCH_SIZE + 2*Padded }; // normalized and padded box scale
+      const int BoxNScale_Padded[3] = { BoxScale[0]/PS1 + 2*Padded,
+                                        BoxScale[1]/PS1 + 2*Padded,
+                                        BoxScale[2]/PS1 + 2*Padded }; // normalized and padded box scale
       int Cr_Padded[3];
-      for (int d=0; d<3; d++)    Cr_Padded[d] = corner[d]/PATCH_SIZE + Padded;
+      for (int d=0; d<3; d++)    Cr_Padded[d] = corner[d]/PS1 + Padded;
 
 #     ifdef GAMER_DEBUG
       for (int d=0; d<3; d++)
@@ -385,7 +401,7 @@ struct patch_t
       {
          flux       [s] = NULL;
          flux_tmp   [s] = NULL;
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_FLUX
          flux_bitrep[s] = NULL;
 #        endif
       }
@@ -395,7 +411,7 @@ struct patch_t
       {
          electric       [s] = NULL;
          electric_tmp   [s] = NULL;
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_ELECTRIC
          electric_bitrep[s] = NULL;
 #        endif
       }
@@ -506,22 +522,22 @@ struct patch_t
       if ( AllocTmp  &&  flux_tmp[SibID] != NULL )
          Aux_Error( ERROR_INFO, "flux_tmp[%d] already exists !!\n", SibID );
 
-#     ifdef BITWISE_REPRODUCIBILITY
+#     ifdef BIT_REP_FLUX
       if ( flux_bitrep[SibID] != NULL )
          Aux_Error( ERROR_INFO, "flux_bitrep[%d] already exists !!\n", SibID );
 #     endif
 #     endif
 
-      flux      [SibID]  = new real [NFLUX_TOTAL][PATCH_SIZE][PATCH_SIZE];
+      flux      [SibID]  = new real [NFLUX_TOTAL][PS1][PS1];
       if ( AllocTmp )
-      flux_tmp  [SibID]  = new real [NFLUX_TOTAL][PATCH_SIZE][PATCH_SIZE];
-#     ifdef BITWISE_REPRODUCIBILITY
-      flux_bitrep[SibID] = new real [NFLUX_TOTAL][PATCH_SIZE][PATCH_SIZE];
+      flux_tmp  [SibID]  = new real [NFLUX_TOTAL][PS1][PS1];
+#     ifdef BIT_REP_FLUX
+      flux_bitrep[SibID] = new real [NFLUX_TOTAL][PS1][PS1];
 #     endif
 
       for(int v=0; v<NFLUX_TOTAL; v++)
-      for(int m=0; m<PATCH_SIZE; m++)
-      for(int n=0; n<PATCH_SIZE; n++)
+      for(int m=0; m<PS1; m++)
+      for(int n=0; n<PS1; n++)
       {
          flux       [SibID][v][m][n] = 0.0;
          /*
@@ -529,7 +545,7 @@ struct patch_t
          if ( AllocTmp )
          flux_tmp   [SibID][v][m][n] = 0.0;
          */
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_FLUX
          flux_bitrep[SibID][v][m][n] = 0.0;
 #        endif
       }
@@ -553,7 +569,7 @@ struct patch_t
          delete [] flux_tmp[s];
          flux_tmp[s] = NULL;
 
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_FLUX
          delete [] flux_bitrep[s];
          flux_bitrep[s] = NULL;
 #        endif
@@ -570,7 +586,7 @@ struct patch_t
    //
    // Note        :  electric[] will be initialized as zero
    //
-   // Parameter   :  SibID    : Targeted sibling direction (0-17)
+   // Parameter   :  SibID    : Target sibling direction (0-17)
    //                AllocTmp : Allocate the temporary electric array electric_tmp[]
    //===================================================================================
    void enew( const int SibID, const bool AllocTmp )
@@ -586,18 +602,18 @@ struct patch_t
       if ( AllocTmp  &&  electric_tmp[SibID] != NULL )
          Aux_Error( ERROR_INFO, "electric_tmp[%d] already exists !!\n", SibID );
 
-#     ifdef BITWISE_REPRODUCIBILITY
+#     ifdef BIT_REP_ELECTRIC
       if ( electric_bitrep[SibID] != NULL )
          Aux_Error( ERROR_INFO, "electric_bitrep[%d] already exists !!\n", SibID );
 #     endif
 #     endif
 
-      const int Size = ( SibID < 6 ) ? NELECTRIC*PS1_M1*PS1 : PS1;
+      const int Size = ( SibID < 6 ) ? NCOMP_ELE*PS1M1*PS1 : PS1;
 
       electric      [SibID]  = new real [Size];
       if ( AllocTmp )
       electric_tmp  [SibID]  = new real [Size];
-#     ifdef BITWISE_REPRODUCIBILITY
+#     ifdef BIT_REP_ELECTRIC
       electric_bitrep[SibID] = new real [Size];
 #     endif
 
@@ -609,7 +625,7 @@ struct patch_t
          if ( AllocTmp )
          electric_tmp   [SibID][t] = 0.0;
          */
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_ELECTRIC
          electric_bitrep[SibID][t] = 0.0;
 #        endif
       }
@@ -633,7 +649,7 @@ struct patch_t
          delete [] electric_tmp[s];
          electric_tmp[s] = NULL;
 
-#        ifdef BITWISE_REPRODUCIBILITY
+#        ifdef BIT_REP_ELECTRIC
          delete [] electric_bitrep[s];
          electric_bitrep[s] = NULL;
 #        endif
@@ -655,7 +671,7 @@ struct patch_t
 
       if ( fluid == NULL )
       {
-         fluid = new real [NCOMP_TOTAL][PATCH_SIZE][PATCH_SIZE][PATCH_SIZE];
+         fluid = new real [NCOMP_TOTAL][PS1][PS1][PS1];
          fluid[0][0][0][0] = (real)-1.0;  // arbitrarily initialized
       }
 
@@ -694,7 +710,7 @@ struct patch_t
 
       if ( magnetic == NULL )
       {
-         magnetic = new real [NCOMP_MAGNETIC][PS1_P1*PS1*PS1];
+         magnetic = new real [NCOMP_MAG][ PS1P1*SQR(PS1) ];
          magnetic[0][0] = (real)-1.0;  // arbitrarily initialized
       }
 
@@ -727,7 +743,7 @@ struct patch_t
    void gnew()
    {
 
-      if ( pot == NULL )      pot     = new real [PATCH_SIZE][PATCH_SIZE][PATCH_SIZE];
+      if ( pot == NULL )      pot     = new real [PS1][PS1][PS1];
 
 #     ifdef STORE_POT_GHOST
       if ( pot_ext == NULL )  pot_ext = new real [GRA_NXT][GRA_NXT][GRA_NXT];
@@ -773,7 +789,7 @@ struct patch_t
 
       if ( de_status == NULL )
       {
-         de_status = new char [PATCH_SIZE][PATCH_SIZE][PATCH_SIZE];
+         de_status = new char [PS1][PS1][PS1];
       }
 
    } // METHOD : snew

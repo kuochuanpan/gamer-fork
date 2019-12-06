@@ -22,7 +22,7 @@
 //                h_Pot_Array_USG_G : Host array to store the prepared potential (size = USG_NXT_G^3)
 //                h_Flu_Array_USG_G : Host array to store the prepared density   (size =       PS1^3)
 //                NPG               : Number of patch groups prepared at a time
-//                PID0_List         : List recording the patch indicies with LocalID==0 to be udpated
+//                PID0_List         : List recording the patch indices with LocalID==0 to be udpated
 //-------------------------------------------------------------------------------------------------------
 void Gra_Prepare_USG( const int lv, const double PrepTime,
                       real h_Pot_Array_USG_G[][USG_NXT_G][USG_NXT_G][USG_NXT_G],
@@ -36,7 +36,7 @@ void Gra_Prepare_USG( const int lv, const double PrepTime,
 
 // prepare potential
    if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
-   Prepare_PatchData( lv, PrepTime, &h_Pot_Array_USG_G[0][0][0][0], NULL, USG_GHOST_SIZE, NPG, PID0_List,
+   Prepare_PatchData( lv, PrepTime, &h_Pot_Array_USG_G[0][0][0][0], NULL, USG_GHOST_SIZE_G, NPG, PID0_List,
                       _POTE, _NONE, OPT__GRA_INT_SCHEME, INT_NONE, UNIT_PATCH, NSIDE_06, IntPhase_No,
                       OPT__BC_FLU, OPT__BC_POT, MinDens_No, MinPres_No, DE_Consistency_No );
 

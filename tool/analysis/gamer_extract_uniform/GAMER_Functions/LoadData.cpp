@@ -856,7 +856,7 @@ void Load_Parameter_After_2000( FILE *File, const int FormatVersion, bool &LoadP
 // =================================================================================================
    bool gravity, individual_timestep, comoving, gpu, gamer_optimization, gamer_debug, timing, timing_solver;
    bool intel, float8, serial, overlap_mpi, openmp, store_pot_ghost, unsplit_gravity, particle;
-   bool conserve_mass, laplacian_4th, self_interaction, laohu, support_hdf5;
+   bool conserve_mass, laplacian_4th, self_interaction, laohu, support_hdf5, mhd;
    int  model, pot_scheme, flu_scheme, lr_scheme, rsolver, load_balance, nlevel, max_patch, ncomp_passive, gpu_arch;
 
    fseek( File, HeaderOffset_Makefile, SEEK_SET );
@@ -892,9 +892,11 @@ void Load_Parameter_After_2000( FILE *File, const int FormatVersion, bool &LoadP
    fread( &self_interaction,           sizeof(bool),                    1,             File );
    fread( &laohu,                      sizeof(bool),                    1,             File );
    fread( &support_hdf5,               sizeof(bool),                    1,             File );
+   fread( &mhd,                        sizeof(bool),                    1,             File );
 
 // reset parameters
    if ( FormatVersion < 2100 )   particle = false;
+   if ( FormatVersion < 2210 )   mhd      = false;
 
 
 // b. load the symbolic constants defined in "Macro.h, CUPOT.h, and CUFLU.h"
@@ -1072,6 +1074,13 @@ void Load_Parameter_After_2000( FILE *File, const int FormatVersion, bool &LoadP
    }
 #  endif
 
+// MHD is not supported yet
+   if ( mhd )
+   {
+      fprintf( stderr, "ERROR : MHD is NOT supported yet !!\n" );
+      exit( 1 );
+   }
+
    CompareVar( "MODEL",                   model,                  MODEL,                        Fatal );
    CompareVar( "NLEVEL",                  nlevel,                 NLEVEL,                       Fatal );
    CompareVar( "NCOMP_FLUID",             ncomp_fluid,            NCOMP_FLUID,                  Fatal );
@@ -1085,7 +1094,6 @@ void Load_Parameter_After_2000( FILE *File, const int FormatVersion, bool &LoadP
    LoadPot     = opt__output_pot;
    LoadPar     = particle;
    LoadParDens = opt__output_par_dens;
-   NParVarOut  = ( LoadPar ) ? 7+par_npassive : -1;   // mass, position x/y/z, velocity x/y/z, and passive variables
    BoxSize     = box_size;
    Gamma       = gamma;
    ELBDM_Eta   = elbdm_mass / elbdm_planck_const;
@@ -1102,6 +1110,14 @@ void Load_Parameter_After_2000( FILE *File, const int FormatVersion, bool &LoadP
    Unit_P      = unit_p;
    Mu          = molecular_weight;
    Comoving    = comoving;
+
+   if ( LoadPar )
+   {
+      if ( FormatVersion > 2131 )   NParVarOut = par_nvar;           // after version 2131, par_nvar = PAR_NATT_STORED
+      else                          NParVarOut = 7 + par_npassive;   // mass, position x/y/z, velocity x/y/z, and passive variables
+   }
+   else
+                                    NParVarOut = -1;
 
 } // FUNCTION : Load_Parameter_After_2000
 

@@ -120,8 +120,10 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
 #  pragma omp parallel
    {
       const real (*Fluid)[PS1][PS1][PS1] = NULL;
-      real (*Pres)[PS1][PS1]             = NULL;
       real (*Pot )[PS1][PS1]             = NULL;
+      real (*MagCC)[PS1][PS1][PS1]       = NULL;
+      real (*Vel)[PS1][PS1][PS1]         = NULL;
+      real (*Pres)[PS1][PS1]             = NULL;
       real (*Lohner_Var)                 = NULL;   // array storing the variables for Lohner
       real (*Lohner_Ave)                 = NULL;   // array storing the averages of Lohner_Var for Lohner
       real (*Lohner_Slope)               = NULL;   // array storing the slopes of Lohner_Var for Lohner
@@ -132,7 +134,12 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
       bool ProperNesting, NextPatch;
 
 #     if ( MODEL == HYDRO )
-      if ( OPT__FLAG_PRES_GRADIENT )   Pres = new real [PS1][PS1][PS1];
+#     ifdef MHD
+      if ( OPT__FLAG_CURRENT  ||
+           OPT__FLAG_PRES_GRADIENT )   MagCC = new real [3][PS1][PS1][PS1];
+#     endif
+      if ( OPT__FLAG_VORTICITY )       Vel   = new real [3][PS1][PS1][PS1];
+      if ( OPT__FLAG_PRES_GRADIENT )   Pres  = new real    [PS1][PS1][PS1];
 #     endif
 
 #     ifdef PARTICLE
@@ -207,8 +214,42 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
 #              endif
 
 
-//             evaluate pressure
 #              if ( MODEL == HYDRO )
+#              ifdef MHD
+//             evaluate cell-centered B field
+               if ( OPT__FLAG_CURRENT  ||  OPT__FLAG_PRES_GRADIENT )
+               {
+                  real MagCC_1Cell[NCOMP_MAG];
+
+                  for (int k=0; k<PS1; k++)
+                  for (int j=0; j<PS1; j++)
+                  for (int i=0; i<PS1; i++)
+                  {
+                     MHD_GetCellCenteredBFieldInPatch( MagCC_1Cell, lv, PID, i, j, k, amr->MagSg[lv] );
+
+                     for (int v=0; v<NCOMP_MAG; v++)  MagCC[v][k][j][i] = MagCC_1Cell[v];
+                  }
+               } // if ( OPT__FLAG_CURRENT  ||  OPT__FLAG_PRES_GRADIENT )
+#              endif // #ifdef MHD
+
+
+//             evaluate velocity
+               if ( OPT__FLAG_VORTICITY )
+               {
+                  for (int k=0; k<PS1; k++)
+                  for (int j=0; j<PS1; j++)
+                  for (int i=0; i<PS1; i++)
+                  {
+                     const real _Dens = (real)1.0 / Fluid[DENS][k][j][i];
+
+                     Vel[0][k][j][i] = Fluid[MOMX][k][j][i]*_Dens;
+                     Vel[1][k][j][i] = Fluid[MOMY][k][j][i]*_Dens;
+                     Vel[2][k][j][i] = Fluid[MOMZ][k][j][i]*_Dens;
+                  }
+               } // if ( OPT__FLAG_VORTICITY )
+
+
+//             evaluate pressure
                if ( OPT__FLAG_PRES_GRADIENT )
                {
                   const bool CheckMinPres_Yes = true;
@@ -224,8 +265,8 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
 #                    ifdef DUAL_ENERGY
 
 #                    if   ( DUAL_ENERGY == DE_ENPY )
-                     Pres[k][j][i] = CPU_DensEntropy2Pres( Fluid[DENS][k][j][i], Fluid[ENPY][k][j][i],
-                                                           Gamma_m1, CheckMinPres_Yes, MIN_PRES );
+                     Pres[k][j][i] = Hydro_DensEntropy2Pres( Fluid[DENS][k][j][i], Fluid[ENPY][k][j][i],
+                                                             Gamma_m1, CheckMinPres_Yes, MIN_PRES );
 #                    elif ( DUAL_ENERGY == DE_EINT )
 #                    error : DE_EINT is NOT supported yet !!
 #                    endif
@@ -233,14 +274,15 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
 #                    else // #ifdef DUAL_ENERGY
 
 #                    ifdef MHD
-                     const real EngyB = MHD_GetCellCenteredBEnergy( lv, PID, i, j, k, amr->MagSg[lv] );
+                     const real EngyB = (real)0.5*(  SQR( MagCC[MAGX][k][j][i] )
+                                                   + SQR( MagCC[MAGY][k][j][i] )
+                                                   + SQR( MagCC[MAGZ][k][j][i] )  );
 #                    else
                      const real EngyB = NULL_REAL;
 #                    endif
-                     Pres[k][j][i] = CPU_GetPressure( Fluid[DENS][k][j][i], Fluid[MOMX][k][j][i], Fluid[MOMY][k][j][i],
-                                                      Fluid[MOMZ][k][j][i], Fluid[ENGY][k][j][i],
-                                                      Gamma_m1, CheckMinPres_Yes, MIN_PRES, EngyB );
-
+                     Pres[k][j][i] = Hydro_GetPressure( Fluid[DENS][k][j][i], Fluid[MOMX][k][j][i], Fluid[MOMY][k][j][i],
+                                                        Fluid[MOMZ][k][j][i], Fluid[ENGY][k][j][i],
+                                                        Gamma_m1, CheckMinPres_Yes, MIN_PRES, EngyB );
 #                    endif // #ifdef DUAL_ENERGY ... else ...
                   } // k,j,i
                } // if ( OPT__FLAG_PRES_GRADIENT )
@@ -352,8 +394,9 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
                                              i_end   = ( i + FlagBuf >= PS1 ) ? 2 : 1;
 
 //                check if the target cell satisfies the refinement criteria (useless pointers are always == NULL)
-                  if (  lv < MAX_LEVEL  &&  Flag_Check( lv, PID, i, j, k, dv, Fluid, Pot, Pres, Lohner_Var+LocalID*Lohner_Stride,
-                                                        Lohner_Ave, Lohner_Slope, Lohner_NVar, ParCount, ParDens, JeansCoeff )  )
+                  if (  lv < MAX_LEVEL  &&  Flag_Check( lv, PID, i, j, k, dv, Fluid, Pot, MagCC, Vel, Pres,
+                                                        Lohner_Var+LocalID*Lohner_Stride, Lohner_Ave, Lohner_Slope, Lohner_NVar,
+                                                        ParCount, ParDens, JeansCoeff )  )
                   {
 //                   flag itself
                      amr->patch[0][lv][PID]->flag = true;
@@ -440,9 +483,11 @@ void Flag_Real( const int lv, const UseLBFunc_t UseLBFunc )
       } // for (int PID0=0; PID0<amr->NPatchComma[lv][1]; PID0+=8)
 
 
-      if ( Pres     != NULL )    delete [] Pres;
-      if ( ParCount != NULL )    delete [] ParCount;
-      if ( ParDens  != NULL )    delete [] ParDens;
+      delete [] MagCC;
+      delete [] Vel;
+      delete [] Pres;
+      delete [] ParCount;
+      delete [] ParDens;
 
       if ( Lohner_NVar > 0 )
       {

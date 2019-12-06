@@ -171,6 +171,10 @@ void Aux_Check_Parameter()
 
 #  if ( MODEL != HYDRO )
    for (int f=0; f<6; f++)
+      if ( OPT__BC_FLU[f] == BC_FLU_OUTFLOW )
+         Aux_Error( ERROR_INFO, "outflow boundary condition (OPT__BC_FLU=2) only works with HYDRO !!\n" );
+
+   for (int f=0; f<6; f++)
       if ( OPT__BC_FLU[f] == BC_FLU_REFLECTING )
          Aux_Error( ERROR_INFO, "reflecting boundary condition (OPT__BC_FLU=3) only works with HYDRO !!\n" );
 #  endif
@@ -293,6 +297,9 @@ void Aux_Check_Parameter()
    Flag |= OPT__FLAG_LOHNER_ENGY;
    Flag |= OPT__FLAG_LOHNER_PRES;
    Flag |= OPT__FLAG_LOHNER_TEMP;
+#  ifdef MHD
+   Flag |= OPT__FLAG_CURRENT;
+#  endif
 #  endif
 #  if ( MODEL == ELBDM )
    Flag |= OPT__FLAG_ENGY_DENSITY;
@@ -486,6 +493,11 @@ void Aux_Check_Parameter()
       Aux_Error( ERROR_INFO, "FLU_GPU_NPGROUP (%d) %%GPU_NSTREAM (%d) != 0 !!\n",
                  FLU_GPU_NPGROUP, GPU_NSTREAM );
 
+#  ifdef OPENMP
+   if ( FLU_GPU_NPGROUP < OMP_NTHREAD )
+      Aux_Error( ERROR_INFO, "FLU_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", FLU_GPU_NPGROUP, OMP_NTHREAD );
+#  endif
+
    if ( OPT__FIXUP_FLUX  &&  !amr->WithFlux )
       Aux_Error( ERROR_INFO, "%s is enabled but amr->WithFlux is off !!\n", "OPT__FIXUP_FLUX" );
 
@@ -538,50 +550,70 @@ void Aux_Check_Parameter()
 #     error : ERROR : NCOMP_TOTAL != NFLUX_TOTAL !!
 #  endif
 
-#  if (  NCOMP_PASSIVE != 0  &&  ( FLU_SCHEME == RTVD || FLU_SCHEME == WAF )  )
-#     error : RTVD and WAF schemes do NOT support passive scalars !!
+#  if ( NCOMP_PASSIVE != 0  &&  FLU_SCHEME == RTVD )
+#     error : RTVD does NOT support passive scalars !!
 #  endif
 
-#  if ( FLU_SCHEME != RTVD  &&  FLU_SCHEME != MHM  &&  FLU_SCHEME != MHM_RP  &&  FLU_SCHEME != CTU  &&  \
-        FLU_SCHEME != WAF )
+#  if ( FLU_SCHEME != RTVD  &&  FLU_SCHEME != MHM  &&  FLU_SCHEME != MHM_RP  &&  FLU_SCHEME != CTU )
 #     error : ERROR : unsupported hydro scheme in the makefile !!
 #  endif
 
-#  if (  defined UNSPLIT_GRAVITY  &&  ( FLU_SCHEME == RTVD || FLU_SCHEME == WAF )  )
-#     error : ERROR : RTVD and WAF do not support UNSPLIT_GRAVITY !!
+#  if ( defined UNSPLIT_GRAVITY  &&  FLU_SCHEME == RTVD )
+#     error : ERROR : RTVD does not support UNSPLIT_GRAVITY !!
 #  endif
 
 #  if ( defined LR_SCHEME  &&  LR_SCHEME != PLM  &&  LR_SCHEME != PPM )
 #     error : ERROR : unsupported data reconstruction scheme (PLM/PPM) !!
 #  endif
 
-#  if ( defined RSOLVER  &&  RSOLVER != EXACT  &&  RSOLVER != ROE  &&  RSOLVER != HLLE  &&  RSOLVER != HLLC )
+#  ifdef MHD
+#   if ( defined RSOLVER  &&  RSOLVER != ROE  &&  RSOLVER != HLLE  &&  RSOLVER != HLLD )
+#     error : ERROR : unsupported Riemann solver for MHD (ROE/HLLE/HLLD) !!
+#   endif
+#  else
+#   if ( defined RSOLVER  &&  RSOLVER != EXACT  &&  RSOLVER != ROE  &&  RSOLVER != HLLE  &&  RSOLVER != HLLC )
 #     error : ERROR : unsupported Riemann solver (EXACT/ROE/HLLE/HLLC) !!
-#  endif
+#   endif
+#  endif // MHD
 
 #  ifdef DUAL_ENERGY
-#  if ( FLU_SCHEME == RTVD  ||  FLU_SCHEME == WAF )
-#     error : RTVD and WAF schemes do NOT support DUAL_ENERGY !!
-#  endif
+#   if ( FLU_SCHEME == RTVD )
+#     error : RTVD does NOT support DUAL_ENERGY !!
+#   endif
 
-#  if ( DUAL_ENERGY != DE_ENPY )
+#   if ( DUAL_ENERGY != DE_ENPY )
 #     error : ERROR : unsupported dual-energy formalism (DE_ENPY only, DE_EINT is not supported yet) !!
-#  endif
+#   endif
 #  endif // #ifdef DUAL_ENERGY
 
-#  if ( defined CHECK_INTERMEDIATE  &&  CHECK_INTERMEDIATE != EXACT  &&  CHECK_INTERMEDIATE != HLLE  &&  \
+#  ifdef MHD
+#   if ( defined CHECK_INTERMEDIATE  &&  CHECK_INTERMEDIATE != HLLE  &&  CHECK_INTERMEDIATE != HLLD )
+#     error : ERROR : unsupported option in CHECK_INTERMEDIATE (HLLE/HLLD) !!
+#   endif
+#  else
+#   if ( defined CHECK_INTERMEDIATE  &&  CHECK_INTERMEDIATE != EXACT  &&  CHECK_INTERMEDIATE != HLLE  &&  \
         CHECK_INTERMEDIATE != HLLC )
 #     error : ERROR : unsupported option in CHECK_INTERMEDIATE (EXACT/HLLE/HLLC) !!
-#  endif
+#   endif
+#  endif // MHD
 
    if ( OPT__1ST_FLUX_CORR != FIRST_FLUX_CORR_NONE )
    {
+#     ifdef MHD
+      /*
+      if ( OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_ROE  &&  OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_HLLD  &&
+           OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_HLLE )
+         Aux_Error( ERROR_INFO, "unsupported parameter \"%s = %d\" !!\n", "OPT__1ST_FLUX_CORR_SCHEME", OPT__1ST_FLUX_CORR_SCHEME );
+         */
+      Aux_Error( ERROR_INFO, "MHD does not support \"OPT__1ST_FLUX_CORR\" !!\n" );
+#     else
       if ( OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_ROE  &&  OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_HLLC  &&
            OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_HLLE )
          Aux_Error( ERROR_INFO, "unsupported parameter \"%s = %d\" !!\n", "OPT__1ST_FLUX_CORR_SCHEME", OPT__1ST_FLUX_CORR_SCHEME );
+#     endif
 
-#     if ( FLU_SCHEME == RTVD  ||  FLU_SCHEME == WAF )
-         Aux_Error( ERROR_INFO, "RTVD and WAF fluid schemes do not support \"OPT__1ST_FLUX_CORR\" !!\n" );
+#     if ( FLU_SCHEME == RTVD )
+         Aux_Error( ERROR_INFO, "RTVD does not support \"OPT__1ST_FLUX_CORR\" !!\n" );
 #     endif
    }
 
@@ -595,9 +627,9 @@ void Aux_Check_Parameter()
    else if ( MPI_Rank == 0 )
       Aux_Message( stderr, "WARNING : MIN_PRES (%13.7e) is on --> please ensure that this value is reasonable !!\n", MIN_PRES );
 
-#  if ( FLU_SCHEME == RTVD  ||  FLU_SCHEME == WAF )
+#  if ( FLU_SCHEME == RTVD )
    if ( JEANS_MIN_PRES )
-      Aux_Error( ERROR_INFO, "RTVD and WAF fluid schemes do not support \"JEANS_MIN_PRES\" !!\n" );
+      Aux_Error( ERROR_INFO, "RTVD does not support \"JEANS_MIN_PRES\" !!\n" );
 #  endif
 
 
@@ -627,20 +659,13 @@ void Aux_Check_Parameter()
       Aux_Message( stderr, "WARNING : %s is useless since %s is off !!\n", "OPT__CK_FLUX_ALLOCATE", "OPT__FIXUP_FLUX" );
 
    if ( OPT__INIT == INIT_BY_FILE )
-   {
       Aux_Message( stderr, "WARNING : currently we don't check MIN_DENS/PRES for the initial data loaded from UM_IC !!\n" );
-
-#     ifdef DUAL_ENERGY
-      Aux_Message( stderr, "REMINDER : when adopting DUAL_ENERGY and OPT__INIT=3, store the gas entropy\n"
-                           "           as the last variable in the file \"UM_IC\"\n" );
-#     endif
-   }
 
    if ( OPT__1ST_FLUX_CORR != FIRST_FLUX_CORR_NONE )
       Aux_Message( stderr, "REMINDER : OPT__1ST_FLUX_CORR may break the strict conservation of fluid variables\n" );
 
 #  ifdef SUPPORT_GRACKLE
-   if (  GRACKLE_MODE != GRACKLE_MODE_NONE  &&  OPT__FLAG_LOHNER_TEMP )
+   if ( GRACKLE_ACTIVATE && OPT__FLAG_LOHNER_TEMP )
       Aux_Message( stderr, "WARNING : currently we do not use Grackle to calculate temperature for OPT__FLAG_LOHNER_TEMP !!\n" );
 #  endif
 
@@ -744,24 +769,6 @@ void Aux_Check_Parameter()
 #  endif // #if ( FLU_SCHEME == MHM_RP )
 
 
-// check for WAF
-// ------------------------------
-#  if ( FLU_SCHEME == WAF )
-
-#  if ( RSOLVER == HLLE  ||  RSOLVER == HLLC )
-#     error : ERROR : currently the WAF scheme does not support HLLE/HLLC Riemann solvers
-#  endif
-
-#  if ( FLU_GHOST_SIZE != 2 )
-#     error : ERROR : please set FLU_GHOST_SIZE = 2 for the WAF scheme !!
-#  endif
-
-   if ( OPT__WAF_LIMITER != WAF_SUPERBEE  &&  OPT__WAF_LIMITER != WAF_VANLEER  &&
-        OPT__WAF_LIMITER != WAF_ALBADA    &&  OPT__WAF_LIMITER != WAF_MINBEE      )
-      Aux_Error( ERROR_INFO, "unsupported WAF flux limiter (%d) !!\n", OPT__WAF_LIMITER );
-#  endif // if ( FLU_SCHEME == WAF )
-
-
 // check for RTVD
 // ------------------------------
 #  if ( FLU_SCHEME == RTVD )
@@ -777,6 +784,14 @@ void Aux_Check_Parameter()
 // ------------------------------
 #  ifdef MHD
 
+#  if ( !defined SERIAL  &&  !defined LOAD_BALANCE )
+#     error : ERROR : MHD must work with either SERIAL or LOAD_BALANCE !!
+#  endif
+
+#  if ( FLU_SCHEME != MHM_RP  &&  FLU_SCHEME != CTU )
+#     error : ERROR : unsupported MHD scheme in the makefile (MHM_RP/CTU) !!
+#  endif
+
    if ( OPT__MAG_INT_SCHEME != INT_MINMOD1D  &&  OPT__MAG_INT_SCHEME != INT_VANLEER  &&
         OPT__MAG_INT_SCHEME != INT_CQUAD  &&  OPT__MAG_INT_SCHEME != INT_CQUAR )
       Aux_Error( ERROR_INFO, "unsupported interpolation scheme \"%s = %d\" (2,3,4,6 only) !!\n",
@@ -786,6 +801,21 @@ void Aux_Check_Parameter()
         OPT__REF_MAG_INT_SCHEME != INT_CQUAD  &&  OPT__REF_MAG_INT_SCHEME != INT_CQUAR )
       Aux_Error( ERROR_INFO, "unsupported interpolation scheme \"%s = %d\" (2,3,4,6 only) !!\n",
                  "OPT__REF_MAG_INT_SCHEME", OPT__REF_MAG_INT_SCHEME );
+
+   if ( OPT__FIXUP_ELECTRIC  &&  !amr->WithElectric )
+      Aux_Error( ERROR_INFO, "%s is enabled but amr->Electric is off !!\n", "OPT__FIXUP_ELECTRIC" );
+
+   if ( OPT__OVERLAP_MPI )
+      Aux_Error( ERROR_INFO, "\"OPT__OVERLAP_MPI\" is NOT supported for MHD !!\n" );
+
+   if ( !OPT__FIXUP_RESTRICT )
+      Aux_Message( stderr, "WARNING : disabling \"OPT__FIXUP_RESTRICT\" in MHD will break the divergence-free constraint !!\n" );
+
+   if ( !OPT__FIXUP_ELECTRIC )
+      Aux_Message( stderr, "WARNING : disabling \"OPT__FIXUP_ELECTRIC\" in MHD will break the divergence-free constraint !!\n" );
+
+   if ( !OPT__OUTPUT_CC_MAG )
+      Aux_Message( stderr, "WARNING : yt requires \"OPT__OUTPUT_CC_MAG\" for analyzing magnetic field !!\n" );
 
 #  endif // #ifdef MHD
 
@@ -975,6 +1005,11 @@ void Aux_Check_Parameter()
       Aux_Error( ERROR_INFO, "POT_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
                  POT_GPU_NPGROUP, GPU_NSTREAM );
 
+#  ifdef OPENMP
+   if ( POT_GPU_NPGROUP < OMP_NTHREAD )
+      Aux_Error( ERROR_INFO, "POT_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", POT_GPU_NPGROUP, OMP_NTHREAD );
+#  endif
+
 #  if ( NLEVEL > 1 )
    int Trash_RefPot, NGhost_RefPot;
    Int_Table( OPT__REF_POT_INT_SCHEME, Trash_RefPot, NGhost_RefPot );
@@ -1041,9 +1076,9 @@ void Aux_Check_Parameter()
                  "OPT__GRA_P5_GRADIENT", "GRA_GHOST_SIZE == 2" );
 
 #  ifdef UNSPLIT_GRAVITY
-   if ( OPT__GRA_P5_GRADIENT &&  USG_GHOST_SIZE == 1 )
+   if ( OPT__GRA_P5_GRADIENT &&  USG_GHOST_SIZE_G == 1 )
       Aux_Error( ERROR_INFO, "\"%s\" requires \"%s\" for UNSPLIT_GRAVITY !!\n",
-                 "OPT__GRA_P5_GRADIENT", "USG_GHOST_SIZE == 2" );
+                 "OPT__GRA_P5_GRADIENT", "USG_GHOST_SIZE_G == 2" );
 #  endif
 
    if ( OPT__EXTERNAL_POT )   Aux_Error( ERROR_INFO, "OPT__EXTERNAL_POT is NOT supported in HYDRO --> use external gravity !!\n" );
@@ -1198,6 +1233,11 @@ void Aux_Check_Parameter()
       Aux_Error( ERROR_INFO, "CHE_GPU_NPGROUP (%d) %% GPU_NSTREAM (%d) != 0 !!\n",
                  CHE_GPU_NPGROUP, GPU_NSTREAM );
                  */
+
+#  ifdef OPENMP
+   if ( CHE_GPU_NPGROUP < OMP_NTHREAD )
+      Aux_Error( ERROR_INFO, "CHE_GPU_NPGROUP (%d) < OMP_NTHREAD (%d) !!\n", CHE_GPU_NPGROUP, OMP_NTHREAD );
+#  endif
 
 // warning
 // ------------------------------

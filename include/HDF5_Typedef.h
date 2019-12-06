@@ -54,12 +54,15 @@ struct KeyInfo_t
    int    BoxScale[3];
    int    NPatch   [NLEVEL];
    int    CellScale[NLEVEL];        // amr->scale[lv]
+#  if ( MODEL == HYDRO )
+   int    Magnetohydrodynamics;
+#  endif
 
    long   Step;
    long   AdvanceCounter[NLEVEL];
 #  ifdef PARTICLE
    long   Par_NPar;                 // amr->Par->NPar_Active_AllRank
-   int    Par_NPassive;             // PAR_NPASSIVE
+   int    Par_NAttStored;           // PAR_NATT_STORED
 #  endif
 
    double BoxSize[3];
@@ -125,9 +128,7 @@ struct Makefile_t
    int RSolver;
 #  endif
    int DualEnergy;
-#  ifdef MHD
-#  warning : WAIT MHD !!!
-#  endif
+   int Magnetohydrodynamics;
 
 #  elif ( MODEL == ELBDM )
    int ConserveMass;
@@ -141,7 +142,7 @@ struct Makefile_t
 #  ifdef PARTICLE
    int StoreParAcc;
    int StarFormation;
-   int Par_NPassive;
+   int Par_NAttUser;
 #  endif
 
 }; // struct Makefile_t
@@ -187,12 +188,13 @@ struct SymConst_t
    int    Rho_Nxt;
 
 #  ifdef UNSPLIT_GRAVITY
-   int    USG_GhostSize;
+   int    USG_GhostSizeF;
+   int    USG_GhostSizeG;
    int    USG_NxtF;
    int    USG_NxtG;
 #  endif
 
-   int    Gra_BlockSize_z;
+   int    Gra_BlockSize;
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
 
@@ -212,13 +214,19 @@ struct SymConst_t
 
 
 #  ifdef PARTICLE
-   int    Par_NVar;
+   int    Par_NAttStored;
    int    RhoExt_GhostSize;
 
    int    Debug_Particle;
 
    double ParList_GrowthFactor;
    double ParList_ReduceFactor;
+#  endif
+
+
+   int    BitRep_Flux;
+#  ifdef MHD
+   int    BitRep_Electric;
 #  endif
 
 
@@ -230,7 +238,6 @@ struct SymConst_t
    int    CheckIntermediate;
    int    HLL_NoRefState;
    int    HLL_IncludeAllWaves;
-   int    WAF_Dissipate;
 #  ifdef N_FC_VAR
    int    N_FC_Var;
 #  endif
@@ -241,7 +248,7 @@ struct SymConst_t
    double MaxError;
 #  endif
 #  ifdef MHD
-#  warning : WAIT MHD !!!
+   int    EulerY;
 #  endif
 
 #  elif  ( MODEL == ELBDM )
@@ -255,7 +262,7 @@ struct SymConst_t
    int    dt_Flu_BlockSize;
    int    dt_Flu_UseShuffle;
 #  ifdef GRAVITY
-   int    dt_Gra_BlockSize_z;
+   int    dt_Gra_BlockSize;
    int    dt_Gra_UseShuffle;
 #  endif
 
@@ -294,6 +301,9 @@ struct InputPara_t
    double Unit_D;
    double Unit_E;
    double Unit_P;
+#  ifdef MHD
+   double Unit_B;
+#  endif
 
 // boundary condition
    int    Opt__BC_Flu[6];
@@ -305,13 +315,15 @@ struct InputPara_t
 // particle
 #  ifdef PARTICLE
    int    Par_Init;
+   int    Par_ICFormat;
+   double Par_ICMass;
    int    Par_Interp;
    int    Par_Integ;
    int    Par_ImproveAcc;
    int    Par_PredictPos;
    double Par_RemoveCell;
    int    Par_GhostSize;
-   char  *PassiveFieldName_Par[PAR_NPASSIVE];
+   char  *ParAttLabel[PAR_NATT_TOTAL];
 #  endif
 
 // cosmology
@@ -359,6 +371,9 @@ struct InputPara_t
    int    Opt__Flag_PresGradient;
    int    Opt__Flag_Vorticity;
    int    Opt__Flag_Jeans;
+#  ifdef MHD
+   int    Opt__Flag_Current;
+#  endif
 #  endif
 #  if ( MODEL == ELBDM )
    int    Opt__Flag_EngyDensity;
@@ -400,9 +415,7 @@ struct InputPara_t
    double Gamma;
    double MolecularWeight;
    double MinMod_Coeff;
-   double EP_Coeff;
    int    Opt__LR_Limiter;
-   int    Opt__WAF_Limiter;
    int    Opt__1stFluxCorr;
    int    Opt__1stFluxCorrScheme;
 #  endif
@@ -422,12 +435,18 @@ struct InputPara_t
    int    Flu_GPU_NPGroup;
    int    GPU_NStream;
    int    Opt__FixUp_Flux;
+#  ifdef MHD
+   int    Opt__FixUp_Electric;
+#  endif
    int    Opt__FixUp_Restrict;
    int    Opt__CorrAfterAllSync;
    int    Opt__NormalizePassive;
    int    NormalizePassive_NVar;
    int    NormalizePassive_VarIdx[NCOMP_PASSIVE];
-   char  *PassiveFieldName_Grid[NCOMP_PASSIVE];
+   char  *FieldLabel[NCOMP_TOTAL];
+#  ifdef MHD
+   char  *MagLabel[NCOMP_MAG];
+#  endif
    int    Opt__OverlapMPI;
    int    Opt__ResetFluid;
 #  if ( MODEL == HYDRO  ||  MODEL == ELBDM )
@@ -460,11 +479,12 @@ struct InputPara_t
    int    Opt__GraP5Gradient;
    int    Opt__GravityType;
    int    Opt__ExternalPot;
+   int    Opt__GravityExtraMass;
 #  endif
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
-   int    Grackle_Mode;
+   int    Grackle_Activate;
    int    Grackle_Verbose;
    int    Grackle_Cooling;
    int    Grackle_Primordial;
@@ -495,6 +515,7 @@ struct InputPara_t
    int    Opt__RestartReset;
    int    Opt__UM_IC_Level;
    int    Opt__UM_IC_NVar;
+   int    Opt__UM_IC_Format;
    int    Opt__UM_IC_Downgrade;
    int    Opt__UM_IC_Refine;
    int    Opt__UM_IC_LoadNRank;
@@ -502,6 +523,9 @@ struct InputPara_t
    int    Opt__InitGridWithOMP;
    int    Opt__GPUID_Select;
    int    Init_Subsampling_NCell;
+#  ifdef MHD
+   int    Opt__InitBFieldByFile;
+#  endif
 
 // interpolation schemes
    int    Opt__Int_Time;
@@ -531,6 +555,9 @@ struct InputPara_t
 #  endif
    int    Opt__Output_BasePS;
    int    Opt__Output_Base;
+#  ifdef MHD
+   int    Opt__Output_CC_Mag;
+#  endif
 #  ifdef GRAVITY
    int    Opt__Output_Pot;
 #  endif
@@ -550,6 +577,8 @@ struct InputPara_t
    int    Opt__TimingBarrier;
    int    Opt__TimingBalance;
    int    Opt__TimingMPI;
+   int    Opt__RecordNote;
+   int    Opt__RecordUnphy;
    int    Opt__RecordMemory;
    int    Opt__RecordPerformance;
    int    Opt__ManualControl;
@@ -572,6 +601,10 @@ struct InputPara_t
 #  ifdef PARTICLE
    int    Opt__Ck_Particle;
 #  endif
+#  ifdef MHD
+   int    Opt__Ck_InterfaceB;
+   int    Opt__Ck_DivergenceB;
+#  endif
 
 // flag tables
    double FlagTable_Rho         [NLEVEL-1];
@@ -582,6 +615,9 @@ struct InputPara_t
    double FlagTable_PresGradient[NLEVEL-1];
    double FlagTable_Vorticity   [NLEVEL-1];
    double FlagTable_Jeans       [NLEVEL-1];
+#  ifdef MHD
+   double FlagTable_Current     [NLEVEL-1];
+#  endif
 #  elif ( MODEL == ELBDM )
    double FlagTable_EngyDensity [NLEVEL-1][2];
 #  endif

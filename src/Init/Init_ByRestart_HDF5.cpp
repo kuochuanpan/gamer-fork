@@ -12,13 +12,15 @@ template <typename T>
 static herr_t LoadField( const char *FieldName, void *FieldPtr, const hid_t H5_SetID_Target,
                          const hid_t H5_TypeID_Target, const bool Fatal_Nonexist,
                          const T *ComprPtr, const int NCompr, const bool Fatal_Compr );
-static void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const bool Recursive, const int *SonList,
-                          const int (*CrList)[3], const hid_t *H5_SetID_Field, const hid_t H5_SpaceID_Field, const hid_t H5_MemID_Field,
+static void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const bool Recursive,
+                          const int *SonList, const int (*CrList)[3],
+                          const hid_t *H5_SetID_Field, const hid_t H5_SpaceID_Field, const hid_t H5_MemID_Field,
+                          const hid_t *H5_SetID_FCMag, const hid_t *H5_SpaceID_FCMag, const hid_t *H5_MemID_FCMag,
                           const int *NParList, real **ParBuf, long *NewParList, const hid_t *H5_SetID_ParData,
                           const hid_t H5_SpaceID_ParData, const long *GParID_Offset, const long NParThisRank );
-static void Check_Makefile ( const char *FileName );
-static void Check_SymConst ( const char *FileName );
-static void Check_InputPara( const char *FileName );
+static void Check_Makefile ( const char *FileName, const int FormatVersion );
+static void Check_SymConst ( const char *FileName, const int FormatVersion );
+static void Check_InputPara( const char *FileName, const int FormatVersion );
 static void ResetParameter( const char *FileName, double *EndT, long *EndStep );
 
 
@@ -60,22 +62,29 @@ void Init_ByRestart_HDF5( const char *FileName )
 // 1. load the simulation info
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Loading simulation information ...\n" );
 
-   const bool    Fatal     = true;
-   const bool NonFatal     = false;
-   const int  Model        = MODEL;
-   const int  NCompFluid   = NCOMP_FLUID;
-   const int  NCompPassive = NCOMP_PASSIVE;
-   const int  PatchSize    = PATCH_SIZE;
+   const bool    Fatal             = true;
+   const bool NonFatal             = false;
+   const int  Model                = MODEL;
+   const int  NCompFluid           = NCOMP_FLUID;
+   const int  NCompPassive         = NCOMP_PASSIVE;
+   const int  PatchSize            = PS1;
 #  ifdef GRAVITY
-   const int  Gravity      = 1;
+   const int  Gravity              = 1;
 #  else
-   const int  Gravity      = 0;
+   const int  Gravity              = 0;
 #  endif
 #  ifdef PARTICLE
-   const int  Particle     = 1;
-   const int  Par_NPassive = PAR_NPASSIVE;
+   const int  Particle             = 1;
+   const int  Par_NAttStored       = PAR_NATT_STORED;
 #  else
-   const int  Particle     = 0;
+   const int  Particle             = 0;
+#  endif
+#  if ( MODEL == HYDRO )
+#  ifdef MHD
+   const int  Magnetohydrodynamics = 1;
+#  else
+   const int  Magnetohydrodynamics = 0;
+#  endif
 #  endif
 
    KeyInfo_t KeyInfo;
@@ -122,6 +131,14 @@ void Init_ByRestart_HDF5( const char *FileName )
       if ( KeyInfo.FormatVersion < 2200 )
          Aux_Error( ERROR_INFO, "unsupported data format version for PARTICLE (only support version >= 2200) !!\n" );
 #     endif
+
+      if ( KeyInfo.FormatVersion < 2300 )
+         Aux_Message( stderr, "WARNING : loading user-defined fields or particle attributes from version < 2300 will likely fail !!\n" );
+
+#     ifdef MHD
+      if ( KeyInfo.FormatVersion < 2400 )
+         Aux_Error( ERROR_INFO, "unsupported data format version for MHD (only support version >= 2400) !!\n" );
+#     endif
    }
 
    MPI_Barrier( MPI_COMM_WORLD );
@@ -148,29 +165,36 @@ void Init_ByRestart_HDF5( const char *FileName )
 
    MPI_Barrier( MPI_COMM_WORLD );
 
-   LoadField( "DumpID",         &KeyInfo.DumpID,         H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "NX0",             KeyInfo.NX0,            H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NX0_TOT,       3,    Fatal );
-   LoadField( "BoxScale",        KeyInfo.BoxScale,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "NPatch",          KeyInfo.NPatch,         H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "CellScale",       KeyInfo.CellScale,      H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
+   LoadField( "DumpID",               &KeyInfo.DumpID,               H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "NX0",                   KeyInfo.NX0,                  H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NX0_TOT,               3,    Fatal );
+   LoadField( "BoxScale",              KeyInfo.BoxScale,             H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "NPatch",                KeyInfo.NPatch,               H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "CellScale",             KeyInfo.CellScale,            H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+#  if ( MODEL == HYDRO )
+   if ( KeyInfo.FormatVersion >= 2400 )
+   LoadField( "Magnetohydrodynamics", &KeyInfo.Magnetohydrodynamics, H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal, &Magnetohydrodynamics,  1,    Fatal );
+#  endif
 
-   LoadField( "Step",           &KeyInfo.Step,           H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "AdvanceCounter",  KeyInfo.AdvanceCounter, H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
+   LoadField( "Step",                 &KeyInfo.Step,                 H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "AdvanceCounter",        KeyInfo.AdvanceCounter,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
 #  ifdef PARTICLE
-   LoadField( "Par_NPar",       &KeyInfo.Par_NPar,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "Par_NPassive",   &KeyInfo.Par_NPassive,   H5_SetID_KeyInfo, H5_TypeID_KeyInfo, NonFatal, &Par_NPassive,  1,    Fatal );
+   LoadField( "Par_NPar",             &KeyInfo.Par_NPar,             H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   if ( KeyInfo.FormatVersion >= 2300 )
+   LoadField( "Par_NAttStored",       &KeyInfo.Par_NAttStored,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo, NonFatal, &Par_NAttStored,        1,    Fatal );
+   else
+   LoadField( "Par_NAttStored",       &KeyInfo.Par_NAttStored,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo, NonFatal, &Par_NAttStored,        1, NonFatal );
 #  endif
 
-   LoadField( "BoxSize",         KeyInfo.BoxSize,        H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  amr->BoxSize,  3,    Fatal );
-   LoadField( "Time",            KeyInfo.Time,           H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "CellSize",        KeyInfo.CellSize,       H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "dTime_AllLv",     KeyInfo.dTime_AllLv,    H5_SetID_KeyInfo, H5_TypeID_KeyInfo, NonFatal,  NullPtr,      -1, NonFatal );
+   LoadField( "BoxSize",               KeyInfo.BoxSize,              H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  amr->BoxSize,          3,    Fatal );
+   LoadField( "Time",                  KeyInfo.Time,                 H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "CellSize",              KeyInfo.CellSize,             H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "dTime_AllLv",           KeyInfo.dTime_AllLv,          H5_SetID_KeyInfo, H5_TypeID_KeyInfo, NonFatal,  NullPtr,              -1, NonFatal );
 #  ifdef GRAVITY
-   LoadField( "AveDens_Init",   &KeyInfo.AveDens_Init,   H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
+   LoadField( "AveDens_Init",         &KeyInfo.AveDens_Init,         H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
 #  endif
 
-   LoadField( "CodeVersion",    &KeyInfo.CodeVersion,    H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
-   LoadField( "DumpWallTime",   &KeyInfo.DumpWallTime,   H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,      -1, NonFatal );
+   LoadField( "CodeVersion",          &KeyInfo.CodeVersion,          H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
+   LoadField( "DumpWallTime",         &KeyInfo.DumpWallTime,         H5_SetID_KeyInfo, H5_TypeID_KeyInfo,    Fatal,  NullPtr,              -1, NonFatal );
 
 
 // 1-4. close all objects
@@ -219,7 +243,7 @@ void Init_ByRestart_HDF5( const char *FileName )
    }
 
 
-// 1-7. set Flu(Pot)SgTime
+// 1-7. set SgTime
    for (int lv=0; lv<NLEVEL; lv++)
    {
       amr->FluSgTime[lv][ amr->FluSg[lv] ] = Time[lv];
@@ -246,9 +270,9 @@ void Init_ByRestart_HDF5( const char *FileName )
 // 1-10. check all other simulation information (by rank 0 only)
    if ( MPI_Rank == 0 )
    {
-      Check_Makefile ( FileName );
-      Check_SymConst ( FileName );
-      Check_InputPara( FileName );
+      Check_Makefile ( FileName, KeyInfo.FormatVersion );
+      Check_SymConst ( FileName, KeyInfo.FormatVersion );
+      Check_InputPara( FileName, KeyInfo.FormatVersion );
    }
 
 
@@ -503,7 +527,7 @@ void Init_ByRestart_HDF5( const char *FileName )
 
 // reset the total number of particles to be zero
 // --> so particle repository is pre-allocated, but it contains no active particle yet
-// --> particles will be added later by calling Par->AddOneParticle
+// --> particles will be added later by calling Par->AddOneParticle()
    amr->Par->NPar_AcPlusInac = 0;
    amr->Par->NPar_Active     = 0;
 
@@ -522,8 +546,6 @@ void Init_ByRestart_HDF5( const char *FileName )
 
 
 // 2-5-4. get the maximum number of particles in one patch and allocate an I/O buffer accordingly
-   const int NParVar = 7 + PAR_NPASSIVE;  // particle mass, position x/y/z, velocity x/y/z, and passive variables
-
    long MaxNParInOnePatch = 0;
    long *NewParList       = NULL;
    real **ParBuf          = NULL;
@@ -533,8 +555,8 @@ void Init_ByRestart_HDF5( const char *FileName )
    NewParList = new long [MaxNParInOnePatch];
 
 // be careful about using ParBuf returned from Aux_AllocateArray2D, which is set to NULL if MaxNParInOnePatch == 0
-// --> for example, accessing ParBuf[0...NParVar-1] will be illegal when MaxNParInOnePatch == 0
-   Aux_AllocateArray2D( ParBuf, NParVar, MaxNParInOnePatch );
+// --> for example, accessing ParBuf[0...PAR_NATT_STORED-1] will be illegal when MaxNParInOnePatch == 0
+   Aux_AllocateArray2D( ParBuf, PAR_NATT_STORED, MaxNParInOnePatch );
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Initializing particle repository ... done\n" );
 #  endif // #ifdef PARTICLE
@@ -551,19 +573,25 @@ void Init_ByRestart_HDF5( const char *FileName )
    int  TRange_Min[3], TRange_Max[3];
 #  endif
 
-   char (*FieldName)[100] = new char [NCOMP_TOTAL][100];
-
+   char (*FieldName)[MAX_STRING] = new char [NCOMP_TOTAL][MAX_STRING];
    hsize_t H5_SetDims_Field[4], H5_MemDims_Field[4];
    hid_t   H5_SetID_Field[NCOMP_TOTAL], H5_MemID_Field, H5_SpaceID_Field, H5_GroupID_GridData;
 
-#  ifdef PARTICLE
-   char (*ParVarName)[100] = new char [NParVar][100];
-
-   hsize_t  H5_SetDims_ParData[1];
-   hid_t    H5_SetID_ParData[NParVar], H5_SpaceID_ParData, H5_GroupID_Particle;
-
+#  ifdef MHD
+   char (*FCMagName)[MAX_STRING] = new char [NCOMP_MAG][MAX_STRING];
+   hsize_t H5_SetDims_FCMag[4], H5_MemDims_FCMag[4];
+   hid_t   H5_SetID_FCMag[NCOMP_MAG], H5_MemID_FCMag[NCOMP_MAG], H5_SpaceID_FCMag[NCOMP_MAG];
 #  else
+   hid_t *H5_SetID_FCMag   = NULL;
+   hid_t *H5_MemID_FCMag   = NULL;
+   hid_t *H5_SpaceID_FCMag = NULL;
+#  endif // #ifdef MHD ... else ...
 
+#  ifdef PARTICLE
+   char (*ParAttName)[MAX_STRING] = new char [PAR_NATT_STORED][MAX_STRING];
+   hsize_t H5_SetDims_ParData[1];
+   hid_t   H5_SetID_ParData[PAR_NATT_STORED], H5_SpaceID_ParData, H5_GroupID_Particle;
+#  else
 // define useless variables when PARTICLE is off
    int   *NParList_AllLv     = NULL;
    real **ParBuf             = NULL;
@@ -575,58 +603,56 @@ void Init_ByRestart_HDF5( const char *FileName )
 #  endif // #ifdef PARTICLE ... else ...
 
 
-// 3-1. set the names of all grid variables and particle attributes
-#  if   ( MODEL == HYDRO )
-   sprintf( FieldName[DENS], "Dens" );
-   sprintf( FieldName[MOMX], "MomX" );
-   sprintf( FieldName[MOMY], "MomY" );
-   sprintf( FieldName[MOMZ], "MomZ" );
-   sprintf( FieldName[ENGY], "Engy" );
+// 3-1. set the names of all grid fields and particle attributes
+   for (int v=0; v<NCOMP_TOTAL; v++)      sprintf( FieldName[v], "%s", FieldLabel[v] );
 
-#  elif ( MODEL == ELBDM )
-   sprintf( FieldName[DENS], "Dens" );
-   sprintf( FieldName[REAL], "Real" );
-   sprintf( FieldName[IMAG], "Imag" );
-
-#  else
-#  error : ERROR : unsupported MODEL !!
+#  ifdef MHD
+   for (int v=0; v<NCOMP_MAG; v++)        sprintf( FCMagName[v], "%s", MagLabel[v] );
 #  endif
-
-   for (int v=0; v<NCOMP_PASSIVE; v++)    sprintf( FieldName[NCOMP_FLUID+v], "%s", PassiveFieldName_Grid[v] );
 
 #  ifdef PARTICLE
-   sprintf( ParVarName[0], "ParMass" );
-   sprintf( ParVarName[1], "ParPosX" );
-   sprintf( ParVarName[2], "ParPosY" );
-   sprintf( ParVarName[3], "ParPosZ" );
-   sprintf( ParVarName[4], "ParVelX" );
-   sprintf( ParVarName[5], "ParVelY" );
-   sprintf( ParVarName[6], "ParVelZ" );
-
-   for (int v=0; v<PAR_NPASSIVE; v++)  sprintf( ParVarName[7+v], "%s", PassiveFieldName_Par[v] );
-
-#  ifdef DEBUG_HDF5
-   if ( PAR_NPASSIVE >= 100 )    Aux_Error( ERROR_INFO, "PAR_NPASSIVE = %d >= 100 !!\n", PAR_NPASSIVE );
+// skip the last PAR_NATT_UNSTORED attributes since we do not store them on disk
+   for (int v=0; v<PAR_NATT_STORED; v++)  sprintf( ParAttName[v], "%s", ParAttLabel[v] );
 #  endif
-#  endif // #ifdef PARTICLE
 
 
 // 3-2. initialize relevant HDF5 objects
    H5_SetDims_Field[0] = NPatchAllLv;
-   H5_SetDims_Field[1] = PATCH_SIZE;
-   H5_SetDims_Field[2] = PATCH_SIZE;
-   H5_SetDims_Field[3] = PATCH_SIZE;
+   H5_SetDims_Field[1] = PS1;
+   H5_SetDims_Field[2] = PS1;
+   H5_SetDims_Field[3] = PS1;
 
    H5_SpaceID_Field = H5Screate_simple( 4, H5_SetDims_Field, NULL );
    if ( H5_SpaceID_Field < 0 )   Aux_Error( ERROR_INFO, "failed to create the space \"%s\" !!\n", "H5_SpaceID_Field" );
 
    H5_MemDims_Field[0] = 1;
-   H5_MemDims_Field[1] = PATCH_SIZE;
-   H5_MemDims_Field[2] = PATCH_SIZE;
-   H5_MemDims_Field[3] = PATCH_SIZE;
+   H5_MemDims_Field[1] = PS1;
+   H5_MemDims_Field[2] = PS1;
+   H5_MemDims_Field[3] = PS1;
 
    H5_MemID_Field = H5Screate_simple( 4, H5_MemDims_Field, NULL );
-   if ( H5_MemID_Field < 0 )  Aux_Error( ERROR_INFO, "failed to create the space \"%s\" !!\n", "H5_MemDims_Field" );
+   if ( H5_MemID_Field < 0 )  Aux_Error( ERROR_INFO, "failed to create the space \"%s\" !!\n", "H5_MemID_Field" );
+
+#  ifdef MHD
+   for (int v=0; v<NCOMP_MAG; v++)
+   {
+      H5_SetDims_FCMag[0] = NPatchAllLv;
+      for (int t=1; t<4; t++)
+      H5_SetDims_FCMag[t] = ( 3-t == v ) ? PS1P1 : PS1;
+
+      H5_SpaceID_FCMag[v] = H5Screate_simple( 4, H5_SetDims_FCMag, NULL );
+      if ( H5_SpaceID_FCMag[v] < 0 )
+         Aux_Error( ERROR_INFO, "failed to create the space \"%s[%d]\" !!\n", "H5_SpaceID_FCMag", v );
+
+      H5_MemDims_FCMag[0] = 1;
+      for (int t=1; t<4; t++)
+      H5_MemDims_FCMag[t] = ( 3-t == v ) ? PS1P1 : PS1;
+
+      H5_MemID_FCMag[v] = H5Screate_simple( 4, H5_MemDims_FCMag, NULL );
+      if ( H5_MemID_FCMag[v] < 0 )
+         Aux_Error( ERROR_INFO, "failed to create the space \"%s[%d]\" !!\n", "H5_MemID_FCMag", v );
+   }
+#  endif // #ifdef MHD
 
 #  ifdef PARTICLE
    H5_SetDims_ParData[0] = amr->Par->NPar_Active_AllRank;
@@ -654,14 +680,22 @@ void Init_ByRestart_HDF5( const char *FileName )
             if ( H5_SetID_Field[v] < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", FieldName[v] );
          }
 
+#        ifdef MHD
+         for (int v=0; v<NCOMP_MAG; v++)
+         {
+            H5_SetID_FCMag[v] = H5Dopen( H5_GroupID_GridData, FCMagName[v], H5P_DEFAULT );
+            if ( H5_SetID_FCMag[v] < 0 )  Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", FCMagName[v] );
+         }
+#        endif
+
 #        ifdef PARTICLE
          H5_GroupID_Particle = H5Gopen( H5_FileID, "Particle", H5P_DEFAULT );
          if ( H5_GroupID_Particle < 0 )   Aux_Error( ERROR_INFO, "failed to open the group \"%s\" !!\n", "Particle" );
 
-         for (int v=0; v<NParVar; v++)
+         for (int v=0; v<PAR_NATT_STORED; v++)
          {
-            H5_SetID_ParData[v] = H5Dopen( H5_GroupID_Particle, ParVarName[v], H5P_DEFAULT );
-            if ( H5_SetID_ParData[v] < 0 )   Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", ParVarName[v] );
+            H5_SetID_ParData[v] = H5Dopen( H5_GroupID_Particle, ParAttName[v], H5P_DEFAULT );
+            if ( H5_SetID_ParData[v] < 0 )   Aux_Error( ERROR_INFO, "failed to open the dataset \"%s\" !!\n", ParAttName[v] );
          }
 #        endif
 
@@ -691,6 +725,7 @@ void Init_ByRestart_HDF5( const char *FileName )
                for (int GID=GID0; GID<GID0+8; GID++)
                   LoadOnePatch( H5_FileID, lv, GID, Recursive_No, NULL, CrList_AllLv,
                                 H5_SetID_Field, H5_SpaceID_Field, H5_MemID_Field,
+                                H5_SetID_FCMag, H5_SpaceID_FCMag, H5_MemID_FCMag,
                                 NParList_AllLv, ParBuf, NewParList, H5_SetID_ParData, H5_SpaceID_ParData,
                                 GParID_Offset, NParThisRank );
             }
@@ -745,6 +780,7 @@ void Init_ByRestart_HDF5( const char *FileName )
                   CrList_AllLv[GID][2] >= TRange_Min[2]  &&  CrList_AllLv[GID][2] < TRange_Max[2]     )
                LoadOnePatch( H5_FileID, 0, GID, Recursive_Yes, SonList_AllLv, CrList_AllLv,
                              H5_SetID_Field, H5_SpaceID_Field, H5_MemID_Field,
+                             H5_SetID_FCMag, H5_SpaceID_FCMag, H5_MemID_FCMag,
                              NParList_AllLv, ParBuf, NewParList, H5_SetID_ParData, H5_SpaceID_ParData,
                              GParID_Offset, NParThisRank );
          } // for (int GID=0; GID<NPatchTotal[0]; GID++)
@@ -752,11 +788,14 @@ void Init_ByRestart_HDF5( const char *FileName )
 #        endif // #ifdef LOAD_BALANCE ... else ...
 
 //       free resource
-         for (int v=0; v<NCOMP_TOTAL; v++)   H5_Status = H5Dclose( H5_SetID_Field[v] );
+         for (int v=0; v<NCOMP_TOTAL; v++)      H5_Status = H5Dclose( H5_SetID_Field[v] );
+#        ifdef MHD
+         for (int v=0; v<NCOMP_MAG;   v++)      H5_Status = H5Dclose( H5_SetID_FCMag[v] );
+#        endif
          H5_Status = H5Gclose( H5_GroupID_GridData );
 
 #        ifdef PARTICLE
-         for (int v=0; v<NParVar; v++) H5_Status = H5Dclose( H5_SetID_ParData[v] );
+         for (int v=0; v<PAR_NATT_STORED; v++)  H5_Status = H5Dclose( H5_SetID_ParData[v] );
          H5_Status = H5Gclose( H5_GroupID_Particle );
 #        endif
 
@@ -769,6 +808,13 @@ void Init_ByRestart_HDF5( const char *FileName )
 // free HDF5 objects
    H5_Status = H5Sclose( H5_SpaceID_Field );
    H5_Status = H5Sclose( H5_MemID_Field );
+#  ifdef MHD
+   for (int v=0; v<NCOMP_MAG; v++)
+   {
+      H5_Status = H5Sclose( H5_SpaceID_FCMag[v] );
+      H5_Status = H5Sclose( H5_MemID_FCMag  [v] );
+   }
+#  endif
 #  ifdef PARTICLE
    H5_Status = H5Sclose( H5_SpaceID_ParData );
 #  endif
@@ -825,20 +871,22 @@ void Init_ByRestart_HDF5( const char *FileName )
    free ( KeyInfo.CodeVersion );
    free ( KeyInfo.DumpWallTime );
 
-   if ( FieldName != NULL )   delete [] FieldName;
-   if ( CrList_AllLv != NULL )   delete [] CrList_AllLv;
+   delete [] FieldName;
+   delete [] CrList_AllLv;
+#  ifdef MHD
+   delete [] FCMagName;
+#  endif
 #  ifdef LOAD_BALANCE
-   if ( LBIdxList_AllLv != NULL )   delete [] LBIdxList_AllLv;
-   for (int lv=0; lv<NLEVEL; lv++)
-      if ( LBIdxList_EachLv_IdxTable[lv] != NULL )   delete [] LBIdxList_EachLv_IdxTable[lv];
+   delete [] LBIdxList_AllLv;
+   for (int lv=0; lv<NLEVEL; lv++)  delete [] LBIdxList_EachLv_IdxTable[lv];
 #  else
-   if ( SonList_AllLv != NULL )  delete [] SonList_AllLv;
+   delete [] SonList_AllLv;
 #  endif
 #  ifdef PARTICLE
-   if ( ParVarName     != NULL )    delete [] ParVarName;
-   if ( NParList_AllLv != NULL )    delete [] NParList_AllLv;
-   if ( GParID_Offset  != NULL )    delete [] GParID_Offset;
-   if ( NewParList     != NULL )    delete [] NewParList;
+   delete [] ParAttName;
+   delete [] NParList_AllLv;
+   delete [] GParID_Offset;
+   delete [] NewParList;
    Aux_DeallocateArray2D( ParBuf );
 #  endif
 
@@ -900,11 +948,16 @@ void Init_ByRestart_HDF5( const char *FileName )
 //    get the IDs of patches for sending and receiving data between neighbor ranks
       Buf_RecordExchangeDataPatchID( lv );
 
-//    allocate the flux arrays at the level "lv-1"
+//    allocate flux arrays on level "lv-1"
       if ( lv > 0  &&  amr->WithFlux )    Flu_AllocateFluxArray( lv-1 );
 
+//    allocate electric arrays on level "lv-1"
+#     ifdef MHD
+      if ( lv > 0  &&  amr->WithElectric )   MHD_AllocateElectricArray( lv-1 );
+#     endif
+
 //    get data for all buffer patches
-      Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, DATA_GENERAL, _TOTAL, Flu_ParaBuf, USELB_NO );
+      Buf_GetBufferData( lv, amr->FluSg[lv], amr->MagSg[lv], NULL_INT, DATA_GENERAL, _TOTAL, _MAG, Flu_ParaBuf, USELB_NO );
 
    } // for (int lv=0; lv<NLEVEL; lv++)
 
@@ -924,24 +977,24 @@ void Init_ByRestart_HDF5( const char *FileName )
 // Note        :  1. This function works for arbitary datatype (int, float, char, 1D array ...)
 //                2. Memory must be allocated for FieldPtr in advance with sufficent size (except for "char *")
 //                3. For loading a string, which has (type(FieldPtr) = (char *)), the memory must be freed
-//                   manually by calling "free()"
-//                4. It can also compare the loaded variables (FieldPtr) with the reference value (ComprPtr)
+//                   manually by calling free()
+//                4. It can also compare the loaded variables (FieldPtr) with the reference values (ComprPtr)
 //                   (perform comparison only if "NCompr > 0")
 //                   --> Please make sure that "FieldPtr" and "ComprPtr" point to the same type since we
 //                       use the type of "ComprPtr" to typecast "FieldPtr"
 //
-// Parameter   :  FieldName         : Name of the target field
-//                FieldPtr          : Pointer to store the retrieved data
-//                H5_SetID_Target   : HDF5 dataset  ID of the target compound variable
-//                H5_TypeID_Target  : HDF5 datatype ID of the target compound variable
-//                Fatal_Nonexist    : Whether or not the nonexistence of the target field is fatal
-//                                    --> true  : terminate the program     if the target field cannot be found
-//                                        false : display a warning message if the target field cannot be found
-//                ComprPtr          : Pointer to store the reference values for comparison
-//                NCompr            : Number of elements to be compared
-//                Fatal_Compr       : Whether or not the comparison result is fatal
-//                                    --> true  : terminate the program     if "FieldPtr[X] != ComprPtr[X]"
-//                                        false : display a warning message if "FieldPtr[X] != ComprPtr[X]"
+// Parameter   :  FieldName        : Name of the target field
+//                FieldPtr         : Pointer to store the retrieved data
+//                H5_SetID_Target  : HDF5 dataset  ID of the target compound variable
+//                H5_TypeID_Target : HDF5 datatype ID of the target compound variable
+//                Fatal_Nonexist   : Whether or not the nonexistence of the target field is fatal
+//                                   --> true  : terminate the program     if the target field cannot be found
+//                                       false : display a warning message if the target field cannot be found
+//                ComprPtr         : Pointer to store the reference values for comparison
+//                NCompr           : Number of elements to be compared
+//                Fatal_Compr      : Whether or not the comparison result is fatal
+//                                   --> true  : terminate the program     if "FieldPtr[X] != ComprPtr[X]"
+//                                       false : display a warning message if "FieldPtr[X] != ComprPtr[X]"
 //
 // Return      :  Success/fail <-> 0/<0
 //-------------------------------------------------------------------------------------------------------
@@ -1002,6 +1055,30 @@ herr_t LoadField( const char *FieldName, void *FieldPtr, const hid_t H5_SetID_Ta
 // comparison
    char ArrayIdx[10];
 
+// compare strings
+   if ( NCompr > 0  &&  typeid(T) == typeid(char) )
+   {
+      if (  strcmp( *(char**)FieldPtr, (char*)ComprPtr ) != 0  )
+      {
+         if ( Fatal_Compr )
+         {
+            Aux_Error( ERROR_INFO, "\"%s\" : RESTART file (%s) != runtime (%s) !!\n",
+                       FieldName, *(char**)FieldPtr, (char*)ComprPtr );
+            return -2;
+         }
+
+         else
+         {
+            if ( MPI_Rank == 0 )
+            Aux_Message( stderr, "WARNING : \"%s\" : RESTART file (%s) != runtime (%s) !!\n",
+                         FieldName, *(char**)FieldPtr, (char*)ComprPtr );
+            Check_Pass = false;
+         }
+      }
+   }
+
+// compare other data types
+   else
    for (int t=0; t<NCompr; t++)
    {
       if ( NCompr == 1 )   sprintf( ArrayIdx, "%s", "" );
@@ -1072,35 +1149,40 @@ herr_t LoadField( const char *FieldName, void *FieldPtr, const hid_t H5_SetID_Ta
 //                2. If "Recursive == true", this function will be invoked recursively to find all children
 //                   (and children's children, ...) patches
 //
-// Parameter   :  H5_FileID         : HDF5 file ID of the restart file
-//                lv                : Target level
-//                GID               : Target GID
-//                Recursive         : Find all children (and childrens' children, ...) recuresively
-//                SonList           : List of son indices
-//                                    --> Set only when LOAD_BALANCE is not defined
-//                CrList            : List of patch corners
-//                H5_SetID_Field    : HDF5 dataset ID for grid data
-//                H5_SpaceID_Field  : HDF5 dataset dataspace ID for grid data
-//                H5_MemID_Field    : HDF5 memory dataspace ID for grid data
-//                NParList          : List of particle counts
-//                ParBuf            : I/O buffer for loading particle data from the disk
-//                                    --> It must be preallocated with a size equal to the maximum number of
-//                                        particles in one patch times the number of particles attributes
-//                                        stored in the disk
-//                                    --> Be careful about using ParBuf, which is set to NULL if it has no elements
-//                                        (because of the current implementation of Aux_AllocateArray2D)
-//                                        --> For example, accessing ParBuf[0...NParVar-1] will be illegal when there
-//                                            are no particles
-//                NewParList        : Array to store the new particle indices
-//                                    --> It must be preallocated with a size equal to the maximum number of
-//                                        particles in one patch
-//                H5_SetID_ParData  : HDF5 dataset ID for particle data
-//                H5_SpaceID_ParData: HDF5 dataset dataspace ID for particle data
-//                GParID_Offset     : Starting global particle indices for all patches
-//                NParThisRank      : Total number of particles in this rank (for check only)
+// Parameter   :  H5_FileID          : HDF5 file ID of the restart file
+//                lv                 : Target level
+//                GID                : Target GID
+//                Recursive          : Find all children (and childrens' children, ...) recuresively
+//                SonList            : List of son indices
+//                                     --> Set only when LOAD_BALANCE is not defined
+//                CrList             : List of patch corners
+//                H5_SetID_Field     : HDF5 dataset ID for cell-centered grid data
+//                H5_SpaceID_Field   : HDF5 dataset dataspace ID for cell-centered grid data
+//                H5_MemID_Field     : HDF5 memory dataspace ID for cell-centered grid data
+//                H5_SetID_FCMag     : HDF5 dataset ID for face-centered magnetic field
+//                H5_SpaceID_FCMag   : HDF5 dataset dataspace ID for face-centered magnetic field
+//                H5_MemID_FCMag     : HDF5 memory dataspace ID for face-centered magnetic field
+//                NParList           : List of particle counts
+//                ParBuf             : I/O buffer for loading particle data from the disk
+//                                     --> It must be preallocated with a size equal to the maximum number of
+//                                         particles in one patch times the number of particles attributes
+//                                         stored on disk
+//                                     --> Be careful about using ParBuf, which is set to NULL if it has no elements
+//                                         (because of the current implementation of Aux_AllocateArray2D)
+//                                         --> For example, accessing ParBuf[0...PAR_NATT_STORED-1] will be illegal when there
+//                                             are no particles
+//                NewParList         : Array to store the new particle indices
+//                                     --> It must be preallocated with a size equal to the maximum number of
+//                                         particles in one patch
+//                H5_SetID_ParData   : HDF5 dataset ID for particle data
+//                H5_SpaceID_ParData : HDF5 dataset dataspace ID for particle data
+//                GParID_Offset      : Starting global particle indices for all patches
+//                NParThisRank       : Total number of particles in this rank (for check only)
 //-------------------------------------------------------------------------------------------------------
-void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const bool Recursive, const int *SonList,
-                   const int (*CrList)[3], const hid_t *H5_SetID_Field, const hid_t H5_SpaceID_Field, const hid_t H5_MemID_Field,
+void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const bool Recursive,
+                   const int *SonList, const int (*CrList)[3],
+                   const hid_t *H5_SetID_Field, const hid_t H5_SpaceID_Field, const hid_t H5_MemID_Field,
+                   const hid_t *H5_SetID_FCMag, const hid_t *H5_SpaceID_FCMag, const hid_t *H5_MemID_FCMag,
                    const int *NParList, real **ParBuf, long *NewParList, const hid_t *H5_SetID_ParData,
                    const hid_t H5_SpaceID_ParData, const long *GParID_Offset, const long NParThisRank )
 {
@@ -1108,6 +1190,9 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
    const bool WithData_Yes = true;
 
    hsize_t H5_Count_Field[4], H5_Offset_Field[4];
+#  ifdef MHD
+   hsize_t H5_Count_FCMag[4], H5_Offset_FCMag[4];
+#  endif
    herr_t  H5_Status;
    int     SonGID0, PID;
 
@@ -1124,32 +1209,58 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
    H5_Offset_Field[3] = 0;
 
    H5_Count_Field [0] = 1;
-   H5_Count_Field [1] = PATCH_SIZE;
-   H5_Count_Field [2] = PATCH_SIZE;
-   H5_Count_Field [3] = PATCH_SIZE;
+   H5_Count_Field [1] = PS1;
+   H5_Count_Field [2] = PS1;
+   H5_Count_Field [3] = PS1;
 
    H5_Status = H5Sselect_hyperslab( H5_SpaceID_Field, H5S_SELECT_SET, H5_Offset_Field, NULL, H5_Count_Field, NULL );
    if ( H5_Status < 0 )   Aux_Error( ERROR_INFO, "failed to create a hyperslab for the grid data !!\n" );
 
 
-// load field data from disk (potential data, if presented, are ignored and will be recalculated)
+// load cell-centered intrinsic variables from disk
+// --> excluding all derived variables such as gravitational potential and cell-centered B field
    for (int v=0; v<NCOMP_TOTAL; v++)
    {
       H5_Status = H5Dread( H5_SetID_Field[v], H5T_GAMER_REAL, H5_MemID_Field, H5_SpaceID_Field, H5P_DEFAULT,
-                           amr->patch[0][lv][PID]->fluid[v] );
+                           amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[v] );
       if ( H5_Status < 0 )
          Aux_Error( ERROR_INFO, "failed to load a field variable (lv %d, GID %d, v %d) !!\n", lv, GID, v );
    }
 
 
+// load face-centered magnetic field from disk
+#  ifdef MHD
+   for (int v=0; v<NCOMP_MAG; v++)
+   {
+//    determine the subset of dataspace for grid data
+      H5_Offset_FCMag[0] = GID;
+      H5_Offset_FCMag[1] = 0;
+      H5_Offset_FCMag[2] = 0;
+      H5_Offset_FCMag[3] = 0;
+
+      H5_Count_FCMag [0] = 1;
+      for (int t=1; t<4; t++)
+      H5_Count_FCMag [t] = ( 3-t == v ) ? PS1P1 : PS1;
+
+      H5_Status = H5Sselect_hyperslab( H5_SpaceID_FCMag[v], H5S_SELECT_SET, H5_Offset_FCMag, NULL, H5_Count_FCMag, NULL );
+      if ( H5_Status < 0 )   Aux_Error( ERROR_INFO, "failed to create a hyperslab for the magnetic field %d !!\n", v );
+
+//    load data
+      H5_Status = H5Dread( H5_SetID_FCMag[v], H5T_GAMER_REAL, H5_MemID_FCMag[v], H5_SpaceID_FCMag[v], H5P_DEFAULT,
+                           amr->patch[ amr->MagSg[lv] ][lv][PID]->magnetic[v] );
+      if ( H5_Status < 0 )
+         Aux_Error( ERROR_INFO, "failed to load magnetic field (lv %d, GID %d, v %d) !!\n", lv, GID, v );
+   } // for (int v=0; v<NCOMP_MAG; v++)
+#  endif // #ifdef MHD
+
+
 // load particle data
 #  ifdef PARTICLE
-   const int NParVar       = 7 + PAR_NPASSIVE;  // particle mass, position x/y/z, velocity x/y/z, and passive variables
    const int NParThisPatch = NParList[GID];
 
    hsize_t H5_Offset_ParData[1], H5_Count_ParData[1], H5_MemDims_ParData[1];
    hid_t   H5_MemID_ParData;
-   real    NewParVar[PAR_NVAR], NewParPassive[PAR_NPASSIVE];
+   real    NewParAtt[PAR_NATT_TOTAL];
 
    if ( NParThisPatch > 0 )
    {
@@ -1172,7 +1283,7 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
       if ( H5_MemID_ParData < 0 )   Aux_Error( ERROR_INFO, "failed to create the space \"%s\" !!\n", "H5_MemDims_ParData" );
 
 //    load particle data from disk
-      for (int v=0; v<NParVar; v++)
+      for (int v=0; v<PAR_NATT_STORED; v++)
       {
 //       using ParBuf[v] here is safe since it's NOT called when NParThisPatch == 0
          H5_Status = H5Dread( H5_SetID_ParData[v], H5T_GAMER_REAL, H5_MemID_ParData, H5_SpaceID_ParData, H5P_DEFAULT,
@@ -1182,22 +1293,14 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
       }
 
 //    store particles to the particle repository (one particle at a time)
-      NewParVar[PAR_TIME] = Time[0];   // all particles are assumed to be synchronized with the base level
+      NewParAtt[PAR_TIME] = Time[0];   // all particles are assumed to be synchronized with the base level
 
       for (int p=0; p<NParThisPatch; p++)
       {
-//       particle acceleration will be recalculated in "Init_GAMER"
-         NewParVar[PAR_MASS] = ParBuf[0][p];
-         NewParVar[PAR_POSX] = ParBuf[1][p];
-         NewParVar[PAR_POSY] = ParBuf[2][p];
-         NewParVar[PAR_POSZ] = ParBuf[3][p];
-         NewParVar[PAR_VELX] = ParBuf[4][p];
-         NewParVar[PAR_VELY] = ParBuf[5][p];
-         NewParVar[PAR_VELZ] = ParBuf[6][p];
+//       skip the last PAR_NATT_UNSTORED attributes since we do not store them on disk
+         for (int v=0; v<PAR_NATT_STORED; v++)  NewParAtt[v] = ParBuf[v][p];
 
-         for (int v=0; v<PAR_NPASSIVE; v++)  NewParPassive[v] = ParBuf[7+v][p];
-
-         NewParList[p] = amr->Par->AddOneParticle( NewParVar, NewParPassive );
+         NewParList[p] = amr->Par->AddOneParticle( NewParAtt );
 
 //       check
          if ( NewParList[p] >= NParThisRank )
@@ -1208,7 +1311,7 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
 //    link particles to this patch
 #     ifdef DEBUG_PARTICLE
       const real *ParPos[3] = { amr->Par->PosX, amr->Par->PosY, amr->Par->PosZ };
-      char Comment[100];
+      char Comment[MAX_STRING];
       sprintf( Comment, "%s, lv %d, PID %d, GID %d, NPar %d", __FUNCTION__, lv, PID, GID, NParThisPatch );
       amr->patch[0][lv][PID]->AddParticle( NParThisPatch, NewParList, &amr->Par->NPar_Lv[lv],
                                            ParPos, amr->Par->NPar_AcPlusInac, Comment );
@@ -1235,6 +1338,7 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
          for (int SonGID=SonGID0; SonGID<SonGID0+8; SonGID++)
             LoadOnePatch( H5_FileID, lv+1, SonGID, Recursive, SonList, CrList,
                           H5_SetID_Field, H5_SpaceID_Field, H5_MemID_Field,
+                          H5_SetID_FCMag, H5_SpaceID_FCMag, H5_MemID_FCMag,
                           NParList, ParBuf, NewParList, H5_SetID_ParData, H5_SpaceID_ParData,
                           GParID_Offset, NParThisRank );
       }
@@ -1251,9 +1355,10 @@ void LoadOnePatch( const hid_t H5_FileID, const int lv, const int GID, const boo
 // Note        :  1. Unnecessary comparisons are avoided
 //                2. Program may be terminated if any fatal difference is found
 //
-// Parameter   :  FileName : Restart file name
+// Parameter   :  FileName      : Restart file name
+//                FormatVersion : File format ID
 //-------------------------------------------------------------------------------------------------------
-void Check_Makefile( const char *FileName )
+void Check_Makefile( const char *FileName, const int FormatVersion )
 {
 
    const bool    Fatal = true;
@@ -1326,6 +1431,7 @@ void Check_Makefile( const char *FileName )
    LoadField( "RSolver",                &RS.RSolver,                SID, TID, NonFatal, &RT.RSolver,                1, NonFatal );
 #  endif
    LoadField( "DualEnergy",             &RS.DualEnergy,             SID, TID, NonFatal, &RT.DualEnergy,             1, NonFatal );
+   LoadField( "Magnetohydrodynamics",   &RS.Magnetohydrodynamics,   SID, TID, NonFatal, &RT.Magnetohydrodynamics,   1,    Fatal );
 
 #  elif ( MODEL == ELBDM )
    LoadField( "ConserveMass",           &RS.ConserveMass,           SID, TID, NonFatal, &RT.ConserveMass,           1, NonFatal );
@@ -1339,7 +1445,10 @@ void Check_Makefile( const char *FileName )
 #  ifdef PARTICLE
    LoadField( "StoreParAcc",            &RS.StoreParAcc,            SID, TID, NonFatal, &RT.StoreParAcc,            1, NonFatal );
    LoadField( "StarFormation",          &RS.StarFormation,          SID, TID, NonFatal, &RT.StarFormation,          1, NonFatal );
-   LoadField( "Par_NPassive",           &RS.Par_NPassive,           SID, TID, NonFatal, &RT.Par_NPassive,           1,    Fatal );
+   if ( FormatVersion >= 2300 )
+   LoadField( "Par_NAttUser",           &RS.Par_NAttUser,           SID, TID, NonFatal, &RT.Par_NAttUser,           1,    Fatal );
+   else
+   LoadField( "Par_NAttUser",           &RS.Par_NAttUser,           SID, TID, NonFatal, &RT.Par_NAttUser,           1, NonFatal );
 #  endif
 
 
@@ -1359,9 +1468,10 @@ void Check_Makefile( const char *FileName )
 // Note        :  1. Unnecessary comparisons are avoided
 //                2. Program may be terminated if any fatal difference is found
 //
-// Parameter   :  FileName : Restart file name
+// Parameter   :  FileName      : Restart file name
+//                FormatVersion : File format ID
 //-------------------------------------------------------------------------------------------------------
-void Check_SymConst( const char *FileName )
+void Check_SymConst( const char *FileName, const int FormatVersion )
 {
 
    const bool    Fatal = true;
@@ -1421,11 +1531,12 @@ void Check_SymConst( const char *FileName )
    LoadField( "Gra_Nxt",              &RS.Gra_Nxt,              SID, TID, NonFatal, &RT.Gra_Nxt,               1, NonFatal );
    LoadField( "Rho_Nxt",              &RS.Rho_Nxt,              SID, TID, NonFatal, &RT.Rho_Nxt,               1, NonFatal );
 #  ifdef UNSPLIT_GRAVITY
-   LoadField( "USG_GhostSize",        &RS.USG_GhostSize,        SID, TID, NonFatal, &RT.USG_GhostSize,         1, NonFatal );
+   LoadField( "USG_GhostSizeF",       &RS.USG_GhostSizeF,       SID, TID, NonFatal, &RT.USG_GhostSizeF,        1, NonFatal );
+   LoadField( "USG_GhostSizeG",       &RS.USG_GhostSizeG,       SID, TID, NonFatal, &RT.USG_GhostSizeG,        1, NonFatal );
    LoadField( "USG_NxtF",             &RS.USG_NxtF,             SID, TID, NonFatal, &RT.USG_NxtF,              1, NonFatal );
    LoadField( "USG_NxtG",             &RS.USG_NxtG,             SID, TID, NonFatal, &RT.USG_NxtG,              1, NonFatal );
 #  endif
-   LoadField( "Gra_BlockSize_z",      &RS.Gra_BlockSize_z,      SID, TID, NonFatal, &RT.Gra_BlockSize_z,       1, NonFatal );
+   LoadField( "Gra_BlockSize",        &RS.Gra_BlockSize,        SID, TID, NonFatal, &RT.Gra_BlockSize,         1, NonFatal );
    LoadField( "ExtPotNAuxMax",        &RS.ExtPotNAuxMax,        SID, TID, NonFatal, &RT.ExtPotNAuxMax,         1, NonFatal );
    LoadField( "ExtAccNAuxMax",        &RS.ExtAccNAuxMax,        SID, TID, NonFatal, &RT.ExtAccNAuxMax,         1, NonFatal );
 #  if   ( POT_SCHEME == SOR )
@@ -1442,20 +1553,19 @@ void Check_SymConst( const char *FileName )
 #  endif // #ifdef GRAVITY
 
 #  ifdef PARTICLE
-// Par_NVar check is set to NonFatal since particle acceleration may or may not be included (depending on STORE_PAR_ACC)
-   LoadField( "Par_NVar",             &RS.Par_NVar,             SID, TID, NonFatal, &RT.Par_NVar,              1, NonFatal );
-#  ifdef STORE_PAR_ACC
-   if ( RT.Par_NVar != RS.Par_NVar  &&  RT.Par_NVar != RS.Par_NVar + 3 )
-      Aux_Error( ERROR_INFO, "%s : RESTART file (%d) != runtime (%d) !!\n", "PAR_NVAR", RS.Par_NVar, RT.Par_NVar );
-#  else
-   if ( RT.Par_NVar != RS.Par_NVar  &&  RT.Par_NVar != RS.Par_NVar - 3 )
-      Aux_Error( ERROR_INFO, "%s : RESTART file (%d) != runtime (%d) !!\n", "PAR_NVAR", RS.Par_NVar, RT.Par_NVar );
-#  endif
-
+   if ( FormatVersion >= 2300 )
+   LoadField( "Par_NAttStored",       &RS.Par_NAttStored,       SID, TID, NonFatal, &RT.Par_NAttStored,        1,    Fatal );
+   else
+   LoadField( "Par_NAttStored",       &RS.Par_NAttStored,       SID, TID, NonFatal, &RT.Par_NAttStored,        1, NonFatal );
    LoadField( "RhoExt_GhostSize",     &RS.RhoExt_GhostSize,     SID, TID, NonFatal, &RT.RhoExt_GhostSize,      1, NonFatal );
    LoadField( "Debug_Particle",       &RS.Debug_Particle,       SID, TID, NonFatal, &RT.Debug_Particle,        1, NonFatal );
    LoadField( "ParList_GrowthFactor", &RS.ParList_GrowthFactor, SID, TID, NonFatal, &RT.ParList_GrowthFactor,  1, NonFatal );
    LoadField( "ParList_ReduceFactor", &RS.ParList_ReduceFactor, SID, TID, NonFatal, &RT.ParList_ReduceFactor,  1, NonFatal );
+#  endif
+
+   LoadField( "BitRep_Flux",          &RS.BitRep_Flux,          SID, TID, NonFatal, &RT.BitRep_Flux,           1, NonFatal );
+#  ifdef MHD
+   LoadField( "BitRep_Electric",      &RS.BitRep_Electric,      SID, TID, NonFatal, &RT.BitRep_Electric,       1, NonFatal );
 #  endif
 
 #  if   ( MODEL == HYDRO )
@@ -1466,7 +1576,6 @@ void Check_SymConst( const char *FileName )
    LoadField( "CheckIntermediate",    &RS.CheckIntermediate,    SID, TID, NonFatal, &RT.CheckIntermediate,     1, NonFatal );
    LoadField( "HLL_NoRefState",       &RS.HLL_NoRefState,       SID, TID, NonFatal, &RT.HLL_NoRefState,        1, NonFatal );
    LoadField( "HLL_IncludeAllWaves",  &RS.HLL_IncludeAllWaves,  SID, TID, NonFatal, &RT.HLL_IncludeAllWaves,   1, NonFatal );
-   LoadField( "WAF_Dissipate",        &RS.WAF_Dissipate,        SID, TID, NonFatal, &RT.WAF_Dissipate,         1, NonFatal );
 #  ifdef N_FC_VAR
    LoadField( "N_FC_Var",             &RS.N_FC_Var,             SID, TID, NonFatal, &RT.N_FC_Var,              1, NonFatal );
 #  endif
@@ -1475,6 +1584,9 @@ void Check_SymConst( const char *FileName )
 #  endif
 #  ifdef MAX_ERROR
    LoadField( "MaxError",             &RS.MaxError,             SID, TID, NonFatal, &RT.MaxError,              1, NonFatal );
+#  endif
+#  ifdef MHD
+   LoadField( "EulerY",               &RS.EulerY,               SID, TID, NonFatal, &RT.EulerY,                1, NonFatal );
 #  endif
 
 #  elif  ( MODEL == ELBDM )
@@ -1488,7 +1600,7 @@ void Check_SymConst( const char *FileName )
    LoadField( "dt_Flu_BlockSize",     &RS.dt_Flu_BlockSize,     SID, TID, NonFatal, &RT.dt_Flu_BlockSize,      1, NonFatal );
    LoadField( "dt_Flu_UseShuffle",    &RS.dt_Flu_UseShuffle,    SID, TID, NonFatal, &RT.dt_Flu_UseShuffle,     1, NonFatal );
 #  ifdef GRAVITY
-   LoadField( "dt_Gra_BlockSize_z",   &RS.dt_Gra_BlockSize_z,   SID, TID, NonFatal, &RT.dt_Gra_BlockSize_z,    1, NonFatal );
+   LoadField( "dt_Gra_BlockSize",     &RS.dt_Gra_BlockSize,     SID, TID, NonFatal, &RT.dt_Gra_BlockSize,      1, NonFatal );
    LoadField( "dt_Gra_UseShuffle",    &RS.dt_Gra_UseShuffle,    SID, TID, NonFatal, &RT.dt_Gra_UseShuffle,     1, NonFatal );
 #  endif
 
@@ -1509,9 +1621,10 @@ void Check_SymConst( const char *FileName )
 // Note        :  1. Unnecessary comparisons are avoided
 //                2. Program may be terminated if any fatal difference is found
 //
-// Parameter   :  FileName : Restart file name
+// Parameter   :  FileName      : Restart file name
+//                FormatVersion : File format ID
 //-------------------------------------------------------------------------------------------------------
-void Check_InputPara( const char *FileName )
+void Check_InputPara( const char *FileName, const int FormatVersion )
 {
 
    const bool    Fatal = true;
@@ -1568,6 +1681,9 @@ void Check_InputPara( const char *FileName )
    LoadField( "Unit_D",                  &RS.Unit_D,                  SID, TID, NonFatal, &RT.Unit_D,                   1, NonFatal );
    LoadField( "Unit_E",                  &RS.Unit_E,                  SID, TID, NonFatal, &RT.Unit_E,                   1, NonFatal );
    LoadField( "Unit_P",                  &RS.Unit_P,                  SID, TID, NonFatal, &RT.Unit_P,                   1, NonFatal );
+#  ifdef MHD
+   LoadField( "Unit_B",                  &RS.Unit_B,                  SID, TID, NonFatal, &RT.Unit_B,                   1, NonFatal );
+#  endif
 
 // boundary condition
    LoadField( "Opt__BC_Flu",              RS.Opt__BC_Flu,             SID, TID, NonFatal,  RT.Opt__BC_Flu,              6, NonFatal );
@@ -1579,6 +1695,8 @@ void Check_InputPara( const char *FileName )
 // particle
 #  ifdef PARTICLE
    LoadField( "Par_Init",                &RS.Par_Init,                SID, TID, NonFatal, &RT.Par_Init,                 1, NonFatal );
+   LoadField( "Par_ICFormat",            &RS.Par_ICFormat,            SID, TID, NonFatal, &RT.Par_ICFormat,             1, NonFatal );
+   LoadField( "Par_ICMass",              &RS.Par_ICMass,              SID, TID, NonFatal, &RT.Par_ICMass,               1, NonFatal );
    LoadField( "Par_Interp",              &RS.Par_Interp,              SID, TID, NonFatal, &RT.Par_Interp,               1, NonFatal );
    LoadField( "Par_Integ",               &RS.Par_Integ,               SID, TID, NonFatal, &RT.Par_Integ,                1, NonFatal );
    LoadField( "Par_ImproveAcc",          &RS.Par_ImproveAcc,          SID, TID, NonFatal, &RT.Par_ImproveAcc,           1, NonFatal );
@@ -1633,6 +1751,9 @@ void Check_InputPara( const char *FileName )
    LoadField( "Opt__Flag_PresGradient",  &RS.Opt__Flag_PresGradient,  SID, TID, NonFatal, &RT.Opt__Flag_PresGradient,   1, NonFatal );
    LoadField( "Opt__Flag_Vorticity",     &RS.Opt__Flag_Vorticity,     SID, TID, NonFatal, &RT.Opt__Flag_Vorticity,      1, NonFatal );
    LoadField( "Opt__Flag_Jeans",         &RS.Opt__Flag_Jeans,         SID, TID, NonFatal, &RT.Opt__Flag_Jeans,          1, NonFatal );
+#  ifdef MHD
+   LoadField( "Opt__Flag_Current",       &RS.Opt__Flag_Current,       SID, TID, NonFatal, &RT.Opt__Flag_Current,        1, NonFatal );
+#  endif
 #  endif
 #  if ( MODEL == ELBDM )
    LoadField( "Opt__Flag_EngyDensity",   &RS.Opt__Flag_EngyDensity,   SID, TID, NonFatal, &RT.Opt__Flag_EngyDensity,    1, NonFatal );
@@ -1674,9 +1795,7 @@ void Check_InputPara( const char *FileName )
    LoadField( "Gamma",                   &RS.Gamma,                   SID, TID, NonFatal, &RT.Gamma,                    1, NonFatal );
    LoadField( "MolecularWeight",         &RS.MolecularWeight,         SID, TID, NonFatal, &RT.MolecularWeight,          1, NonFatal );
    LoadField( "MinMod_Coeff",            &RS.MinMod_Coeff,            SID, TID, NonFatal, &RT.MinMod_Coeff,             1, NonFatal );
-   LoadField( "EP_Coeff",                &RS.EP_Coeff,                SID, TID, NonFatal, &RT.EP_Coeff,                 1, NonFatal );
    LoadField( "Opt__LR_Limiter",         &RS.Opt__LR_Limiter,         SID, TID, NonFatal, &RT.Opt__LR_Limiter,          1, NonFatal );
-   LoadField( "Opt__WAF_Limiter",        &RS.Opt__WAF_Limiter,        SID, TID, NonFatal, &RT.Opt__WAF_Limiter,         1, NonFatal );
    LoadField( "Opt__1stFluxCorr",        &RS.Opt__1stFluxCorr,        SID, TID, NonFatal, &RT.Opt__1stFluxCorr,         1, NonFatal );
    LoadField( "Opt__1stFluxCorrScheme",  &RS.Opt__1stFluxCorrScheme,  SID, TID, NonFatal, &RT.Opt__1stFluxCorrScheme,   1, NonFatal );
 #  endif
@@ -1696,6 +1815,9 @@ void Check_InputPara( const char *FileName )
    LoadField( "Flu_GPU_NPGroup",         &RS.Flu_GPU_NPGroup,         SID, TID, NonFatal, &RT.Flu_GPU_NPGroup,          1, NonFatal );
    LoadField( "GPU_NStream",             &RS.GPU_NStream,             SID, TID, NonFatal, &RT.GPU_NStream,              1, NonFatal );
    LoadField( "Opt__FixUp_Flux",         &RS.Opt__FixUp_Flux,         SID, TID, NonFatal, &RT.Opt__FixUp_Flux,          1, NonFatal );
+#  ifdef MHD
+   LoadField( "Opt__FixUp_Electric",     &RS.Opt__FixUp_Electric,     SID, TID, NonFatal, &RT.Opt__FixUp_Electric,      1, NonFatal );
+#  endif
    LoadField( "Opt__FixUp_Restrict",     &RS.Opt__FixUp_Restrict,     SID, TID, NonFatal, &RT.Opt__FixUp_Restrict,      1, NonFatal );
    LoadField( "Opt__CorrAfterAllSync",   &RS.Opt__CorrAfterAllSync,   SID, TID, NonFatal, &RT.Opt__CorrAfterAllSync,    1, NonFatal );
    LoadField( "Opt__NormalizePassive",   &RS.Opt__NormalizePassive,   SID, TID, NonFatal, &RT.Opt__NormalizePassive,    1, NonFatal );
@@ -1733,11 +1855,12 @@ void Check_InputPara( const char *FileName )
    LoadField( "Opt__GraP5Gradient",      &RS.Opt__GraP5Gradient,      SID, TID, NonFatal, &RT.Opt__GraP5Gradient,       1, NonFatal );
    LoadField( "Opt__GravityType",        &RS.Opt__GravityType,        SID, TID, NonFatal, &RT.Opt__GravityType,         1, NonFatal );
    LoadField( "Opt__ExternalPot",        &RS.Opt__ExternalPot,        SID, TID, NonFatal, &RT.Opt__ExternalPot,         1, NonFatal );
+   LoadField( "Opt__GravityExtraMass",   &RS.Opt__GravityExtraMass,   SID, TID, NonFatal, &RT.Opt__GravityExtraMass,    1, NonFatal );
 #  endif
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
-   LoadField( "Grackle_Mode",            &RS.Grackle_Mode,            SID, TID, NonFatal, &RT.Grackle_Mode,             1, NonFatal );
+   LoadField( "Grackle_Activate",        &RS.Grackle_Activate,        SID, TID, NonFatal, &RT.Grackle_Activate,         1, NonFatal );
    LoadField( "Grackle_Verbose",         &RS.Grackle_Verbose,         SID, TID, NonFatal, &RT.Grackle_Verbose,          1, NonFatal );
    LoadField( "Grackle_Cooling",         &RS.Grackle_Cooling,         SID, TID, NonFatal, &RT.Grackle_Cooling,          1, NonFatal );
    LoadField( "Grackle_Primordial",      &RS.Grackle_Primordial,      SID, TID, NonFatal, &RT.Grackle_Primordial,       1, NonFatal );
@@ -1746,7 +1869,7 @@ void Check_InputPara( const char *FileName )
    LoadField( "Grackle_CMB_Floor",       &RS.Grackle_CMB_Floor,       SID, TID, NonFatal, &RT.Grackle_CMB_Floor,        1, NonFatal );
    LoadField( "Grackle_PE_Heating",      &RS.Grackle_PE_Heating,      SID, TID, NonFatal, &RT.Grackle_PE_Heating,       1, NonFatal );
    LoadField( "Grackle_PE_HeatingRate",  &RS.Grackle_PE_HeatingRate,  SID, TID, NonFatal, &RT.Grackle_PE_HeatingRate,   1, NonFatal );
-   LoadField( "Grackle_Mode",            &RS.Grackle_Mode,            SID, TID, NonFatal, &RT.Grackle_Mode,             1, NonFatal );
+   LoadField( "Grackle_CloudyTable",     &RS.Grackle_CloudyTable,     SID, TID, NonFatal,  RT.Grackle_CloudyTable,      1, NonFatal );
    LoadField( "Che_GPU_NPGroup",         &RS.Che_GPU_NPGroup,         SID, TID, NonFatal, &RT.Che_GPU_NPGroup,          1, NonFatal );
 #  endif
 
@@ -1768,6 +1891,7 @@ void Check_InputPara( const char *FileName )
    LoadField( "Opt__RestartReset",       &RS.Opt__RestartReset,       SID, TID, NonFatal, &RT.Opt__RestartReset,        1, NonFatal );
    LoadField( "Opt__UM_IC_Level",        &RS.Opt__UM_IC_Level,        SID, TID, NonFatal, &RT.Opt__UM_IC_Level,         1, NonFatal );
    LoadField( "Opt__UM_IC_NVar",         &RS.Opt__UM_IC_NVar,         SID, TID, NonFatal, &RT.Opt__UM_IC_NVar,          1, NonFatal );
+   LoadField( "Opt__UM_IC_Format",       &RS.Opt__UM_IC_Format,       SID, TID, NonFatal, &RT.Opt__UM_IC_Format,        1, NonFatal );
    LoadField( "Opt__UM_IC_Downgrade",    &RS.Opt__UM_IC_Downgrade,    SID, TID, NonFatal, &RT.Opt__UM_IC_Downgrade,     1, NonFatal );
    LoadField( "Opt__UM_IC_Refine",       &RS.Opt__UM_IC_Refine,       SID, TID, NonFatal, &RT.Opt__UM_IC_Refine,        1, NonFatal );
    LoadField( "Opt__UM_IC_LoadNRank",    &RS.Opt__UM_IC_LoadNRank,    SID, TID, NonFatal, &RT.Opt__UM_IC_LoadNRank,     1, NonFatal );
@@ -1811,6 +1935,9 @@ void Check_InputPara( const char *FileName )
 #  ifdef PARTICLE
    LoadField( "Opt__Output_ParDens",     &RS.Opt__Output_ParDens,     SID, TID, NonFatal, &RT.Opt__Output_ParDens,      1, NonFatal );
 #  endif
+#  ifdef MHD
+   LoadField( "Opt__Output_CC_Mag",      &RS.Opt__Output_CC_Mag,      SID, TID, NonFatal, &RT.Opt__Output_CC_Mag,       1, NonFatal );
+#  endif
 #  ifdef PARTICLE
    if ( OPT__OUTPUT_TOTAL || OPT__OUTPUT_PART || OPT__OUTPUT_USER || OPT__OUTPUT_BASEPS || OPT__OUTPUT_PAR_TEXT ) {
 #  else
@@ -1832,6 +1959,8 @@ void Check_InputPara( const char *FileName )
    LoadField( "Opt__TimingBarrier",      &RS.Opt__TimingBarrier,      SID, TID, NonFatal, &RT.Opt__TimingBarrier,       1, NonFatal );
    LoadField( "Opt__TimingBalance",      &RS.Opt__TimingBalance,      SID, TID, NonFatal, &RT.Opt__TimingBalance,       1, NonFatal );
    LoadField( "Opt__TimingMPI",          &RS.Opt__TimingMPI,          SID, TID, NonFatal, &RT.Opt__TimingMPI,           1, NonFatal );
+   LoadField( "Opt__RecordNote",         &RS.Opt__RecordNote,         SID, TID, NonFatal, &RT.Opt__RecordNote,          1, NonFatal );
+   LoadField( "Opt__RecordUnphy",        &RS.Opt__RecordUnphy,        SID, TID, NonFatal, &RT.Opt__RecordUnphy,         1, NonFatal );
    LoadField( "Opt__RecordMemory",       &RS.Opt__RecordMemory,       SID, TID, NonFatal, &RT.Opt__RecordMemory,        1, NonFatal );
    LoadField( "Opt__RecordPerformance",  &RS.Opt__RecordPerformance,  SID, TID, NonFatal, &RT.Opt__RecordPerformance,   1, NonFatal );
    LoadField( "Opt__ManualControl",      &RS.Opt__ManualControl,      SID, TID, NonFatal, &RT.Opt__ManualControl,       1, NonFatal );
@@ -1853,6 +1982,10 @@ void Check_InputPara( const char *FileName )
    LoadField( "Opt__Ck_MemFree",         &RS.Opt__Ck_MemFree,         SID, TID, NonFatal, &RT.Opt__Ck_MemFree,          1, NonFatal );
 #  ifdef PARTICLE
    LoadField( "Opt__Ck_Particle",        &RS.Opt__Ck_Particle,        SID, TID, NonFatal, &RT.Opt__Ck_Particle,         1, NonFatal );
+#  endif
+#  ifdef MHD
+   LoadField( "Opt__Ck_InterfaceB",      &RS.Opt__Ck_InterfaceB,      SID, TID, NonFatal, &RT.Opt__Ck_InterfaceB,       1, NonFatal );
+   LoadField( "Opt__Ck_DivergenceB",     &RS.Opt__Ck_DivergenceB,     SID, TID, NonFatal, &RT.Opt__Ck_DivergenceB,      1, NonFatal );
 #  endif
 
 
@@ -1880,6 +2013,9 @@ void Check_InputPara( const char *FileName )
       RS.FlagTable_PresGradient[lv]    = -1.0;
       RS.FlagTable_Vorticity   [lv]    = -1.0;
       RS.FlagTable_Jeans       [lv]    = -1.0;
+#     ifdef MHD
+      RS.FlagTable_Current     [lv]    = -1.0;
+#     endif
 
 #     elif ( MODEL == ELBDM )
       for (int t=0; t<2; t++)
@@ -1922,6 +2058,11 @@ void Check_InputPara( const char *FileName )
 
    if ( OPT__FLAG_JEANS )
    LoadField( "FlagTable_Jeans",          RS.FlagTable_Jeans,         SID, TID, NonFatal,  RT.FlagTable_Jeans,         N1, NonFatal );
+
+#  ifdef MHD
+   if ( OPT__FLAG_CURRENT )
+   LoadField( "FlagTable_Current",        RS.FlagTable_Current,       SID, TID, NonFatal,  RT.FlagTable_Current,       N1, NonFatal );
+#  endif
 
 #  elif ( MODEL == ELBDM )
    if ( OPT__FLAG_ENGY_DENSITY ) {
