@@ -239,19 +239,15 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
                         case PRESSURE:
                         {
 #                          ifdef MHD
-                           real B[3], Bx2, By2, Bz2, B2, EngyB;
+                           real B[3];
 
                            MHD_GetCellCenteredBField( B,
-                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[0],
-                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[1],
-                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[2],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGX],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGY],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGZ],
                                                       PS1, PS1, PS1, i, j, k );
 
-                           Bx2   = SQR( B[MAGX] );
-                           By2   = SQR( B[MAGY] );
-                           Bz2   = SQR( B[MAGZ] );
-                           B2    = Bx2 + By2 + Bz2;
-                           EngyB = (real)0.5*B2;
+                           real EngyB = 0.5 * ( SQR( B[MAGX] ) + SQR( B[MAGY] ) + SQR( B[MAGZ] ) );
 #                          else
                            real EngyB = NULL_REAL;
 #                          endif
@@ -269,11 +265,23 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
 
                         case INTERNAL_ENGY:
                         {
-                           const double intengy =              amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENGY][k][j][i]
-                                                - 0.5 * ( SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMX][k][j][i] )
-                                                        + SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMY][k][j][i] )
-                                                        + SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMZ][k][j][i] ) )
-                                                /              amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+                           double intengy =              amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENGY][k][j][i]
+                                          - 0.5 * ( SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMX][k][j][i] )
+                                                  + SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMY][k][j][i] )
+                                                  + SQR( amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMZ][k][j][i] ) )
+                                          /              amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+
+#                          ifdef MHD
+                           real B[3];
+
+                           MHD_GetCellCenteredBField( B,
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGX],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGY],
+                                                      amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGZ],
+                                                      PS1, PS1, PS1, i, j, k );
+
+                           intengy -= 0.5 * ( SQR( B[MAGX] ) + SQR( B[MAGY] ) + SQR( B[MAGZ] ) );
+#                          endif
 
                            OMP_Data  [PROFID][TID][bin] += intengy*dv;
                            OMP_Weight[PROFID][TID][bin] += dv;
@@ -363,7 +371,7 @@ void Aux_ComputeProfile( Profile_t *Prof[], const double Center[], const double 
                   break;
 
                   case VRAD:
-   //                Avoid division by zero when denisty is zero
+//                   Avoid division by zero when denisty is zero
                      if ( Prof[PROFID]->Weight[b] > 0.0 )   Prof[PROFID]->Data[b] /= Prof[PROFID]->Weight[b];
                   break;
                } // switch ( Quantity )
