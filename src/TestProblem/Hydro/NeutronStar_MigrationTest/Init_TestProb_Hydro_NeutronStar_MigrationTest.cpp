@@ -15,6 +15,10 @@ double GREP_MaxRadius;        // maximum radius in the radial profile           
                               // (<0=spearation between vertex farthest from the center)
 double GREP_MinBinSize;       // minimum bin size                                            [-1.0]
                               // (<0=use amr->dh[MAX_LEVEL])
+
+double GREP_Bfield_Ab;        // magnetic field strength                                     [1e15]
+double GREP_Bfield_np;        // dependence on the density                                   [0.0]
+double GREP_Bfield_Pcut;      // times of ambient pressure                                   [1.455e25]
 // =======================================================================================
 
 
@@ -127,7 +131,11 @@ void SetParameter()
    ReadPara->Add( "GREP_MaxRadius",      &GREP_MaxRadius,        -1.0,          NoMin_double,     NoMax_double      );
    ReadPara->Add( "GREP_MinBinSize",     &GREP_MinBinSize,       -1.0,          NoMin_double,     NoMax_double      );
    ReadPara->Add( "NeutronStar_ICFile",  NeutronStar_ICFile,     Useless_str,   Useless_str,      Useless_str       );
-
+#  ifdef MHD
+   ReadPara->Add( "GREP_Bfield_Ab",      &GREP_Bfield_Ab,        1.0e15,        0.0,              NoMax_double      );
+   ReadPara->Add( "GREP_Bfield_np",      &GREP_Bfield_np,        0.0,           NoMin_double,     NoMax_double      );
+   ReadPara->Add( "GREP_Bfield_Pcut",    &GREP_Bfield_Pcut,      1.455e25,      0.0,              NoMax_double      );
+#  endif
 
    ReadPara->Read( FileName );
 
@@ -169,6 +177,11 @@ void SetParameter()
       Aux_Message( stdout, "  GREP_MaxRadius            = %13.7e\n",  GREP_MaxRadius );
       Aux_Message( stdout, "  GREP_MinBinSize           = %13.7e\n",  GREP_MinBinSize );
       Aux_Message( stdout, "  NeutronStar_ICFile        = %s\n",      NeutronStar_ICFile );
+#     ifdef MHD
+      Aux_Message( stdout, "  GREP_Bfield_Ab            = %13.7e\n",  GREP_Bfield_Ab );
+      Aux_Message( stdout, "  GREP_Bfield_np            = %13.7e\n",  GREP_Bfield_np );
+      Aux_Message( stdout, "  GREP_Bfield_Pcut          = %13.7e\n",  GREP_Bfield_Pcut );
+#     endif
       Aux_Message( stdout, "=============================================================================\n" );
    }
 
@@ -227,6 +240,107 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
                + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
 
 } // FUNCTION : SetGridIC
+
+
+#ifdef MHD
+//-------------------------------------------------------------------------------------------------------
+// Function    :  SetBFieldIC
+// Description :  Set the problem-specific initial condition of magnetic field
+//
+// Note        :  1. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
+//                   (unless OPT__INIT_GRID_WITH_OMP is disabled)
+//                   --> Please ensure that everything here is thread-safe
+//                2. Use vector field for generating poloidal B field, defined in Liu+ 2008, Phys. Rev. D78, 024012
+//                     A_phi = Ab * \bar\omega^2 * (1 - rho / rho_max)^np * max(P - Pcut, 0)
+//                   where
+//                     \omega^2 = (x - x_center)^2 + y^2
+//                   And
+//                     A_x = -(y / \bar\omega^2) * A_phi;  A_y = (x / \bar\omega^2) * A_phi;  A_z = 0
+//
+// Parameter   :  magnetic : Array to store the output magnetic field
+//                x/y/z    : Target physical coordinates
+//                Time     : Target physical time
+//                lv       : Target refinement level
+//                AuxArray : Auxiliary array
+//
+// Return      :  magnetic
+//-------------------------------------------------------------------------------------------------------
+void SetBFieldIC( real magnetic[], const double x, const double y, const double z, const double Time,
+                  const int lv, double AuxArray[] )
+{
+
+   const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+   const double *Table_R      = NeutronStar_Prof + 0*NeutronStar_NBin;
+   const double *Table_Dens   = NeutronStar_Prof + 2*NeutronStar_NBin;
+   const double *Table_Pres   = NeutronStar_Prof + 3*NeutronStar_NBin;
+
+   const double x0 = x - BoxCenter[0];
+   const double y0 = y - BoxCenter[1];
+   const double z0 = z - BoxCenter[2];
+
+   const double dens_c = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, 0.0);
+   const double Pcut   = GREP_Bfield_Pcut / UNIT_P;
+   const double Ab     = GREP_Bfield_Ab / UNIT_B;
+
+// Use finite difference to compute the B field
+   double diff = amr->dh[TOP_LEVEL];
+   double r_xm, r_xp, dens_xm, dens_xp, pres_xm, pres_xp;
+   double r_ym, r_yp, dens_ym, dens_yp, pres_ym, pres_yp;
+   double r_zm, r_zp, dens_zm, dens_zp, pres_zm, pres_zp;
+
+   r_xm    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 - diff ) );
+   r_xp    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 + diff ) );
+   r_ym    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 - diff ) );
+   r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
+   r_zm    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 - diff ) );
+   r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
+
+   dens_xm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xm);
+   dens_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xp);
+   dens_ym = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_ym);
+   dens_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_yp);
+   dens_zm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zm);
+   dens_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zp);
+
+   pres_xm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xm);
+   pres_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xp);
+   pres_ym = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_ym);
+   pres_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_yp);
+   pres_zm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zm);
+   pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);
+
+/*
+   double dAy_dx = ( ( x0 + diff ) * POW( 1.0 - dens_xp / dens_c, GREP_Bfield_np ) * MAX( pres_xp - Pcut, 0.0 )   \
+                 -   ( x0 - diff ) * POW( 1.0 - dens_xm / dens_c, GREP_Bfield_np ) * MAX( pres_xm - Pcut, 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAx_dy = ( -( y0 + diff ) * POW( 1.0 - dens_yp / dens_c, GREP_Bfield_np ) * MAX( pres_yp - Pcut, 0.0 )   \
+                 -   -( y0 - diff ) * POW( 1.0 - dens_ym / dens_c, GREP_Bfield_np ) * MAX( pres_ym - Pcut, 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAphi_dz = ( POW( 1.0 - dens_zp / dens_c, GREP_Bfield_np ) * MAX( pres_zp - Pcut, 0.0 )   \
+                   -   POW( 1.0 - dens_zm / dens_c, GREP_Bfield_np ) * MAX( pres_zm - Pcut, 0.0 ) ) \
+                   / ( 2.0  * diff );
+*/
+   double dAy_dx = ( ( x0 + diff ) * POW( 1.0 - dens_xp / dens_c, GREP_Bfield_np ) * ( (pres_xp - Pcut > 0.0)? 1.0: 0.0 )  \
+                 -   ( x0 - diff ) * POW( 1.0 - dens_xm / dens_c, GREP_Bfield_np ) * ( (pres_xm - Pcut > 0.0)? 1.0: 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAx_dy = ( -( y0 + diff ) * POW( 1.0 - dens_yp / dens_c, GREP_Bfield_np ) * ( (pres_yp - Pcut > 0.0)? 1.0: 0.0 )   \
+                 -   -( y0 - diff ) * POW( 1.0 - dens_ym / dens_c, GREP_Bfield_np ) * ( (pres_ym - Pcut > 0.0)? 1.0: 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAphi_dz = ( POW( 1.0 - dens_zp / dens_c, GREP_Bfield_np ) * ( (pres_zp - Pcut > 0.0)? 1.0: 0.0 )   \
+                   -   POW( 1.0 - dens_zm / dens_c, GREP_Bfield_np ) * ( (pres_zm - Pcut > 0.0)? 1.0: 0.0 ) ) \
+                   / ( 2.0  * diff );
+
+
+   magnetic[MAGX] = -x0 * Ab * dAphi_dz;
+   magnetic[MAGY] = -y0 * Ab * dAphi_dz;
+   magnetic[MAGZ] =       Ab * ( dAy_dx - dAx_dy );
+
+} // FUNCTION : SetBFieldIC
+#endif // #ifdef MHD
 #endif // #if ( MODEL == HYDRO )
 
 
@@ -266,6 +380,9 @@ void Init_TestProb_Hydro_NeutronStar_MigrationTest()
 // 4. enable the corresponding runtime option in "Input__Parameter"
 //    --> for instance, enable OPT__OUTPUT_USER for Output_User_Ptr
    Init_Function_User_Ptr         = SetGridIC;
+#  ifdef MHD
+   Init_Function_BField_User_Ptr  = SetBFieldIC;
+#  endif
    Init_Field_User_Ptr            = NULL; // set NCOMP_PASSIVE_USER;          example: TestProblem/Hydro/Plummer/Init_TestProb_Hydro_Plummer.cpp --> AddNewField()
    Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
    Mis_GetTimeStep_User_Ptr       = NULL; // option: OPT__DT_USER;            example: Miscellaneous/Mis_GetTimeStep_User.cpp

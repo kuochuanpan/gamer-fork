@@ -4,9 +4,13 @@ GREP_Center_Method   1              # center of radial profile                  
 GREP_MaxIter         1000           # number of iteration for constructing mass_TOV and Gamma_TOV [1000]
 GREP_LogBin          1              # scale of bin in radila profile                              [true]
                                     # (true=logarithmic, false=linear)
-GREP_LogBinRatio     1.002          # ratio in logarithmic bin                                    [1.25]
+GREP_LogBinRatio     1.005          # ratio in logarithmic bin                                    [1.25]
 GREP_MaxRadius       -1.0           # maximum radius in the radial profile                        [-1.0]
                                     # (<0=spearation between vertex farthest from the center)
 GREP_MinBinSize      -1.0           # minimum bin size                                            [-1.0]
                                     # (<0=use amr->dh[MAX_LEVEL])
 NeutronStar_ICFile   tovstar_short  # input file for initial condition
+
+GREP_Bfield_Ab       1.0e15         # magnetic field strength (in cgs)
+GREP_Bfield_np       0.0            # dependence on the density
+GREP_Bfield_Pcut     1.455e25       # 1e12 times of ambient pressure (in cgs)
