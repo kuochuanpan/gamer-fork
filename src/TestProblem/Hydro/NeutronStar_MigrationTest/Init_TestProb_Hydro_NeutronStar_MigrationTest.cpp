@@ -309,6 +309,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    pres_zm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zm);
    pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);
 
+/*
    double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, GREP_Bfield_np )*MAX( pres_xp - Pcut, 0.0 )/( pres_xp - Pcut )  \
                  -   ( x0 - diff )*POW( 1.0 - dens_xm/dens_c, GREP_Bfield_np )*MAX( pres_xm - Pcut, 0.0 )/( pres_xm - Pcut )) \
                  / ( 2.0  * diff );
@@ -320,6 +321,20 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, GREP_Bfield_np )*MAX( pres_zp - Pcut, 0.0 )/( pres_zp - Pcut )   \
                    -   POW( 1.0 - dens_zm/dens_c, GREP_Bfield_np )*MAX( pres_zm - Pcut, 0.0 )/( pres_zm - Pcut ) ) \
                    / ( 2.0  * diff );
+*/
+
+   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, GREP_Bfield_np )*MAX( pres_xp - Pcut, 0.0 )   \
+                 -   ( x0 - diff )*POW( 1.0 - dens_xm/dens_c, GREP_Bfield_np )*MAX( pres_xm - Pcut, 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, GREP_Bfield_np )*MAX( pres_yp - Pcut, 0.0 )   \
+                 -   -( y0 - diff )*POW( 1.0 - dens_ym/dens_c, GREP_Bfield_np )*MAX( pres_ym - Pcut, 0.0 ) ) \
+                 / ( 2.0  * diff );
+
+   double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, GREP_Bfield_np )*MAX( pres_zp - Pcut, 0.0 )   \
+                   -   POW( 1.0 - dens_zm/dens_c, GREP_Bfield_np )*MAX( pres_zm - Pcut, 0.0 ) ) \
+                   / ( 2.0  * diff );
+
 
    magnetic[MAGX] = -x0 * Ab * dAphi_dz;
    magnetic[MAGY] = -y0 * Ab * dAphi_dz;
