@@ -250,8 +250,9 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 // Note        :  1. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
 //                   (unless OPT__INIT_GRID_WITH_OMP is disabled)
 //                   --> Please ensure that everything here is thread-safe
-//                2. Use vector field for generating poloidal B field, defined in Liu+ 2008, Phys. Rev. D78, 024012
-//                     A_phi = Ab * \bar\omega^2 * (1 - rho / rho_max)^np * max(P - Pcut, 0)
+//                2. Generate poloidal B field from vector potential in a form similar
+//                   to that defined in Liu+ 2008, Phys. Rev. D78, 024012
+//                     A_phi = Ab * \bar\omega^2 * (1 - rho / rho_max)^np * (P / P_max)
 //                   where
 //                     \omega^2 = (x - x_center)^2 + y^2
 //                   And
@@ -278,62 +279,46 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    const double y0 = y - BoxCenter[1];
    const double z0 = z - BoxCenter[2];
 
-   const double dens_c = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, 0.0);
+   // Use the data at first row as the central density and pressure
+   // to avoid incorrect values extrapolated from the input IC table
+   const double dens_c = Table_Dens[0];
+   const double pres_c = Table_Pres[0];
    const double Pcut   = GREP_Bfield_Pcut / UNIT_P;
    const double Ab     = GREP_Bfield_Ab / UNIT_B;
 
-// Use finite difference to compute the B field
+   // Use finite difference to compute the B field
    double diff = amr->dh[TOP_LEVEL];
-   double r_xm, r_xp, dens_xm, dens_xp, pres_xm, pres_xp;
-   double r_ym, r_yp, dens_ym, dens_yp, pres_ym, pres_yp;
-   double r_zm, r_zp, dens_zm, dens_zp, pres_zm, pres_zp;
+   double r,    dens,    pres;
+   double r_xp, dens_xp, pres_xp;
+   double r_yp, dens_yp, pres_yp;
+   double r_zp, dens_zp, pres_zp;
 
-   r_xm    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 - diff ) );
+   r       = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0        ) );
    r_xp    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 + diff ) );
-   r_ym    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 - diff ) );
    r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
-   r_zm    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 - diff ) );
    r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
 
-   dens_xm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xm);
+   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
    dens_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xp);
-   dens_ym = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_ym);
    dens_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_yp);
-   dens_zm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zm);
    dens_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zp);
 
-   pres_xm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xm);
+   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
    pres_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xp);
-   pres_ym = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_ym);
    pres_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_yp);
-   pres_zm = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zm);
    pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);
 
-/*
-   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, GREP_Bfield_np )*MAX( pres_xp - Pcut, 0.0 )/( pres_xp - Pcut )  \
-                 -   ( x0 - diff )*POW( 1.0 - dens_xm/dens_c, GREP_Bfield_np )*MAX( pres_xm - Pcut, 0.0 )/( pres_xm - Pcut )) \
-                 / ( 2.0  * diff );
+   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, GREP_Bfield_np )*( pres_xp / pres_c )   \
+                 -   ( x0        )*POW( 1.0 - dens   /dens_c, GREP_Bfield_np )*( pres    / pres_c ) ) \
+                 / diff;
 
-   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, GREP_Bfield_np )*MAX( pres_yp - Pcut, 0.0 )/( pres_yp - Pcut )   \
-                 -   -( y0 - diff )*POW( 1.0 - dens_ym/dens_c, GREP_Bfield_np )*MAX( pres_ym - Pcut, 0.0 )/( pres_ym - Pcut ) ) \
-                 / ( 2.0  * diff );
+   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, GREP_Bfield_np )*( pres_yp / pres_c )   \
+                 -   -( y0        )*POW( 1.0 - dens   /dens_c, GREP_Bfield_np )*( pres    / pres_c ) ) \
+                 / diff;
 
-   double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, GREP_Bfield_np )*MAX( pres_zp - Pcut, 0.0 )/( pres_zp - Pcut )   \
-                   -   POW( 1.0 - dens_zm/dens_c, GREP_Bfield_np )*MAX( pres_zm - Pcut, 0.0 )/( pres_zm - Pcut ) ) \
-                   / ( 2.0  * diff );
-*/
-
-   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, GREP_Bfield_np )*MAX( pres_xp - Pcut, 0.0 )   \
-                 -   ( x0 - diff )*POW( 1.0 - dens_xm/dens_c, GREP_Bfield_np )*MAX( pres_xm - Pcut, 0.0 ) ) \
-                 / ( 2.0  * diff );
-
-   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, GREP_Bfield_np )*MAX( pres_yp - Pcut, 0.0 )   \
-                 -   -( y0 - diff )*POW( 1.0 - dens_ym/dens_c, GREP_Bfield_np )*MAX( pres_ym - Pcut, 0.0 ) ) \
-                 / ( 2.0  * diff );
-
-   double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, GREP_Bfield_np )*MAX( pres_zp - Pcut, 0.0 )   \
-                   -   POW( 1.0 - dens_zm/dens_c, GREP_Bfield_np )*MAX( pres_zm - Pcut, 0.0 ) ) \
-                   / ( 2.0  * diff );
+   double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, GREP_Bfield_np )*( pres_zp / pres_c )   \
+                   -   POW( 1.0 - dens   /dens_c, GREP_Bfield_np )*( pres    / pres_c ) ) \
+                   / diff;
 
 
    magnetic[MAGX] = -x0 * Ab * dAphi_dz;
