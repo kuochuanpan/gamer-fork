@@ -6,7 +6,7 @@
 
 #define LinearInterp( x, xa, xb, ya, yb )   ( ( ((x) - (xa)) * (yb) + ((xb) - (x)) * (ya) ) / ((xb) - (xa)) )
 
-extern Profile_t Phi_eff;
+extern Profile_t *Phi_eff[2];
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -34,15 +34,18 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
                         const real dh, const bool Undo, const bool USG)
 {
 
-// Profile information
-   const double *Data   = Phi_eff.Data;
-   const double *Radius = Phi_eff.Radius;
-         double *Center = Phi_eff.Center;
-         double  r_max2 = SQR( Phi_eff.MaxRadius );
-         double  EdgeL[Phi_eff.NBin] = { 0.0 };
+// REVISE: support USG feature
+      Profile_t *Phi    = Phi_eff[1];
 
-   for ( int i=1; i<Phi_eff.NBin; i++ )   EdgeL[i] = ( Phi_eff.LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
-                                                                        : 0.5*( Radius[i - 1] + Radius[i] );
+// Profile information
+   const double *Data   = Phi->Data;
+   const double *Radius = Phi->Radius;
+         double *Center = Phi->Center;
+         double  r_max2 = SQR( Phi->MaxRadius );
+         double  EdgeL[Phi->NBin] = { 0.0 };
+
+   for ( int i=1; i<Phi->NBin; i++ )   EdgeL[i] = ( Phi->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
+                                                                  : 0.5*( Radius[i - 1] + Radius[i] );
 
 // declare index for loop
 #  ifdef UNSPLIT_GRAVITY
@@ -68,9 +71,9 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
 //    correct potential (including ghost zone)
       for (int idx_g0=0; idx_g0<CUBE(IDX); idx_g0++)
       {
-         const int i_g0    = idx_g0 % IDX;
-         const int j_g0    = idx_g0 % IDX_sqr / IDX;
-         const int k_g0    = idx_g0 / IDX_sqr;
+         const int i_g0  = idx_g0 % IDX;
+         const int j_g0  = idx_g0 % IDX_sqr / IDX;
+         const int k_g0  = idx_g0 / IDX_sqr;
 
          const double dx = g_Corner_Array[P][0] + (double)((i_g0-IDX_GZ)*dh) - Center[0];
          const double dy = g_Corner_Array[P][1] + (double)((j_g0-IDX_GZ)*dh) - Center[1];
@@ -80,11 +83,11 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
 
          if ( r2 < r_max2 )
          {
-            const double r   = SQRT( r2 );
+            const double r = SQRT( r2 );
 
 //          use binary search algorithm to find the index of bin
             int bin;
-            for ( int i=0, j=Phi_eff.NBin - 1; j - i != 1; bin = (i + j) / 2 )
+            for ( int i=0, j=Phi->NBin - 1; j - i != 1; bin = (i + j) / 2 )
             {
                int mid = (i + j) / 2;
                if ( r > EdgeL[mid] )   i = mid;
@@ -92,19 +95,19 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
             }
 
 //          prevent from round-off errors
-            if ( bin >= Phi_eff.NBin )   continue;
+            if ( bin >= Phi->NBin )   continue;
 
 //          check
 #           ifdef GAMER_DEBUG
             if ( bin < 0 )    Aux_Error( ERROR_INFO, "bin (%d) < 0 !!\n", bin );
 #           endif
 
-            double phi = ( bin == Phi_eff.NBin-1 ) ? Data[bin]
-                                                   : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
+            double phi = ( bin == Phi->NBin-1 ) ? Data[bin]
+                                                : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
 
 //          for debug, clean later
-            if ( (r < EdgeL[bin])  || ( r > EdgeL[bin + 1]) )
-            printf("r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e\n", r, EdgeL[bin], EdgeL[bin+1]);
+//            if ( (r < EdgeL[bin])  || ( r > EdgeL[bin + 1]) )
+//            printf("r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e\n", r, EdgeL[bin], EdgeL[bin+1]);
 
             pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
          } // if ( r2 < r_max2 )
