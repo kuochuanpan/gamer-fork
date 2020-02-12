@@ -239,6 +239,37 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[ENGY] = pres / ( GAMMA - 1.0 )
                + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
 
+#  if ( EOS == NUCLEAR )
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
+   int keyerr;
+   const double rfeps = 1.0e-10;
+   const double mev_to_kelvin = 1.1604447522806e10;
+
+   double ye = 0.5; // trial value
+
+// compute temperature using ideal EoS: P = \rho*K*T / ( mu*m_H )
+   xtmp = (pres*UNIT_P) / (dens*UNIT_D) * MOLECULAR_WEIGHT * Const_mH / Const_kB;  // in Kelvin
+   xtmp /= mev_to_kelvin;  // to MeV
+
+   nuc_eos_C_short((dens*UNIT_D),&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+        &xdpdrhoe, &xmunu, 1, &keyerr, rfeps);
+
+   if (keyerr != 0)
+   {
+//      printf("debug: keyerr not zero %d\n",keyerr);
+//    set to 0.0 if any errors occur
+      fluid[ENTR] = 0.0;  // entropy [kB/baryon * dens]
+   }
+
+   else
+   {
+      fluid[ENTR] = xent*dens;  // entropy [kB/baryon * dens]
+   }
+
+   fluid[YE]   = ye*dens;    // electron fraction [dens]
+//   fluid[ENTR] = xent*dens;  // entropy [kB/baryon * dens]
+
+#  endif
 } // FUNCTION : SetGridIC
 
 

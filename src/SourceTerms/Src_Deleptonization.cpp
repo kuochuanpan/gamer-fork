@@ -3,10 +3,10 @@
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
 static void Src_Deleptonization( real fluid[], const double x, const double y, const double z, const double Time,
-                      const int lv, double AuxArray[], const double dt );
+                      const int lv, double AuxArray[], const double dt, const double EngyB );
 
 void (*Src_Deleptonization_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
-                      const int lv, double AuxArray[], const double dt ) = Src_Deleptonization;
+                      const int lv, double AuxArray[], const double dt, const double EngyB ) = Src_Deleptonization;
 
 double YeOfRhoFunc(double);
 
@@ -30,10 +30,10 @@ double YeOfRhoFunc(double);
 // Return      :  fluid[]
 //-------------------------------------------------------------------------------------------------------
 void Src_Deleptonization( real fluid[], const double x, const double y, const double z, const double Time,
-               const int lv, double AuxArray[], const double dt )
+               const int lv, double AuxArray[], const double dt, const double EngyB )
 {
 
-#  if ( EOS == NUCLEAR )
+#  if ( EOS == NUCLEAR )  &&  ( defined YeOfRhoFunc )
 
 // example
    /*

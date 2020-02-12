@@ -134,7 +134,7 @@
 // --> including entropy (or internal energy) when the dual energy formalism is adopted
 // TODO: add EOS nuclear add +2 variables
 
-#if ( MODEL == HYDRO  &&  defined DUAL_ENERGY  &&  EOS== NUCLEAR )
+#if ( MODEL == HYDRO  &&  defined DUAL_ENERGY  &&  EOS == NUCLEAR )
 #  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + 3 )
 #elif ( MODEL == HYDRO  &&  EOS == NUCLEAR )
 #  define NCOMP_PASSIVE       ( NCOMP_PASSIVE_USER + 2 )
@@ -198,10 +198,15 @@
 #endif
 
 // Nuclear EoS
-# if (EOS == NUCLEAR)
-# define ENTR ( NCOMP_TOTAL - 2 )
-# define YE   ( NCOMP_TOTAL - 1 )
+#if ( EOS == NUCLEAR )
+# ifdef DUAL_ENERGY
+#  define ENTR ( NCOMP_TOTAL - 3 )
+#  define YE   ( NCOMP_TOTAL - 2 )
+# else
+#  define ENTR ( NCOMP_TOTAL - 2 )
+#  define YE   ( NCOMP_TOTAL - 1 )
 # endif
+#endif
 
 // field indices of magnetic --> element of [0 ... NCOMP_MAG-1]
 # ifdef MHD

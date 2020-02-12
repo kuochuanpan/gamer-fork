@@ -94,18 +94,19 @@ void Init_Field()
 // 4. must put the dual-energy variable at the END of the field list to be consistent with the symbolic
 //    constant ENPY (or EINT) defined in Macro.h
 //    --> as we still rely on these constants (e.g., DENS, ENPY) in the fluid solvers
+
+// TODO: add nuelcear eos here: KC
+// put Entr and Ye eariler than Entropy/Einit for the consistence with symbolic constant defined in Macro.h
+# if ( EOS == NUCLEAR )
+  Idx_Entr    = AddField( "Entr",  NORMALIZE_NO );
+  Idx_Ye      = AddField( "Ye",    NORMALIZE_NO );
+# endif
+
 #  if   ( DUAL_ENERGY == DE_ENPY )
    Idx_Enpy    = AddField( "Entropy",  NORMALIZE_NO );
 #  elif ( DUAL_ENERGY == DE_EINT )
    Idx_Eint    = AddField( "Eint",     NORMALIZE_NO );
 #  endif
-
-// TODO: add nuelcear eos here: KC
-
-# if ( EOS == NUCLEAR )
-  Idx_Entr    = AddField( "Entr",  NORMALIZE_NO );
-  Idx_Ye      = AddField( "Ye",    NORMALIZE_NO );
-# endif
 
 // 5. validate if all fields have been set properly
    if ( NDefinedField != NCOMP_TOTAL )

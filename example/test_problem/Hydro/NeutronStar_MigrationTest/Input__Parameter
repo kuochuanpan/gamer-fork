@@ -109,7 +109,7 @@ OPT__MINIMIZE_MPI_BARRIER     1           # minimize MPI barriers to improve loa
 
 # source terms
 SRC_DELEPTONIZATION           0           # deleptonization (for neutron star simulations) [0]
-SRC_USER                      0           # user-defined source terms -> edit "Src_User.cpp" [0]
+SRC_USER                      1           # user-defined source terms -> edit "Src_User.cpp" [0]
 
 
 # fluid solver in HYDRO (MODEL==HYDRO only)
@@ -135,8 +135,8 @@ OPT__CORR_AFTER_ALL_SYNC     -1           # apply various corrections after all 
 OPT__NORMALIZE_PASSIVE        1           # ensure "sum(passive_scalar_density) == gas_density" [1]
 OPT__OVERLAP_MPI              0           # overlap MPI communication with CPU/GPU computations [0] ##NOT SUPPORTED YET##
 OPT__RESET_FLUID              0           # reset fluid variables after each update -> edit "Flu_ResetByUser.cpp" [0]
-MIN_DENS                      0.0         # minimum mass density (must >= 0.0) [0.0] ##HYDRO, MHD, and ELBDM ONLY##
-MIN_PRES                      0.0         # minimum pressure     (must >= 0.0) [0.0] ##HYDRO and MHD ONLY##
+MIN_DENS                      1.0e-20         # minimum mass density (must >= 0.0) [0.0] ##HYDRO, MHD, and ELBDM ONLY##
+MIN_PRES                      1.0e-24         # minimum pressure     (must >= 0.0) [0.0] ##HYDRO and MHD ONLY##
 JEANS_MIN_PRES                0           # minimum pressure estimated from the Jeans length [0] ##HYDRO/MHD and GRAVITY ONLY##
 JEANS_MIN_PRES_LEVEL         -1           # for JEANS_MIN_PRES; ensure Jeans length is resolved by JEANS_MIN_PRES_NCELL*dh[JEANS_MIN_PRES_LEVEL]
                                           # (<0=auto -> MAX_LEVEL) [-1]
@@ -244,3 +244,24 @@ OPT__CK_MEMFREE               1.0         # check the free memory in GB (0=off, 
 OPT__CK_PARTICLE              0           # check the particle allocation [0]
 OPT__CK_INTERFACE_B           1           # check the consistency of patch interface B field [0] ##MHD ONLY##
 OPT__CK_DIVERGENCE_B          1           # check the divergence-free constraint on B field (0=off, 1=on, 2=on+verbose) [0] ##MHD ONLY##
+
+
+# EOS
+EOS_POSTBOUNCE                1           # postbounce or not [0/1]
+EOS_BOUNCETIME                0.0         # bounce time [unit_T]
+
+# source terms
+SRC_DELEPTONIZATION           1           # deleptonization (for neutron star simulations) [0]
+SRC_USER                      0           # user-defined source terms -> edit "Src_User.cpp" [0]
+
+# Deleptionization (SRC_DELEPTONIZATION = 1)
+DELEP_ENU                     10.0
+DELEP_RHO1                    3.0e8
+DELEP_RHO2                    1.0e13
+DELEP_YE1                     0.5
+DELEP_YE2                     0.273
+DELEP_YEC                     0.017
+
+# Neutrino Light bulb
+LB_LNU                        1.0e52      # Neutrino luminosity  [erg/s]
+LB_TNU                        4.0         # Neutrino temperature [Mev]

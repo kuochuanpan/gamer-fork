@@ -180,7 +180,7 @@ SIMU_OPTION += -DTIMING
 #SIMU_OPTION += -DTIMING_SOLVER
 
 # double precision
-#SIMU_OPTION += -DFLOAT8
+SIMU_OPTION += -DFLOAT8
 
 # serial mode (in which no MPI libraries are required)
 # --> must disable LOAD_BALANCE
@@ -652,9 +652,10 @@ vpath %.cpp Eos/NuclearEos/CPU_Eos
 
 # local source terms source files
 # ------------------------------------------------------------------------------------
- CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp Src_Deleptonization.cpp Src_Lightbulb.cpp
+CC_FILE     += Src_AdvanceDt.cpp  Src_User.cpp  Src_Deleptonization.cpp  Src_Lightbulb.cpp
 
 vpath %.cpp    SourceTerms
+
 
 
 # test problem source files
