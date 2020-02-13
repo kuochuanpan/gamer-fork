@@ -38,14 +38,19 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
       Profile_t *Phi    = Phi_eff[1];
 
 // Profile information
+   const    int  NBin   = Phi->NBin;
    const double *Data   = Phi->Data;
    const double *Radius = Phi->Radius;
-         double *Center = Phi->Center;
-         double  r_max2 = SQR( Phi->MaxRadius );
-         double  EdgeL[Phi->NBin] = { 0.0 };
+   const double *Center = Phi->Center;
+   const double  r_max2 = SQR( Phi->MaxRadius );
+         double  Edge[NBin+1] = { 0.0 };
 
-   for ( int i=1; i<Phi->NBin; i++ )   EdgeL[i] = ( Phi->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
-                                                                  : 0.5*( Radius[i - 1] + Radius[i] );
+   for ( int i=1; i<NBin; i++ )   Edge[i] = ( Phi->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
+                                                            : 0.5*( Radius[i - 1] + Radius[i] );
+
+   Edge[NBin] = ( Phi->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
+                                : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
+
 
 // declare index for loop
 #  ifdef UNSPLIT_GRAVITY
@@ -84,30 +89,27 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
          if ( r2 < r_max2 )
          {
             const double r = SQRT( r2 );
-
-//          use binary search algorithm to find the index of bin
             int bin;
-            for ( int i=0, j=Phi->NBin - 1; j - i != 1; bin = (i + j) / 2 )
+
+//          if empty bins are removed, the separations between bins are not equal in linear/logarithmic scale
+//          use binary search algorithm to find the index of bin
+            for ( int i=0, j=NBin; j-i != 1; bin = (i+j)/2 )
             {
-               int mid = (i + j) / 2;
-               if ( r > EdgeL[mid] )   i = mid;
-               else                    j = mid;
+               int mid = (i+j)/2;
+               if ( r > Edge[mid] )   i = mid;
+               else                   j = mid;
             }
 
-//          prevent from round-off errors
-            if ( bin >= Phi->NBin )   continue;
-
-//          check
-#           ifdef GAMER_DEBUG
-            if ( bin < 0 )    Aux_Error( ERROR_INFO, "bin (%d) < 0 !!\n", bin );
-#           endif
-
-            double phi = ( bin == Phi->NBin-1 ) ? Data[bin]
-                                                : LinearInterp( r, EdgeL[bin], EdgeL[bin+1], Data[bin], Data[bin+1] );
+            double phi = ( bin == NBin-1 ) ? Data[bin]
+                                           : LinearInterp( r, Edge[bin], Edge[bin+1], Data[bin], Data[bin+1] );
 
 //          for debug, clean later
-//            if ( (r < EdgeL[bin])  || ( r > EdgeL[bin + 1]) )
-//            printf("r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e\n", r, EdgeL[bin], EdgeL[bin+1]);
+            if ( (r < Edge[bin])  || ( r > Edge[bin + 1]) )
+            {
+            printf("Bin = %d  NBin = %d\n", bin, NBin);
+            printf("rmax = %.6e  \n", Phi->MaxRadius);
+            printf("Incorrect r: r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e  Radius[i-1] = %.6e  Radius[i] = %.6e\n", r, Edge[bin], Edge[bin+1], Radius[bin-1], Radius[bin]);
+            }
 
             pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
          } // if ( r2 < r_max2 )

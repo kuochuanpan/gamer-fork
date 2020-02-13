@@ -28,14 +28,14 @@ int CUPOT_SetConstMem_GREffPot( double h_GREP_Data[], double h_GREP_Edge[], doub
 void CUAPI_Init_GREffPot()
 {
 
-   int     NBin        = Phi_eff[1]->NBin;
-   double *Radius      = Phi_eff[1]->Radius;
-   double  r_max2      = SQR( Phi_eff[1]->MaxRadius );
+   int     NBin   = Phi_eff[1]->NBin;
+   double *Radius = Phi_eff[1]->Radius;
+   double  r_max2 = SQR( Phi_eff[1]->MaxRadius );
    double  Edge[NBin+1];
 
 // check
    if ( NBin > GR_POT_NAUX_MAX )
-      Aux_Error( ERROR_INFO, "Too many bins in 1D Profile %d !!\n", NBin );
+      Aux_Error( ERROR_INFO, "Too many bins in average radial Profile %d !!\n", NBin );
 
 // compute the location of edge
    Edge[0] = 0.0;
