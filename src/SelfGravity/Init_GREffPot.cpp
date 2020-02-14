@@ -75,7 +75,7 @@ void Init_GREffPot( const int level )
 //    compute the profile at all levels at the first call
       for (int lv=0; lv<NLEVEL; lv++)
       {
-         long       TVar    = _DENS | _VELR | _PRES | _EINT;
+         long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
          Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
          Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
@@ -88,8 +88,10 @@ void Init_GREffPot( const int level )
 //    update the profile at the current level
       {
          int          lv    = level;
-         long       TVar    = _DENS | _VELR | _PRES | _EINT;
-         Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
+//         long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+//         Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
+         long       TVar [] = {       _DENS,   _EINT_DER,     _VELR,       _PRES };
+         Profile_t *Prof [] = { DensAve[lv], EngyAve[lv], VrAve[lv], PresAve[lv] };
 
          Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
                              false, TVar, 4, lv );
@@ -106,7 +108,7 @@ void Init_GREffPot( const int level )
 //          also update the density if new Patches are created in TOP_LEVEL (Step 9 in EvolveLevel()).
 //          For new patches created in other level, the profile will be updated in code below.
             int          lv    = TOP_LEVEL;
-            long       TVar    = _DENS | _VELR | _PRES | _EINT;
+            long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
             Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
@@ -115,7 +117,7 @@ void Init_GREffPot( const int level )
          else
          {
             int          lv    = level_old;
-            long       TVar    = _VELR | _PRES | _EINT;
+            long       TVar [] = {     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { VrAve[lv], PresAve[lv], EngyAve[lv] };
 
             Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
@@ -129,7 +131,7 @@ void Init_GREffPot( const int level )
       {
          for (int lv=level+1; lv<TOP_LEVEL; lv++)
          {
-            long       TVar    = _DENS | _VELR | _PRES | _EINT;
+            long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
             Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
