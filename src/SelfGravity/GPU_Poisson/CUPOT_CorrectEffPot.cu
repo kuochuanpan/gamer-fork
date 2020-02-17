@@ -122,9 +122,9 @@ void CUPOT_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
 
 //          use binary search algorithm to find the index of bin
             int bin;
-            for ( int i=0, j=c_GREP_NBin; j - i != 1; bin = (i + j) / 2 )
+            for ( int i=0, j=c_GREP_NBin; j-i != 1; bin = (i+j)/2 )
             {
-               int mid = (i + j) / 2;
+               int mid = (i+j)/2;
                if ( r > c_GREP_Edge[mid] )   i = mid;
                else                          j = mid;
             }

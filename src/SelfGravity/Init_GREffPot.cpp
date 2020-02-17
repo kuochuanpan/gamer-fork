@@ -75,11 +75,11 @@ void Init_GREffPot( const int level )
 //    compute the profile at all levels at the first call
       for (int lv=0; lv<NLEVEL; lv++)
       {
-         int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-         Profile_t *Prof_all [] = { DensAve[lv], EngyAve[lv],   VrAve[lv], PresAve[lv] };
+         long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+         Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-         Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                             false, Quantity, 4, lv );
+         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                             false, TVar, 4, lv );
       }
    }
 
@@ -87,12 +87,14 @@ void Init_GREffPot( const int level )
    {
 //    update the profile at the current level
       {
-         int              lv    = level;
-         int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-         Profile_t *Prof_all [] = { DensAve[lv], EngyAve[lv],   VrAve[lv], PresAve[lv] };
+         int          lv    = level;
+//         long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+//         Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
+         long       TVar [] = {       _DENS,   _EINT_DER,     _VELR,       _PRES };
+         Profile_t *Prof [] = { DensAve[lv], EngyAve[lv], VrAve[lv], PresAve[lv] };
 
-         Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                             false, Quantity, 4, lv );
+         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                             false, TVar, 4, lv );
       }
 
 //    update profiles related to momentum and energy at last level when entering finer / coarser level
@@ -105,21 +107,21 @@ void Init_GREffPot( const int level )
          {
 //          also update the density if new Patches are created in TOP_LEVEL (Step 9 in EvolveLevel()).
 //          For new patches created in other level, the profile will be updated in code below.
-            int              lv    = TOP_LEVEL;
-            int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-            Profile_t *Prof_all [] = { DensAve[lv], EngyAve[lv],   VrAve[lv], PresAve[lv] };
+            int          lv    = TOP_LEVEL;
+            long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+            Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                                false, Quantity, 4, lv );
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                                false, TVar, 4, lv );
          }
          else
          {
-            int              lv    = level_old;
-            int        Quantity [] = { INTERNAL_ENGY, VRAD,      PRESSURE    };
-            Profile_t *Prof_all [] = { EngyAve[lv],   VrAve[lv], PresAve[lv] };
+            int          lv    = level_old;
+            long       TVar [] = {     _VELR,       _PRES,   _EINT_DER };
+            Profile_t *Prof [] = { VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                                false, Quantity, 3, lv );
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                                false, TVar, 3, lv );
          }
       }
 
@@ -129,11 +131,11 @@ void Init_GREffPot( const int level )
       {
          for (int lv=level+1; lv<TOP_LEVEL; lv++)
          {
-            int        Quantity [] = { DENS,        INTERNAL_ENGY, VRAD,      PRESSURE    };
-            Profile_t *Prof_all [] = { DensAve[lv], EngyAve[lv],   VrAve[lv], PresAve[lv] };
+            long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+            Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof_all, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
-                                false, Quantity, 4, lv );
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+                                false, TVar, 4, lv );
          }
       }
    }
@@ -199,44 +201,46 @@ void CombineProfile( Profile_t *Prof[], const bool RemoveEmpty )
 
       if ( Prof[NLEVEL]->NCell[b] > 0L  &&  Prof[NLEVEL]->Weight[b] > 0.0 )
          Prof[NLEVEL]->Data[b] /= Prof[NLEVEL]->Weight[b];
-   } // for (int b=0; b<Prof[0].NBin; b++)
+   } // for (int b=0; b<Prof[0]->NBin; b++)
 
 
-// Remove empty bins
+// remove the empty bins
    if ( RemoveEmpty )
-   for (int b=0; b<Prof[NLEVEL]->NBin; b++)
    {
-      if ( Prof[NLEVEL]->NCell[b] != 0L )   continue;
-
-//    for cases of consecutive empty bins
-      int b_up;
-      for (b_up=b+1; b_up<Prof[NLEVEL]->NBin; b_up++)
-         if ( Prof[NLEVEL]->NCell[b_up] != 0L )   break;
-
-      const int stride = b_up - b;
-
-      for (int b_up=b+stride; b_up<Prof[NLEVEL]->NBin; b_up++)
+      for (int b=0; b<Prof[NLEVEL]->NBin; b++)
       {
-         const int b_up_ms = b_up - stride;
+         if ( Prof[NLEVEL]->NCell[b] != 0L )   continue;
 
-         Prof[NLEVEL]->Radius[b_up_ms] = Prof[NLEVEL]->Radius[b_up];
-         Prof[NLEVEL]->Data  [b_up_ms] = Prof[NLEVEL]->Data  [b_up];
-         Prof[NLEVEL]->Weight[b_up_ms] = Prof[NLEVEL]->Weight[b_up];
-         Prof[NLEVEL]->NCell [b_up_ms] = Prof[NLEVEL]->NCell [b_up];
-      }
+   //    for cases of consecutive empty bins
+         int b_up;
+         for (b_up=b+1; b_up<Prof[NLEVEL]->NBin; b_up++)
+            if ( Prof[NLEVEL]->NCell[b_up] != 0L )   break;
 
-//    reset the total number of bins
-      Prof[NLEVEL]->NBin -= stride;
+         const int stride = b_up - b;
 
-//    reduce counter since all bins above b have been shifted downward
-      b --;
-   } // for (int b=0; b<Prof.NBin; b++)
+         for (int b_up=b+stride; b_up<Prof[NLEVEL]->NBin; b_up++)
+         {
+            const int b_up_ms = b_up - stride;
 
-// reset the maximum radius
-   const int b = Prof[NLEVEL]->NBin;
+            Prof[NLEVEL]->Radius[b_up_ms] = Prof[NLEVEL]->Radius[b_up];
+            Prof[NLEVEL]->Data  [b_up_ms] = Prof[NLEVEL]->Data  [b_up];
+            Prof[NLEVEL]->Weight[b_up_ms] = Prof[NLEVEL]->Weight[b_up];
+            Prof[NLEVEL]->NCell [b_up_ms] = Prof[NLEVEL]->NCell [b_up];
+         }
 
-   Prof[NLEVEL]->MaxRadius = ( Prof[NLEVEL]->LogBin ) ? SQR ( Prof[NLEVEL]->Radius[b - 1] ) / Prof[NLEVEL]->Radius[b - 2]
-                                                      : 2.0 * Prof[NLEVEL]->Radius[b - 1]   - Prof[NLEVEL]->Radius[b - 2];
+   //    reset the total number of bins
+         Prof[NLEVEL]->NBin -= stride;
+
+   //    reduce counter since all bins above b have been shifted downward
+         b --;
+      } // for (int b=0; b<Prof[NLEVEL]->NBin; b++)
+
+//    update the maximum radius since the last bin may have not been removed
+      const int LastBin = Prof[NLEVEL]->NBin-1;
+
+      Prof[NLEVEL]->MaxRadius = ( Prof[NLEVEL]->LogBin ) ? Prof[NLEVEL]->Radius[LastBin] * sqrt( Prof[NLEVEL]->LogBinRatio )
+                                                         : Prof[NLEVEL]->Radius[LastBin] + 0.5*MinBinSize;
+   }
 
 } // FUNCTION : CombineProfile
 

@@ -501,6 +501,9 @@ struct InputPara_t
    int    Grackle_PE_Heating;
    double Grackle_PE_HeatingRate;
    char  *Grackle_CloudyTable;
+   int    Grackle_ThreeBodyRate;
+   int    Grackle_CIE_Cooling;
+   int    Grackle_H2_OpaApprox;
    int    Che_GPU_NPGroup;
 #  endif
 
@@ -644,7 +647,7 @@ struct InputPara_t
 //
 // Note        :  1. Synchronization is accomplished by first opening the target file with the "appending" mode
 //                   and then close it immediately
-//                3. It's an inline function
+//                2. It's an inline function
 //
 // Parameter   :  FileName : Target file name
 //-------------------------------------------------------------------------------------------------------
