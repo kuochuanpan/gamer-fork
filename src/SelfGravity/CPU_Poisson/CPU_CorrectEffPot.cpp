@@ -48,8 +48,10 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
    for ( int i=1; i<NBin; i++ )   Edge[i] = ( Phi->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
                                                             : 0.5*( Radius[i - 1] + Radius[i] );
 
-   Edge[NBin] = ( Phi->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
-                                : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
+//   Edge[NBin] = ( Phi->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
+//                                : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
+
+   Edge[NBin] = Phi->MaxRadius;
 
 
 // declare index for loop

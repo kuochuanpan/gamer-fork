@@ -68,17 +68,9 @@ void Src_AdvanceDt( const int lv, const double TimeNew, const double TimeOld, co
 
 //       compatible for MHD
 #        ifdef MHD
-         real B[3];
-
-         MHD_GetCellCenteredBField( B,
-                                    amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGX],
-                                    amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGY],
-                                    amr->patch[ amr->FluSg[lv] ][lv][PID]->magnetic[MAGZ],
-                                    PS1, PS1, PS1, i, j, k );
-
-         real EngyB = 0.5 * ( SQR( B[MAGX] ) + SQR( B[MAGY] ) + SQR( B[MAGZ] ) );
+         const real EngyB  = MHD_GetCellCenteredBEnergyInPatch( lv, PID, i, j, k, amr->MagSg[lv] );
 #        else
-         real EngyB = NULL_REAL;
+         const real EngyB  = NULL_REAL;
 #        endif
 
 //       get the input array

@@ -41,8 +41,10 @@ void CUAPI_Init_GREffPot()
    Edge[0] = 0.0;
    for ( int i=1; i<NBin; i++ )   Edge[i] = ( Phi_eff[1]->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
                                                                    : 0.5*( Radius[i - 1] + Radius[i] );
-   Edge[NBin] = ( Phi_eff[1]->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
-                                       : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
+//   Edge[NBin] = ( Phi_eff[1]->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
+//                                       : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
+
+   Edge[NBin] = Phi_eff[1]->MaxRadius;
 
    int Exitcode = CUPOT_SetConstMem_GREffPot( Phi_eff[1]->Data, Edge, Phi_eff[1]->Center, r_max2, NBin );
    if (  Exitcode != 0  )
