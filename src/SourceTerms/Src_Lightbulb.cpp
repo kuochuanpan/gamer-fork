@@ -83,6 +83,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 #  endif
    xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS]
 
+/*
 #ifdef GAMER_DEBUG
    if (xdens < 1.0e11  &&  xdens > 1.0e9) {
    printf("ener: %6e\n", ener
@@ -91,6 +92,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    printf("xenr_shift (input): %.6e\n", xenr);
 }
 #endif
+*/
 
    xtmp = 10.0; // trial value [MeV]
 
@@ -105,14 +107,15 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 //   printf("Temperature LB: %.2e\n", xtmp * mev_to_kelvin);
 
 
-   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
-                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
+//   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+//                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
 #ifdef GAMER_DEBUG
-   if (xdens < 1.0e11  &&  xdens > 1.0e9)
-   printf("xenr_shift (first inter): %.6e\n", xenr);
+//   if (xdens < 1.0e11  &&  xdens > 1.0e9)
+//   printf("xenr_shift (first inter): %.6e\n", xenr);
 #endif
 
+/*
    logd = MIN(MAX(xdens, eos_rhomin), eos_rhomax);
    logt = MIN(MAX(xtmp,  eos_tempmin), eos_tempmax);
 
@@ -127,6 +130,7 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 
    xXn = res[14];
    xXp = res[15];
+*/
 
    //printf("debug: xXp %13.7e  xXn %13.7e \n", xXp, xXn);
 
@@ -154,7 +158,8 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    xenr = xenr + dEneut * (UNIT_T * dt);
 
 #ifdef GAMER_DEBUG
-   if (xdens < 1.0e11  &&  xdens > 1.0e9) {
+//   if (xdens < 1.0e11  &&  xdens > 1.0e9) {
+   if (xenr < energy_shift) {
    printf("xdens: %.6e   xtmp: %.6e\n", xdens, xtmp);
    printf("heating: %.6e  cooling: %.6e\n", 1.544e20 * (LB_LNU/1.e52) * SQR(1.e7 / radius) * SQR(LB_TNU / 4.), 1.399e20 * T6);
    printf("dEneut: %.6e  UNIT_T: %.6e  dt: %.6e\n", dEneut, UNIT_T, dt);
@@ -164,14 +169,16 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 #endif
 
    fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift)
-               + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS]
-               + EngyB;
+               + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+#  ifdef MHD
+   fluid[ENGY] += EngyB;
+#  endif
 
-   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
-                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
+//   nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
+//                     &xdpdrhoe, &xmunu, 0, &keyerr, rfeps); // energy mode
 
    // update entropy using the new energy
-   fluid[ENTR] = dens * xent ;
+//   fluid[ENTR] = dens * xent ;
    fluid[YE]   = dens * ye;  // lb doesn't change ye
 
    // if using Dual energy

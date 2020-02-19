@@ -53,6 +53,7 @@ const TestProbID_t
    TESTPROB_HYDRO_JEANS_INSTABILITY            =   16,
 
    TESTPROB_HYDRO_CORE_COLLAPSE                =   17,
+   TESTPROB_HYDRO_POSTBOUNCE                   =   18,
    TESTPROB_HYDRO_NEUTRONSTAR_MIGRATIONTEST    =   20,
 
    TESTPROB_ELBDM_EXTPOT                       = 1000;

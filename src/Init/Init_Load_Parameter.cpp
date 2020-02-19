@@ -220,19 +220,31 @@ void Init_Load_Parameter()
 #  endif
 
 #  ifdef DELEPTIONIZATION
-   ReadPara->Add( "DELEP_ENU",                      &DELEP_ENU,                     10.0,       0.0,           NoMax_double   );
-   ReadPara->Add( "DELEP_RHO1",                     &DELEP_RHO1,                    4.e8,       0.0,           NoMax_double   );
-   ReadPara->Add( "DELEP_RHO2",                     &DELEP_RHO2,                    7.e12,      0.0,           NoMax_double   );
-   ReadPara->Add( "DELEP_YE1",                      &DELEP_YE1,                     0.5,        0.0,           1.0   );
-   ReadPara->Add( "DELEP_YE2",                      &DELEP_YE2,                     0.275,      0.0,           1.0   );
-   ReadPara->Add( "DELEP_YEC",                      &DELEP_YEC,                     0.015,      0.0,           1.0   );
+   ReadPara->Add( "DELEP_ENU",                 &DELEP_ENU,                     10.0,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO1",                &DELEP_RHO1,                    4.e8,       0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_RHO2",                &DELEP_RHO2,                    7.e12,      0.0,           NoMax_double   );
+   ReadPara->Add( "DELEP_YE1",                 &DELEP_YE1,                     0.5,        0.0,           1.0   );
+   ReadPara->Add( "DELEP_YE2",                 &DELEP_YE2,                     0.275,      0.0,           1.0   );
+   ReadPara->Add( "DELEP_YEC",                 &DELEP_YEC,                     0.015,      0.0,           1.0   );
 #  endif
 
 #  ifdef NEUTRINO_SCHEME
-   ReadPara->Add( "LB_LNU",                      &LB_LNU,                     2.2e52,           0.0,           NoMax_double   );
-   ReadPara->Add( "LB_TNU",                      &LB_TNU,                     4.0,              0.0,           NoMax_double   );
-   ReadPara->Add( "LB_HEATFACTOR",               &LB_HEATFACTOR,              1.0,              0.0,           NoMax_double   );
+   ReadPara->Add( "LB_LNU",                    &LB_LNU,                     2.2e52,           0.0,           NoMax_double   );
+   ReadPara->Add( "LB_TNU",                    &LB_TNU,                     4.0,              0.0,           NoMax_double   );
+   ReadPara->Add( "LB_HEATFACTOR",             &LB_HEATFACTOR,              1.0,              0.0,           NoMax_double   );
 #  endif
+
+
+// GREP
+#if ( defined GRAVITY  &&  defined GREP )
+   ReadPara->Add( "GREP_CENTER_METHOD",        &GREP_CENTER_METHOD,               1,               0,              3             );
+   ReadPara->Add( "GREP_MAXITER",              &GREP_MAXITER,                     1000,            100,            NoMax_int     );
+   ReadPara->Add( "GREP_LOGBIN",               &GREP_LOGBIN,                      true,            Useless_bool,   Useless_bool  );
+   ReadPara->Add( "GREP_LOGBINRATIO",          &GREP_LOGBINRATIO,                 1.25,            NoMin_double,   NoMax_double  );
+   ReadPara->Add( "GREP_MAXRADIUS",            &GREP_MAXRADIUS,                  -1.0,             NoMin_double,   NoMax_double  );
+   ReadPara->Add( "GREP_MINBINSIZE",           &GREP_MINBINSIZE,                 -1.0,             NoMin_double,   NoMax_double  );
+#endif
+
 
 // fluid solvers in HYDRO
 #  if ( MODEL == HYDRO )

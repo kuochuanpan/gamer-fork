@@ -27,7 +27,7 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
    const double c2            = SQR( Const_c/UNIT_V );
 
    double  dMass;
-   int     NIter              = GREP_MaxIter;
+   int     NIter              = GREP_MAXITER;
    int     NBin               = DensAve->NBin;
    double *Radius             = DensAve->Radius;
    double  Mass_TOV_USG[NBin] = { 0.0 };
@@ -38,7 +38,7 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
    double  EdgeLCubed  [NBin] = { 0.0 };
    double  RadiusCubed [NBin] = { 0.0 };
 
-   for ( int i=1; i<NBin; i++ )   EdgeL[i] = ( GREP_LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
+   for ( int i=1; i<NBin; i++ )   EdgeL[i] = ( GREP_LOGBIN ) ? sqrt( Radius[i - 1] * Radius[i] )
                                                              : 0.5*( Radius[i - 1] + Radius[i] );
 
    for ( int i=0; i<NBin; i++ )
@@ -144,13 +144,13 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
 
 
 #ifdef GREP_DEBUG
-   printf("\n# GREP_Center_Method: %d\n",                  GREP_Center_Method);
+   printf("\n# GREP_CENTER_METHOD: %d\n",                  GREP_CENTER_METHOD);
    printf("# Center              : %.15e\t%.15e\t%.15e\n", Phi_eff->Center[0], Phi_eff->Center[1], Phi_eff->Center[2]);
    printf("# MaxRadius           : %.15e\n",               Phi_eff->MaxRadius);
 //   printf("# MinBinSize          : %.15e\n",               MinBinSize);
    printf("# LogBin              : %d\n",                  Phi_eff->LogBin);
    printf("# LogBinRatio         : %.15e\n",               Phi_eff->LogBinRatio);
-   printf("# Num of Iteration    : %d\n",                  GREP_MaxIter - NIter);
+   printf("# Num of Iteration    : %d\n",                  GREP_MAXITER - NIter);
    printf("# ============================================================");
    printf("# Profile info: NBin = %d\n", NBin);
    printf("# -- Bin -- NCell -- RADIUS -- DENS -- ENGY -- Vr -- Pressure -- Mass_NW -- Mass_TOV -- Gamma_TOV -- Eff_Pot --\n");

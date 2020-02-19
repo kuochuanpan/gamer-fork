@@ -1,17 +1,19 @@
 #include "GAMER.h"
 #include "TestProb.h"
+#include "NuclearEos.h"
 
 
 // problem-specific global variables
 // =======================================================================================
-static double  Bfield_Ab;                       // magnetic field strength                        [1e15]
-static double  Bfield_np;                       // dependence on the density                      [0.0]
+static double  Bfield_Ab;                       // magnetic field strength                          [1e15]
+static double  Bfield_np;                       // dependence on the density                        [0.0]
 
 // Parameters for initial condition
 static double *NeutronStar_Prof = NULL;         // radial progenitor model
 static char    NeutronStar_ICFile[MAX_STRING];  // Filename for initial condition
 static int     NeutronStar_NBin;                // number of radial bins in the progenitor model
 // =======================================================================================
+
 
 
 static void LoadICTable();
@@ -149,8 +151,8 @@ void SetParameter()
    if ( MPI_Rank == 0 )
    {
       Aux_Message( stdout, "=============================================================================\n" );
-      Aux_Message( stdout, "  test problem ID           = %d\n",      TESTPROB_ID );
-      Aux_Message( stdout, "  NeutronStar_ICFile        = %s\n",      NeutronStar_ICFile );
+      Aux_Message( stdout, "  test problem ID           = %d\n",      TESTPROB_ID          );
+      Aux_Message( stdout, "  NeutronStar_ICFile        = %s\n",      NeutronStar_ICFile   );
 #     ifdef MHD
       Aux_Message( stdout, "  Bfield_Ab                 = %13.7e\n",  Bfield_Ab );
       Aux_Message( stdout, "  Bfield_np                 = %13.7e\n",  Bfield_np );
@@ -189,21 +191,27 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 {
 
    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-   const double *Table_R      = NeutronStar_Prof + 0*NeutronStar_NBin;
-   const double *Table_Velr   = NeutronStar_Prof + 1*NeutronStar_NBin;
-   const double *Table_Dens   = NeutronStar_Prof + 2*NeutronStar_NBin;
-   const double *Table_Pres   = NeutronStar_Prof + 3*NeutronStar_NBin;
+   const double *Table_R       = NeutronStar_Prof + 0*NeutronStar_NBin;
+   const double *Table_Dens    = NeutronStar_Prof + 1*NeutronStar_NBin;
+   const double *Table_Ye      = NeutronStar_Prof + 2*NeutronStar_NBin;
+   const double *Table_Velr    = NeutronStar_Prof + 3*NeutronStar_NBin;
+   const double *Table_Temp    = NeutronStar_Prof + 4*NeutronStar_NBin;
+   const double *Table_Pres    = NeutronStar_Prof + 5*NeutronStar_NBin;
+   const double *Table_Entropy = NeutronStar_Prof + 6*NeutronStar_NBin;
 
-   double dens, velr, pres;
+   double dens, ye, velr, temp, pres, entropy;
 
    const double x0 = x - BoxCenter[0];
    const double y0 = y - BoxCenter[1];
    const double z0 = z - BoxCenter[2];
    const double r = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
 
-   dens = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
-   velr = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr, r);
-   pres = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
+   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens,    r);
+   ye      = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Ye,      r);
+   velr    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr,    r);
+   temp    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Temp,    r);  // in Kelvin
+   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres,    r);
+   entropy = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Entropy, r);
 
    fluid[DENS] = dens;
    fluid[MOMX] = dens*velr*x0/r;
@@ -211,6 +219,30 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[MOMZ] = dens*velr*z0/r;
    fluid[ENGY] = pres / ( GAMMA - 1.0 )
                + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
+
+#  if ( EOS == NUCLEAR )
+// get the energy and entropy from Nuclear EoS table (use temperature mode 1)
+   double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
+   int keyerr;
+
+   const double rfeps = 1.0e-10;
+   const double mev_to_kelvin = 1.1604447522806e10;
+
+// compute temperature using ideal EoS: P = \rho*K*T / ( mu*m_H )
+//   xtmp = (pres*UNIT_P) / (dens*UNIT_D) * MOLECULAR_WEIGHT * Const_mH / Const_kB;  // in Kelvin
+   xtmp = temp / mev_to_kelvin;  // to MeV
+
+   nuc_eos_C_short((dens*UNIT_D), &xtmp, ye, &xenr, &xprs, &xent, &xcs2,
+                   &xdedt, &xdpderho, &xdpdrhoe, &xmunu,
+                   1, &keyerr, rfeps);
+
+   if (keyerr != 0)   printf("debug: keyerr not zero %d\n",keyerr);
+
+   fluid[YE]   = ye*dens;    // electron fraction [dens]
+   fluid[ENTR] = xent*dens;  // entropy [kB/baryon * dens]
+   fluid[ENGY] = ( dens/(UNIT_V*UNIT_V) )*( xenr + energy_shift )
+               + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
+#  endif
 
 } // FUNCTION : SetGridIC
 
@@ -245,8 +277,8 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 
    const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
    const double *Table_R      = NeutronStar_Prof + 0*NeutronStar_NBin;
-   const double *Table_Dens   = NeutronStar_Prof + 2*NeutronStar_NBin;
-   const double *Table_Pres   = NeutronStar_Prof + 3*NeutronStar_NBin;
+   const double *Table_Dens   = NeutronStar_Prof + 1*NeutronStar_NBin;
+   const double *Table_Pres   = NeutronStar_Prof + 5*NeutronStar_NBin;
 
    const double x0 = x - BoxCenter[0];
    const double y0 = y - BoxCenter[1];
@@ -304,7 +336,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Init_TestProb_Hydro_NeutronStar_MigrationTest
+// Function    :  Init_TestProb_Hydro_PostBounce
 // Description :  Test problem initializer
 //
 // Note        :  None
@@ -313,7 +345,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 //
 // Return      :  None
 //-------------------------------------------------------------------------------------------------------
-void Init_TestProb_Hydro_NeutronStar_MigrationTest()
+void Init_TestProb_Hydro_PostBounce()
 {
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
@@ -365,37 +397,43 @@ void Init_TestProb_Hydro_NeutronStar_MigrationTest()
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
 
-} // FUNCTION : Init_TestProb_Hydro_NeutronStar_MigrationTest
+} // FUNCTION : Init_TestProb_Hydro_PostBounce
 
 
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  LoadICTable
 // Description :  Load inpu table file for initial condition
+//                Temperature unit is UNIT_P / UNIT_D / Const_kB
 //-------------------------------------------------------------------------------------------------------
 void LoadICTable()
 {
 
    const bool RowMajor_No  = false;           // load data into the column major OPT__RECORD_USER
    const bool AllocMem_Yes = true;            // allocate memort for NeutronStar_Prof
-   const int  NCol         = 4;               // total number of columns to load
-   const int  TargetCols[NCol] = { 0,1,2,3 }; // target columns: {radius, vr, density, pressure}
+   const int  NCol         = 7;               // total number of columns to load
 
-   double *Table_R, *Table_Dens, *Table_Pres, *Table_Velr;
+   // target columns: {radius, density, ye, radial velocity, temperature, pressure, entropy }
+   const int  TargetCols[NCol] = { 0, 2, 3, 4, 5, 6, 7 };
+
+   double *Table_R, *Table_Dens, *Table_Ye, *Table_Velr, *Table_Temp, *Table_Pres, *Table_Entropy;
 
    NeutronStar_NBin = Aux_LoadTable( NeutronStar_Prof, NeutronStar_ICFile, NCol, TargetCols, RowMajor_No, AllocMem_Yes );
 
-   Table_R    = NeutronStar_Prof + 0*NeutronStar_NBin;
-   Table_Velr = NeutronStar_Prof + 1*NeutronStar_NBin;
-   Table_Dens = NeutronStar_Prof + 2*NeutronStar_NBin;
-   Table_Pres = NeutronStar_Prof + 3*NeutronStar_NBin;
+   Table_R       = NeutronStar_Prof + 0*NeutronStar_NBin;
+   Table_Dens    = NeutronStar_Prof + 1*NeutronStar_NBin;
+   Table_Ye      = NeutronStar_Prof + 2*NeutronStar_NBin;
+   Table_Velr    = NeutronStar_Prof + 3*NeutronStar_NBin;
+   Table_Temp    = NeutronStar_Prof + 4*NeutronStar_NBin;
+   Table_Pres    = NeutronStar_Prof + 5*NeutronStar_NBin;
+   Table_Entropy = NeutronStar_Prof + 6*NeutronStar_NBin;
 
    // convert to code units (assuming progentior model is in cgs)
    for (int b=0; b<NeutronStar_NBin; b++)
    {
       Table_R[b]    /= UNIT_L;
-      Table_Velr[b] /= UNIT_V;
       Table_Dens[b] /= UNIT_D;
+      Table_Velr[b] /= UNIT_V;
       Table_Pres[b] /= UNIT_P;
    }
 

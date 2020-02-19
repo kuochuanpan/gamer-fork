@@ -40,19 +40,20 @@ void Init_GREffPot( const int level )
 // Initialize the Center, MaxRadius, and MinBinSize at the first call;
    if ( level == -1 )
    {
-      switch ( GREP_Center_Method )
+      switch ( GREP_CENTER_METHOD )
       {
-         case 1:   for (int i=0; i<3; i++)   Center[i] = amr->BoxCenter[i];    break;
-         default:  Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "GREP_Center_Method", GREP_Center_Method );
+         case 1:   for (int i=0; i<3; i++)   Center[i] = amr->BoxCenter[i];
+                   break;
+         default:  Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "GREP_CENTER_METHOD", GREP_CENTER_METHOD );
       }
 
 //    Defaults to the distance between the center and the farthest box vertex
-      MaxRadius  = ( GREP_MaxRadius > 0.0 )  ? GREP_MaxRadius
+      MaxRadius  = ( GREP_MAXRADIUS > 0.0 )  ? GREP_MAXRADIUS
                                              : SQRT( SQR( MAX( amr->BoxSize[0] - Center[0], Center[0] ) )
                                              +       SQR( MAX( amr->BoxSize[1] - Center[1], Center[1] ) )
                                              +       SQR( MAX( amr->BoxSize[2] - Center[2], Center[2] ) ));
 
-      MinBinSize = ( GREP_MinBinSize > 0.0 ) ? GREP_MinBinSize
+      MinBinSize = ( GREP_MINBINSIZE > 0.0 ) ? GREP_MINBINSIZE
                                              : amr->dh[MAX_LEVEL];
    }
 
@@ -78,7 +79,7 @@ void Init_GREffPot( const int level )
          long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
          Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
                              false, TVar, 4, lv );
       }
    }
@@ -93,7 +94,7 @@ void Init_GREffPot( const int level )
          long       TVar [] = {       _DENS,   _EINT_DER,     _VELR,       _PRES };
          Profile_t *Prof [] = { DensAve[lv], EngyAve[lv], VrAve[lv], PresAve[lv] };
 
-         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+         Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
                              false, TVar, 4, lv );
       }
 
@@ -111,7 +112,7 @@ void Init_GREffPot( const int level )
             long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
                                 false, TVar, 4, lv );
          }
          else
@@ -120,7 +121,7 @@ void Init_GREffPot( const int level )
             long       TVar [] = {     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
                                 false, TVar, 3, lv );
          }
       }
@@ -134,7 +135,7 @@ void Init_GREffPot( const int level )
             long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
             Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
 
-            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LogBin, GREP_LogBinRatio,
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
                                 false, TVar, 4, lv );
          }
       }

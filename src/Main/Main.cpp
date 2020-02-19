@@ -194,6 +194,7 @@ double                SF_CREATE_STAR_MIN_STAR_MASS;
 double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
+// (2-9) Supernova
 # if (EOS == NUCLEAR)
 bool   EOS_POSTBOUNCE;
 double EOS_BOUNCETIME;
@@ -213,6 +214,17 @@ double LB_LNU;
 double LB_TNU;
 double LB_HEATFACTOR;
 #endif
+
+// (2-10) GREP
+#if ( defined GRAVITY  &&  defined GREP )
+int    GREP_CENTER_METHOD;
+int    GREP_MAXITER;
+bool   GREP_LOGBIN;
+double GREP_LOGBINRATIO;
+double GREP_MAXRADIUS;
+double GREP_MINBINSIZE;
+#endif
+
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // =======================================================================================================

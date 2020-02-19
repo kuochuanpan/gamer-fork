@@ -240,6 +240,18 @@ extern double LB_TNU;
 extern double LB_HEATFACTOR;
 #endif
 
+
+// (2-10) GREP
+#if ( defined GRAVITY  &&  defined GREP )
+extern int    GREP_CENTER_METHOD;
+extern int    GREP_MAXITER;
+extern bool   GREP_LOGBIN;
+extern double GREP_LOGBINRATIO;
+extern double GREP_MAXRADIUS;
+extern double GREP_MINBINSIZE;
+#endif
+
+
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // ============================================================================================================
 extern real       (*h_Flu_Array_F_In [2])[FLU_NIN ][ CUBE(FLU_NXT) ];
