@@ -270,12 +270,12 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
    r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
 
-   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
+   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r   );
    dens_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xp);
    dens_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_yp);
    dens_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zp);
 
-   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
+   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r   );
    pres_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xp);
    pres_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_yp);
    pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);

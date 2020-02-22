@@ -204,7 +204,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double x0 = x - BoxCenter[0];
    const double y0 = y - BoxCenter[1];
    const double z0 = z - BoxCenter[2];
-   const double r = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
+   const double r  = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
 
    dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens,    r);
    ye      = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Ye,      r);
@@ -219,7 +219,10 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[MOMZ] = dens*velr*z0/r;
    fluid[ENGY] = pres / ( GAMMA - 1.0 )
                + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
+   fluid[YE]   = ye*dens;       // electron fraction [dens]
+   fluid[ENTR] = entropy*dens;  // entropy [kB/baryon * dens]
 
+/*
 #  if ( EOS == NUCLEAR )
 // get the energy and entropy from Nuclear EoS table (use temperature mode 1)
    double xtmp, xenr, xprs, xent, xcs2, xdedt, xdpderho, xdpdrhoe, xmunu;
@@ -243,6 +246,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[ENGY] = ( dens/(UNIT_V*UNIT_V) )*( xenr + energy_shift )
                + 0.5*( SQR( fluid[MOMX] ) + SQR( fluid[MOMY] ) + SQR( fluid[MOMZ] ) ) / dens;
 #  endif
+*/
 
 } // FUNCTION : SetGridIC
 
@@ -302,12 +306,12 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
    r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
 
-   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
+   dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r   );
    dens_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xp);
    dens_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_yp);
    dens_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_zp);
 
-   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
+   pres    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r   );
    pres_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_xp);
    pres_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_yp);
    pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);

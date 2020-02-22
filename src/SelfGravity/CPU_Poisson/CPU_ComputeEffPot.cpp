@@ -64,11 +64,9 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
 
 
 // construct Mass_TOV and Gamma_TOV
-   while ( NIter )
+   while ( NIter-- )
    {
-      NIter -= 1;
-
-      if ( !NIter )   Aux_Error( ERROR_INFO, "Too many iterations in effective potentia\n" );
+      if ( !NIter )   Aux_Error( ERROR_INFO, "Too many iterations in computing effective potentia\n" );
 
 //    construct Mass_TOV
       Mass_TOV[0] = FourThirdPI * RadiusCubed[0] * Gamma_TOV[0]
@@ -120,7 +118,7 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
    Phi_eff->LogBinRatio = DensAve->LogBinRatio;
    Phi_eff->MaxRadius   = DensAve->MaxRadius;
    Phi_eff->AllocateMemory();
-   for ( int d=0; d<3; d++ )              Phi_eff->Center[d] = DensAve->Center[d];
+   for ( int d=0; d<3; d++ )               Phi_eff->Center[d] = DensAve->Center[d];
    for ( int b=0; b<Phi_eff->NBin; b++ )   Phi_eff->Radius[b] = DensAve->Radius[b];
 
 
@@ -153,10 +151,11 @@ void CPU_ComputeEffPot( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve
    printf("# Num of Iteration    : %d\n",                  GREP_MAXITER - NIter);
    printf("# ============================================================");
    printf("# Profile info: NBin = %d\n", NBin);
-   printf("# -- Bin -- NCell -- RADIUS -- DENS -- ENGY -- Vr -- Pressure -- Mass_NW -- Mass_TOV -- Gamma_TOV -- Eff_Pot --\n");
+   printf("#  Bin     NCell     RADIUS       DENS       ENGY         Vr   Pressure    Mass_NW   Mass_TOV  Gamma_TOV    Eff_Pot\n");
    for ( int i=0; i<NBin; i++ )
-      printf("%5d\t%8ld\t%.12e\t%.12e\t%.12e\t%.12e\t%.12e\t%.12e\t%.12e\t%.12e\t%.12e\n",
-             i, DensAve->NCell[i], Radius[i], DensAve->Data[i], EngyAve->Data[i], VrAve->Data[i], PresAve->Data[i],
+      printf("%6d  %8d  %9.2e  %9.2e  %9.2e  %9.2e  %9.2e  %9.2e  %9.2e  %9.2e  %9.2e\n",
+             i, DensAve->NCell[i], Radius[i],
+             DensAve->Data[i], EngyAve->Data[i], VrAve->Data[i], PresAve->Data[i],
              Mass_NW[i], Mass_TOV[i], Gamma_TOV[i], Phi_eff->Data[i]);
 #endif
 

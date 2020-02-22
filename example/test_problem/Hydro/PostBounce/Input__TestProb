@@ -1,5 +1,5 @@
 # problem-specific runtime parameters
-Bfield_Ab       1.0e15         # magnetic field strength (in gauss)
+Bfield_Ab       0.0            # magnetic field strength (in gauss)
 Bfield_np       0.0            # dependence on the density
 
 NeutronStar_ICFile         data_s20GREP_SFHo_15ms.data  # input file for initial condition
