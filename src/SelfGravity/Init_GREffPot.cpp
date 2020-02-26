@@ -10,15 +10,11 @@ Profile_t *PresAve [NLEVEL+1];
 
 Profile_t *Phi_eff [2];
 
-static const int    INTERNAL_ENGY    = 97;
-static const int    VRAD             = 98;
-static const int    PRESSURE         = 99;
-
-static       int    level_old        = -1;
-static       int    NPatch_TopLv_old = -1;
-static       double Center   [3]     = { 0.0 };
-static       double MaxRadius;
-static       double MinBinSize;
+static int    level_old        = -1;
+static int    NPatch_TopLv_old = -1;
+static double Center   [3]     = { 0.0 };
+static double MaxRadius;
+static double MinBinSize;
 
 void CombineProfile( Profile_t *Prof[], const bool RemoveEmpty );
 

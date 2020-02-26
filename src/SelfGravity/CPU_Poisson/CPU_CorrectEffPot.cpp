@@ -42,16 +42,6 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
    const double *Data   = Phi->Data;
    const double *Radius = Phi->Radius;
    const double *Center = Phi->Center;
-   const double  r_max2 = SQR( Phi->MaxRadius );
-         double  Edge[NBin+1] = { 0.0 };
-
-   for ( int i=1; i<NBin; i++ )   Edge[i] = ( Phi->LogBin ) ? sqrt( Radius[i - 1] * Radius[i] )
-                                                            : 0.5*( Radius[i - 1] + Radius[i] );
-
-//   Edge[NBin] = ( Phi->LogBin ) ? SQR ( Edge[NBin - 1] ) / Edge[NBin - 2]
-//                                : 2.0 * Edge[NBin - 1]   - Edge[NBin - 2];
-
-   Edge[NBin] = Phi->MaxRadius;
 
 
 // declare index for loop
@@ -86,35 +76,37 @@ void CPU_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
          const double dy = g_Corner_Array[P][1] + (double)((j_g0-IDX_GZ)*dh) - Center[1];
          const double dz = g_Corner_Array[P][2] + (double)((k_g0-IDX_GZ)*dh) - Center[2];
 
-         const double r2 = SQR(dx) + SQR(dy) + SQR(dz);
+         const double r = SQRT( SQR(dx) + SQR(dy) + SQR(dz) );
 
-         if ( r2 < r_max2 )
+
+         double phi;
+
+         if ( r < Radius[0] )
          {
-            const double r = SQRT( r2 );
-            int bin;
+            phi = Data[0];
+         }
 
+         else if ( r < Radius[NBin-1] )
+         {
 //          if empty bins are removed, the separations between bins are not equal in linear/logarithmic scale
 //          use binary search algorithm to find the index of bin
-            for ( int i=0, j=NBin; j-i != 1; bin = (i+j)/2 )
+            int Idx, Min = 0, Max = NBin-1;
+
+            while (  ( Idx=(Min+Max)/2 ) != Min  )
             {
-               int mid = (i+j)/2;
-               if ( r > Edge[mid] )   i = mid;
-               else                   j = mid;
+               if   ( Radius[Idx] > r )  Max = Idx;
+               else                      Min = Idx;
             }
 
-            double phi = ( bin == NBin-1 ) ? Data[bin]
-                                           : LinearInterp( r, Edge[bin], Edge[bin+1], Data[bin], Data[bin+1] );
+            phi = LinearInterp( r, Radius[Idx], Radius[Idx+1], Data[Idx], Data[Idx+1] );
+         }
 
-//          for debug, clean later
-            if ( (r < Edge[bin])  || ( r > Edge[bin + 1]) )
-            {
-            printf("Bin = %d  NBin = %d\n", bin, NBin);
-            printf("rmax = %.6e  \n", Phi->MaxRadius);
-            printf("Incorrect r: r = %.6e\tEdgeL = %.6e\tEdgeR = %.6e  Radius[i-1] = %.6e  Radius[i] = %.6e\n", r, Edge[bin], Edge[bin+1], Radius[bin-1], Radius[bin]);
-            }
+         else
+         {
+            phi = Data[NBin-1];
+         }
 
-            pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
-         } // if ( r2 < r_max2 )
+         pot_new[idx_g0] += ( Undo ) ? -(real)phi : (real)phi;
       } // for (int idx_g0=0; idx_g0<CUBE(IDX); idx_g0++)
    } // for (int P=0; P<NPatchGroup*8; P++)
 

@@ -185,8 +185,10 @@
 #define EXT_POT_NAUX_MAX            10
 #define EXT_ACC_NAUX_MAX            10
 
+
+// maximum size of Profile
 #ifdef GREP
-#define GR_POT_NAUX_MAX           3500
+#define GR_POT_NAUX_MAX           4000
 #endif
 
 // warp size (which must be the same as the CUDA predefined constant "warpSize")

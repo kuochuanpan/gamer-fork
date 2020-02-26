@@ -8,10 +8,9 @@
 #ifdef __CUDACC__
 
 // variables reside in constant memory
-__constant__ double c_GREP_Data[GR_POT_NAUX_MAX];
-__constant__ double c_GREP_Edge[GR_POT_NAUX_MAX];
+__constant__ double c_GREP_Data  [GR_POT_NAUX_MAX];
+__constant__ double c_GREP_Radius[GR_POT_NAUX_MAX];
 __constant__ double c_GREP_Center[3];
-__constant__ double c_r_max2;
 __constant__ int    c_GREP_NBin;
 
 
@@ -27,15 +26,15 @@ __constant__ int    c_GREP_NBin;
 // Return      :  0/-1 : successful/failed
 //---------------------------------------------------------------------------------------------------
 __host__
-int CUPOT_SetConstMem_GREffPot( double h_GREP_Data[], double h_GREP_Edge[], double h_GREP_Center[],
-                                double h_r_max2, int h_GREP_NBin )
+int CUPOT_SetConstMem_GREffPot( double h_GREP_Data[], double h_GREP_Radius[], double h_GREP_Center[],
+                                int    h_GREP_NBin )
 {
 
    if (  cudaSuccess != cudaMemcpyToSymbol( c_GREP_Data,   h_GREP_Data,   GR_POT_NAUX_MAX*sizeof(double),
                                             0, cudaMemcpyHostToDevice)  )
       return -1;
 
-   if (  cudaSuccess != cudaMemcpyToSymbol( c_GREP_Edge,   h_GREP_Edge,   GR_POT_NAUX_MAX*sizeof(double),
+   if (  cudaSuccess != cudaMemcpyToSymbol( c_GREP_Radius, h_GREP_Radius, GR_POT_NAUX_MAX*sizeof(double),
                                             0, cudaMemcpyHostToDevice)  )
       return -2;
 
@@ -43,13 +42,9 @@ int CUPOT_SetConstMem_GREffPot( double h_GREP_Data[], double h_GREP_Edge[], doub
                                             0, cudaMemcpyHostToDevice)  )
       return -3;
 
-   if (  cudaSuccess != cudaMemcpyToSymbol( c_r_max2,     &h_r_max2,                      sizeof(double),
-                                            0, cudaMemcpyHostToDevice)  )
-      return -4;
-
    if (  cudaSuccess != cudaMemcpyToSymbol( c_GREP_NBin,  &h_GREP_NBin,                   sizeof(int),
                                             0, cudaMemcpyHostToDevice)  )
-      return -5;
+      return -4;
 
    return 0;
 
@@ -113,38 +108,47 @@ void CUPOT_CorrectEffPot(       real   g_Pot_Array_New[][ CUBE(GRA_NXT) ],
          const double dy = g_Corner_Array[P][1] + (double)((j_g0-IDX_GZ)*dh) - c_GREP_Center[1];
          const double dz = g_Corner_Array[P][2] + (double)((k_g0-IDX_GZ)*dh) - c_GREP_Center[2];
 
-         const double r2 = SQR(dx) + SQR(dy) + SQR(dz);
+         const double r  = SQRT( SQR(dx) + SQR(dy) + SQR(dz) );
 
 
-         if ( r2 < c_r_max2 )
+         double phi;
+
+         if ( r < c_GREP_Radius[0] )
          {
-            const double r = SQRT( r2 );
+            phi = c_GREP_Data[0];
+         }
 
+         else if ( r < c_GREP_Radius[c_GREP_NBin-1] )
+         {
+//          if empty bins are removed, the separations between bins are not equal in linear/logarithmic scale
 //          use binary search algorithm to find the index of bin
-            int bin;
-            for ( int i=0, j=c_GREP_NBin; j-i != 1; bin = (i+j)/2 )
+            int Idx, Min = 0, Max = c_GREP_NBin-1;
+
+            while (  ( Idx=(Min+Max)/2 ) != Min  )
             {
-               int mid = (i+j)/2;
-               if ( r > c_GREP_Edge[mid] )   i = mid;
-               else                          j = mid;
+               if   ( c_GREP_Radius[Idx] > r )  Max = Idx;
+               else                             Min = Idx;
             }
 
-            double phi = ( bin == c_GREP_NBin-1 ) ? c_GREP_Data[bin]
-                                                  : LinearInterp( r, c_GREP_Edge[bin], c_GREP_Edge[bin+1],
-                                                                     c_GREP_Data[bin], c_GREP_Data[bin+1] );
+            phi = LinearInterp( r, c_GREP_Radius[Idx], c_GREP_Radius[Idx+1], c_GREP_Data[Idx], c_GREP_Data[Idx+1] );
+         }
 
-            if ( Undo )   phi = -phi;
+         else
+         {
+            phi = c_GREP_Data[c_GREP_NBin-1];
+         }
 
-#           ifdef UNSPLIT_GRAVITY
-            if ( USG )
-               g_Pot_Array_USG[P][idx_g0] += (real)phi;
-            else
-               g_Pot_Array_New[P][idx_g0] += (real)phi;
-#           else
-               g_Pot_Array_New[P][idx_g0] += (real)phi;
-#           endif
-         } // if ( r2 < r_max2 )
 
+         if ( Undo )   phi = -phi;
+
+#        ifdef UNSPLIT_GRAVITY
+         if ( USG )
+            g_Pot_Array_USG[P][idx_g0] += (real)phi;
+         else
+            g_Pot_Array_New[P][idx_g0] += (real)phi;
+#        else
+            g_Pot_Array_New[P][idx_g0] += (real)phi;
+#        endif
       } // CGPU_LOOP( idx_g0, CUBE(PS1) )
    } // for (int P=0; P<NPatchGroup*8; P++)
 
