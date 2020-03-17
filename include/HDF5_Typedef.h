@@ -389,6 +389,7 @@ struct InputPara_t
 #  endif
    int    Opt__Flag_LohnerForm;
    int    Opt__Flag_User;
+   int    Opt__Flag_User_Num;
    int    Opt__Flag_Region;
 #  ifdef PARTICLE
    int    Opt__Flag_NParPatch;
@@ -617,24 +618,24 @@ struct InputPara_t
 #  endif
 
 // flag tables
-   double FlagTable_Rho         [NLEVEL-1];
-   double FlagTable_RhoGradient [NLEVEL-1];
-   double FlagTable_Lohner      [NLEVEL-1][4];
-   double FlagTable_User        [NLEVEL-1];
+   double  FlagTable_Rho         [NLEVEL-1];
+   double  FlagTable_RhoGradient [NLEVEL-1];
+   double  FlagTable_Lohner      [NLEVEL-1][4];
+   hvl_t   FlagTable_User        [NLEVEL-1];
 #  if   ( MODEL == HYDRO )
-   double FlagTable_PresGradient[NLEVEL-1];
-   double FlagTable_Vorticity   [NLEVEL-1];
-   double FlagTable_Jeans       [NLEVEL-1];
+   double  FlagTable_PresGradient[NLEVEL-1];
+   double  FlagTable_Vorticity   [NLEVEL-1];
+   double  FlagTable_Jeans       [NLEVEL-1];
 #  ifdef MHD
-   double FlagTable_Current     [NLEVEL-1];
+   double  FlagTable_Current     [NLEVEL-1];
 #  endif
 #  elif ( MODEL == ELBDM )
-   double FlagTable_EngyDensity [NLEVEL-1][2];
+   double  FlagTable_EngyDensity [NLEVEL-1][2];
 #  endif
 #  ifdef PARTICLE
-   int    FlagTable_NParPatch   [NLEVEL-1];
-   int    FlagTable_NParCell    [NLEVEL-1];
-   double FlagTable_ParMassCell [NLEVEL-1];
+   int     FlagTable_NParPatch   [NLEVEL-1];
+   int     FlagTable_NParCell    [NLEVEL-1];
+   double  FlagTable_ParMassCell [NLEVEL-1];
 #  endif
 
 }; // struct InputPara_t
