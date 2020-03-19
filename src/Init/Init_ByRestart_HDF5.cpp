@@ -2019,7 +2019,7 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
       for (int t=0; t<4; t++)
       RS.FlagTable_Lohner      [lv][t] = -1.0;
 
-      RS.FlagTable_User        [lv].p   = malloc( OPT__FLAG_USER_NUM*sizeof(double) );
+      RS.FlagTable_User        [lv].p   = (double *) malloc( OPT__FLAG_USER_NUM*sizeof(double) );
       RS.FlagTable_User        [lv].len = OPT__FLAG_USER_NUM;
       for (int t=0; t<OPT__FLAG_USER_NUM; t++)
       ( (double *) RS.FlagTable_User[lv].p )[t] = -1.0;
