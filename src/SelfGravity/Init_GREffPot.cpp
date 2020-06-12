@@ -82,6 +82,21 @@ void Init_GREffPot( const int level )
 
    else
    {
+
+/*
+      if ( level == 0 )
+      {
+         for (int lv=0; lv<NLEVEL; lv++)
+         {
+            long       TVar [] = {       _DENS,     _VELR,       _PRES,   _EINT_DER };
+            Profile_t *Prof [] = { DensAve[lv], VrAve[lv], PresAve[lv], EngyAve[lv] };
+
+            Aux_ComputeProfile( Prof, Center, MaxRadius, MinBinSize, GREP_LOGBIN, GREP_LOGBINRATIO,
+                                false, TVar, 4, lv );
+         }
+      }
+*/
+
 //    update the profile at the current level
       {
          int          lv    = level;
@@ -135,6 +150,7 @@ void Init_GREffPot( const int level )
                                 false, TVar, 4, lv );
          }
       }
+
    }
 
 

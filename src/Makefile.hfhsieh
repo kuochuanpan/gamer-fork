@@ -79,14 +79,14 @@ SIMU_OPTION += -DNCOMP_PASSIVE_USER=0
 
 
 # equation of state: IDEAL_GAS/NUCLEAR
-SIMU_OPTION += -DEOS=NUCLEAR
-#SIMU_OPTION += -DEOS=IDEAL_GAS
+#SIMU_OPTION += -DEOS=NUCLEAR
+SIMU_OPTION += -DEOS=IDEAL_GAS
 
 # enable Deleptonization
 #SIMU_OPTION += -DDELEPTIONIZATION
 
 # nutrino transport scheme: LIGHTBULB/IDSA/M1
-SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
+#SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
 
 # magnetohydrodynamics
 SIMU_OPTION += -DMHD
@@ -154,7 +154,9 @@ endif # PARTICLE
 # ------------------------------------------------------------------------------------
 # maximum number of AMR levels including the root level (level id = 0 ... NLEVEL-1)
 # --> must be set in any cases
-SIMU_OPTION += -DNLEVEL=10
+#SIMU_OPTION += -DNLEVEL=2
+#SIMU_OPTION += -DNLEVEL=7
+SIMU_OPTION += -DNLEVEL=4
 
 # maximum number of patches on each AMR level
 # --> must be set in any cases
