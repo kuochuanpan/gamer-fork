@@ -1,0 +1,12 @@
+Compilation flags:
+========================================
+Enable : MODEL=HYDRO, GRAVITY, GREP
+Disable:
+
+Default setup:
+========================================
+
+
+Note:
+========================================.
+The central density is recorded in Record__CentralDens.

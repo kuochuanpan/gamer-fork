@@ -32,6 +32,11 @@ void Init_MemAllocate_PoissonGravity( const int Pot_NPG )
       if ( OPT__GRAVITY_TYPE == GRAVITY_EXTERNAL  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH  ||  OPT__EXTERNAL_POT )
       h_Corner_Array_G [t] = new double [Pot_NP][3];
 
+#     ifdef GREP
+      if ( OPT__GRAVITY_TYPE == GRAVITY_SELF )
+      h_Corner_Array_G [t] = new double [Pot_NP][3];
+#     endif
+
 #     ifdef DUAL_ENERGY
       h_DE_Array_G     [t] = new char   [Pot_NP][PS1][PS1][PS1];
 #     endif

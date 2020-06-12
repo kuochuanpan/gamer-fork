@@ -30,7 +30,7 @@ extern double     dTime_Base;                         // physical time interval 
 extern double     FlagTable_Rho        [NLEVEL-1];    // refinement criterion of density
 extern double     FlagTable_RhoGradient[NLEVEL-1];    // refinement criterion of density gradient
 extern double     FlagTable_Lohner     [NLEVEL-1][4]; // refinement criterion based on Lohner's error estimator
-extern double     FlagTable_User       [NLEVEL-1];    // user-defined refinement criterion
+extern double    *FlagTable_User       [NLEVEL-1];    // user-defined refinement criterion
 extern double    *DumpTable;                          // dump table recording the physical times to output data
 extern int        DumpTable_NDump;                    // number of data dumps in the dump table
 extern int        DumpID;                             // index of the current output file
@@ -59,6 +59,7 @@ extern int        INIT_DUMPID, INIT_SUBSAMPLING_NCELL, OPT__TIMING_BARRIER, OPT_
 extern double     OUTPUT_PART_X, OUTPUT_PART_Y, OUTPUT_PART_Z, AUTO_REDUCE_DT_FACTOR, AUTO_REDUCE_DT_FACTOR_MIN;
 extern double     OPT__CK_MEMFREE, INT_MONO_COEFF, UNIT_L, UNIT_M, UNIT_T, UNIT_V, UNIT_D, UNIT_E, UNIT_P;
 extern bool       OPT__FLAG_RHO, OPT__FLAG_RHO_GRADIENT, OPT__FLAG_USER, OPT__FLAG_LOHNER_DENS, OPT__FLAG_REGION;
+extern int        OPT__FLAG_USER_NUM;
 extern bool       OPT__DT_USER, OPT__RECORD_DT, OPT__RECORD_MEMORY, OPT__MEMORY_POOL, OPT__RESTART_RESET;
 extern bool       OPT__FIXUP_RESTRICT, OPT__INIT_RESTRICT, OPT__VERBOSE, OPT__MANUAL_CONTROL, OPT__UNIT;
 extern bool       OPT__INT_TIME, OPT__OUTPUT_USER, OPT__OUTPUT_BASE, OPT__OVERLAP_MPI, OPT__TIMING_BALANCE;
@@ -67,6 +68,7 @@ extern bool       OPT__CK_RESTRICT, OPT__CK_PATCH_ALLOCATE, OPT__FIXUP_FLUX, OPT
 extern bool       OPT__UM_IC_DOWNGRADE, OPT__UM_IC_REFINE, OPT__TIMING_MPI;
 extern bool       OPT__CK_CONSERVATION, OPT__RESET_FLUID, OPT__RECORD_USER, OPT__NORMALIZE_PASSIVE, AUTO_REDUCE_DT;
 extern bool       OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_FLAG_NEAR_BOUNDARY;
+extern bool       SRC_USER, SRC_DELEPTONIZATION;
 extern bool       OPT__RECORD_NOTE, OPT__RECORD_UNPHY;
 
 extern UM_IC_Format_t     OPT__UM_IC_FORMAT;
@@ -218,6 +220,38 @@ extern double                SF_CREATE_STAR_MAX_STAR_MFRAC;
 #endif
 
 
+// (2-9) Supernova
+#if (EOS==NUCLEAR)
+extern bool   EOS_POSTBOUNCE;
+extern double EOS_BOUNCETIME;
+#endif
+
+#ifdef DELEPTIONIZATION
+extern double DELEP_ENU;
+extern double DELEP_RHO1;
+extern double DELEP_RHO2;
+extern double DELEP_YE1;
+extern double DELEP_YE2;
+extern double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+extern double LB_LNU;
+extern double LB_TNU;
+extern double LB_HEATFACTOR;
+#endif
+
+
+// (2-10) GREP
+#if ( defined GRAVITY  &&  defined GREP )
+extern int    GREP_CENTER_METHOD;
+extern int    GREP_MAXITER;
+extern bool   GREP_LOGBIN;
+extern double GREP_LOGBINRATIO;
+extern double GREP_MAXRADIUS;
+extern double GREP_MINBINSIZE;
+#endif
+
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU
 // ============================================================================================================
@@ -284,6 +318,7 @@ extern real       (*h_Mag_Array_T[2])[NCOMP_MAG][ PS1P1*SQR(PS1) ];
 // 5. global variables related to different fields
 // ============================================================================================================
 /*** Defined in Field.h ***/
+
 
 
 

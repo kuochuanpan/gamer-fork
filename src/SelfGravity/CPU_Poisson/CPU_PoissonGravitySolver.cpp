@@ -177,6 +177,20 @@ void CPU_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_NXT][RH
    if ( GraAcc )
    {
 #     if   ( MODEL == HYDRO )
+      {
+#     ifdef GREP
+      CPU_CorrectEffPot( (real(*)[ CUBE(GRA_NXT) ])   h_Pot_Array_Out,
+                                                                 NULL,
+                                                       h_Corner_Array,
+                         NPatchGroup, dh, false, false);
+#     ifdef UNSPLIT_GRAVITY
+      CPU_CorrectEffPot(                                         NULL,
+                         (real(*)[ CUBE(USG_NXT_G) ]) h_Pot_Array_USG,
+                                                       h_Corner_Array,
+                         NPatchGroup, dh, false, true);
+#     endif
+#     endif
+
       CPU_HydroGravitySolver( (real(*)[GRA_NIN][ CUBE(PS1) ])   h_Flu_Array,
                               (real(*)[ CUBE(GRA_NXT) ])        h_Pot_Array_Out,
                                                                 h_Corner_Array,
@@ -186,6 +200,21 @@ void CPU_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_NXT][RH
                               (real(*)[ CUBE(PS1) ])            h_EngyB_Array,
                               NPatchGroup, dt, dh, P5_Gradient, GravityType,
                               ExtAcc_AuxArray, TimeNew, TimeOld, MinEint );
+
+#     ifdef GREP
+      CPU_CorrectEffPot( (real(*)[ CUBE(GRA_NXT) ])   h_Pot_Array_Out,
+                                                                 NULL,
+                                                       h_Corner_Array,
+                         NPatchGroup, dh, true, false);
+#     ifdef UNSPLIT_GRAVITY
+      CPU_CorrectEffPot(                                         NULL,
+                         (real(*)[ CUBE(USG_NXT_G) ]) h_Pot_Array_USG,
+                                                       h_Corner_Array,
+                         NPatchGroup, dh, true, true);
+#     endif
+#     endif
+
+      }
 
 #     elif ( MODEL == ELBDM )
       CPU_ELBDMGravitySolver( h_Flu_Array, h_Pot_Array_Out, h_Corner_Array, NPatchGroup, ELBDM_Eta*dt, dh, ELBDM_Lambda,

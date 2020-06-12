@@ -31,7 +31,7 @@ double               Time_Prev            [NLEVEL];
 double               FlagTable_Rho        [NLEVEL-1];
 double               FlagTable_RhoGradient[NLEVEL-1];
 double               FlagTable_Lohner     [NLEVEL-1][4];
-double               FlagTable_User       [NLEVEL-1];
+double              *FlagTable_User       [NLEVEL-1];
 double              *DumpTable = NULL;
 int                  DumpTable_NDump;
 int                  PassiveNorm_NVar;
@@ -53,6 +53,7 @@ double               OPT__CK_MEMFREE, INT_MONO_COEFF, UNIT_L, UNIT_M, UNIT_T, UN
 int                  OPT__UM_IC_LEVEL, OPT__UM_IC_NVAR, OPT__UM_IC_LOAD_NRANK, OPT__GPUID_SELECT, OPT__PATCH_COUNT;
 int                  INIT_DUMPID, INIT_SUBSAMPLING_NCELL, OPT__TIMING_BARRIER, OPT__REUSE_MEMORY, RESTART_LOAD_NRANK;
 bool                 OPT__FLAG_RHO, OPT__FLAG_RHO_GRADIENT, OPT__FLAG_USER, OPT__FLAG_LOHNER_DENS, OPT__FLAG_REGION;
+int                  OPT__FLAG_USER_NUM;
 bool                 OPT__DT_USER, OPT__RECORD_DT, OPT__RECORD_MEMORY, OPT__MEMORY_POOL, OPT__RESTART_RESET;
 bool                 OPT__FIXUP_RESTRICT, OPT__INIT_RESTRICT, OPT__VERBOSE, OPT__MANUAL_CONTROL, OPT__UNIT;
 bool                 OPT__INT_TIME, OPT__OUTPUT_USER, OPT__OUTPUT_BASE, OPT__OVERLAP_MPI, OPT__TIMING_BALANCE;
@@ -61,6 +62,7 @@ bool                 OPT__CK_RESTRICT, OPT__CK_PATCH_ALLOCATE, OPT__FIXUP_FLUX, 
 bool                 OPT__UM_IC_DOWNGRADE, OPT__UM_IC_REFINE, OPT__TIMING_MPI;
 bool                 OPT__CK_CONSERVATION, OPT__RESET_FLUID, OPT__RECORD_USER, OPT__NORMALIZE_PASSIVE, AUTO_REDUCE_DT;
 bool                 OPT__OPTIMIZE_AGGRESSIVE, OPT__INIT_GRID_WITH_OMP, OPT__NO_FLAG_NEAR_BOUNDARY;
+bool                 SRC_USER, SRC_DELEPTONIZATION;
 bool                 OPT__RECORD_NOTE, OPT__RECORD_UNPHY;
 UM_IC_Format_t       OPT__UM_IC_FORMAT;
 TestProbID_t         TESTPROB_ID;
@@ -191,6 +193,37 @@ double                SF_CREATE_STAR_MIN_GAS_DENS;
 double                SF_CREATE_STAR_MASS_EFF;
 double                SF_CREATE_STAR_MIN_STAR_MASS;
 double                SF_CREATE_STAR_MAX_STAR_MFRAC;
+#endif
+
+// (2-9) Supernova
+# if (EOS == NUCLEAR)
+bool   EOS_POSTBOUNCE;
+double EOS_BOUNCETIME;
+# endif
+
+#ifdef DELEPTIONIZATION
+double DELEP_ENU;
+double DELEP_RHO1;
+double DELEP_RHO2;
+double DELEP_YE1;
+double DELEP_YE2;
+double DELEP_YEC;
+#endif
+
+#ifdef NEUTRINO_SCHEME
+double LB_LNU;
+double LB_TNU;
+double LB_HEATFACTOR;
+#endif
+
+// (2-10) GREP
+#if ( defined GRAVITY  &&  defined GREP )
+int    GREP_CENTER_METHOD;
+int    GREP_MAXITER;
+bool   GREP_LOGBIN;
+double GREP_LOGBINRATIO;
+double GREP_MAXRADIUS;
+double GREP_MINBINSIZE;
 #endif
 
 
@@ -331,6 +364,7 @@ Timer_t *Timer_MPI[3];
 Timer_t *Timer_dt         [NLEVEL];
 Timer_t *Timer_Flu_Advance[NLEVEL];
 Timer_t *Timer_Gra_Advance[NLEVEL];
+Timer_t *Timer_Src_Advance[NLEVEL];
 Timer_t *Timer_Che_Advance[NLEVEL];
 Timer_t *Timer_SF         [NLEVEL];
 Timer_t *Timer_FixUp      [NLEVEL];
@@ -354,6 +388,30 @@ Timer_t *Timer_Poi_PreFlu  [NLEVEL];
 Timer_t *Timer_Poi_PrePot_C[NLEVEL];
 Timer_t *Timer_Poi_PrePot_F[NLEVEL];
 #endif
+
+
+// 6. Nuclear EoS
+int nrho;
+int ntemp;
+int nye;
+
+double *alltables;
+double *logrho;
+double *logtemp;
+double *yes;
+double energy_shift;
+double dtemp, dtempi;
+double drho, drhoi;
+double dye, dyei;
+
+// min and max values
+
+double eos_rhomax, eos_rhomin;
+double eos_tempmin, eos_tempmax;
+double eos_yemin, eos_yemax;
+
+int ivs_short[19];
+
 
 
 // function pointer for recording the user-specified info
@@ -588,4 +646,3 @@ int main( int argc, char *argv[] )
    return 0;
 
 } // FUNCTION : Main
-

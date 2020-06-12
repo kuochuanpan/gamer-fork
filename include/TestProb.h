@@ -31,7 +31,7 @@ extern void (*Init_ByFile_User_Ptr)( real fluid_out[], const real fluid_in[], co
 extern void (*Init_Field_User_Ptr)();
 extern void (*Init_User_Ptr)();
 extern void (*Output_User_Ptr)();
-extern bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double Threshold );
+extern bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
 extern void (*Mis_GetTimeStep_User_Ptr)( const int lv, const double dTime_dt );
 extern void (*Aux_Record_User_Ptr)();
 extern void (*BC_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
@@ -43,6 +43,8 @@ extern void (*BC_BField_User_Ptr)( real magnetic[], const double x, const double
 extern bool (*Flu_ResetByUser_Func_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
                                          const int lv, double AuxArray[] );
 extern void (*End_User_Ptr)();
+extern void (*Src_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
+                             const int lv, double AuxArray[], const double dt );
 #ifdef GRAVITY
 extern void (*Init_ExternalAcc_Ptr)();
 extern void (*Init_ExternalPot_Ptr)();

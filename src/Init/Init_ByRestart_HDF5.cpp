@@ -1431,6 +1431,9 @@ void Check_Makefile( const char *FileName, const int FormatVersion )
    LoadField( "RSolver",                &RS.RSolver,                SID, TID, NonFatal, &RT.RSolver,                1, NonFatal );
 #  endif
    LoadField( "DualEnergy",             &RS.DualEnergy,             SID, TID, NonFatal, &RT.DualEnergy,             1, NonFatal );
+   LoadField( "EoS",                    &RS.EoS,                    SID, TID, NonFatal, &RT.EoS,                    1, NonFatal );
+   LoadField( "NeutrinoScheme",         &RS.NeutrinoScheme,         SID, TID, NonFatal, &RT.NeutrinoScheme,         1,    Fatal );
+
    LoadField( "Magnetohydrodynamics",   &RS.Magnetohydrodynamics,   SID, TID, NonFatal, &RT.Magnetohydrodynamics,   1,    Fatal );
 
 #  elif ( MODEL == ELBDM )
@@ -1767,6 +1770,7 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
 #  endif
    LoadField( "Opt__Flag_LohnerForm",    &RS.Opt__Flag_LohnerForm,    SID, TID, NonFatal, &RT.Opt__Flag_LohnerForm,     1, NonFatal );
    LoadField( "Opt__Flag_User",          &RS.Opt__Flag_User,          SID, TID, NonFatal, &RT.Opt__Flag_User,           1, NonFatal );
+   LoadField( "Opt__Flag_User_Num",      &RS.Opt__Flag_User_Num,      SID, TID, NonFatal, &RT.Opt__Flag_User_Num,       1, NonFatal );
    LoadField( "Opt__Flag_Region",        &RS.Opt__Flag_Region,        SID, TID, NonFatal, &RT.Opt__Flag_Region,         1, NonFatal );
 #  ifdef PARTICLE
    LoadField( "Opt__Flag_NParPatch",     &RS.Opt__Flag_NParPatch,     SID, TID, NonFatal, &RT.Opt__Flag_NParPatch,      1, NonFatal );
@@ -1858,6 +1862,10 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
    LoadField( "Opt__ExternalPot",        &RS.Opt__ExternalPot,        SID, TID, NonFatal, &RT.Opt__ExternalPot,         1, NonFatal );
    LoadField( "Opt__GravityExtraMass",   &RS.Opt__GravityExtraMass,   SID, TID, NonFatal, &RT.Opt__GravityExtraMass,    1, NonFatal );
 #  endif
+
+// source terms
+   LoadField( "Src_Deleptonization",     &RS.Src_Deleptonization,     SID, TID, NonFatal, &RT.Src_Deleptonization,      1, NonFatal );
+   LoadField( "Src_User",                &RS.Src_User,                SID, TID, NonFatal, &RT.Src_User,                 1, NonFatal );
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
@@ -2011,7 +2019,10 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
       for (int t=0; t<4; t++)
       RS.FlagTable_Lohner      [lv][t] = -1.0;
 
-      RS.FlagTable_User        [lv]    = -1.0;
+      RS.FlagTable_User        [lv].p   = (double *) malloc( OPT__FLAG_USER_NUM*sizeof(double) );
+      RS.FlagTable_User        [lv].len = OPT__FLAG_USER_NUM;
+      for (int t=0; t<OPT__FLAG_USER_NUM; t++)
+      ( (double *) RS.FlagTable_User[lv].p )[t] = -1.0;
 
 #     if   ( MODEL == HYDRO )
       RS.FlagTable_PresGradient[lv]    = -1.0;
@@ -2050,8 +2061,18 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
                        "FlagTable_Lohner", lv, t, RS.FlagTable_Lohner[lv][t],  RT.FlagTable_Lohner[lv][t] );
    }}
 
-   if ( OPT__FLAG_USER )
-   LoadField( "FlagTable_User",           RS.FlagTable_User,          SID, TID, NonFatal,  RT.FlagTable_User,          N1, NonFatal );
+   if ( OPT__FLAG_USER ) {
+   for (int lv=0; lv<MAX_LEVEL; lv++) {
+   char Key[MAX_STRING];
+   sprintf( Key, "FlagTable_User_Lv%02d", lv );
+
+   LoadField( Key,                       &RS.FlagTable_User[lv],      SID, TID, NonFatal,  NullPtr,                    -1, NonFatal );
+
+   for (int t=0; t<OPT__FLAG_USER_NUM; t++) {
+      if ( ((double *) RS.FlagTable_User[lv].p)[t] != ((double *) RT.FlagTable_User[lv].p)[t] )
+         Aux_Message( stderr, "WARNING : \"%s[%d][%d]\" : RESTART file (%20.14e) != runtime (%20.14e) !!\n",
+                       "FlagTable_User", lv, t, ((double *) RS.FlagTable_User[lv].p)[t],  ((double *) RT.FlagTable_User[lv].p)[t] );
+   }}}
 
 #  if   ( MODEL == HYDRO )
    if ( OPT__FLAG_PRES_GRADIENT )
@@ -2097,6 +2118,13 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
    Status = H5Tclose( TID );
    Status = H5Dclose( SID );
    Status = H5Fclose( FID );
+
+// free memory
+   for (int lv=0; lv<NLEVEL-1; lv++)
+   {
+      free( RS.FlagTable_User[lv].p );
+      free( RT.FlagTable_User[lv].p );
+   }
 
 } // FUNCTION : Check_InputPara
 

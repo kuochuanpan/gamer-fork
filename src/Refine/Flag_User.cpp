@@ -1,10 +1,10 @@
 #include "GAMER.h"
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
-static bool Flag_User( const int i, const int j, const int k, const int lv, const int PID, const double Threshold );
+static bool Flag_User( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
 
 // this function pointer may be overwritten by various test problem initializers
-bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double Threshold ) = Flag_User;
+bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold ) = Flag_User;
 
 
 
@@ -27,7 +27,7 @@ bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, cons
 // Return      :  "true"  if the flag criteria are satisfied
 //                "false" if the flag criteria are not satisfied
 //-------------------------------------------------------------------------------------------------------
-bool Flag_User( const int i, const int j, const int k, const int lv, const int PID, const double Threshold )
+bool Flag_User( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold )
 {
 
    /*

@@ -67,6 +67,7 @@ extern "C" {
 #include "Field.h"
 #include "Prototype.h"
 #include "PhysicalConstant.h"
+#include "NuclearEos.h"
 
 #ifdef SERIAL
 #  include "Serial.h"

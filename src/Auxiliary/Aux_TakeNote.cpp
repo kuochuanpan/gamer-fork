@@ -161,6 +161,28 @@ void Aux_TakeNote()
       fprintf( Note, "DUAL_ENERGY                     UNKNOWN\n" );
 #     endif
 
+#     if   ( EOS == IDEAL_GAS )
+      fprintf( Note, "EOS                             IDEAL_GAS\n" );
+#     elif ( EOS == NUCLEAR )
+      fprintf( Note, "EOS                             NUCLEAR\n" );
+#     else
+      fprintf( Note, "EOS                             UNKNOWN\n" );
+#     endif
+
+#     ifdef NEUTRINO_SCHEME
+#     if   ( NEUTRINO_SCHEME == LIGHTBULB )
+      fprintf( Note, "NEUTRINO_SCHEME                 LIGHTBULB\n" );
+#     elif ( NEUTRINO_SCHEME == IDSA )
+      fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
+#     elif ( NEUTRINO_SCHEME == M1 )
+      fprintf( Note, "NEUTRINO_SCHEME                 M1\n" );
+#     else
+      fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
+#     endif
+#     else // #ifdef NEUTRINO_SCHEME
+      fprintf( Note, "NEUTRINO_SCHEME                 OFF\n" );
+#     endif // #ifdef NEUTRINO_SCHEME ... else ...
+
 #     ifdef MHD
       fprintf( Note, "MHD                             ON\n" );
 #     else
@@ -733,6 +755,7 @@ void Aux_TakeNote()
                                                                   (OPT__FLAG_LOHNER_FORM==LOHNER_FORM_INV2) ? "LOHNER_FORM_INV2" :
                                                                                                                "UNKNOWN" );
       fprintf( Note, "OPT__FLAG_USER                  %d\n",      OPT__FLAG_USER            );
+      fprintf( Note, "OPT__FLAG_USER_NUM              %d\n",      OPT__FLAG_USER_NUM        );
       fprintf( Note, "OPT__FLAG_REGION                %d\n",      OPT__FLAG_REGION          );
 #     ifdef PARTICLE
       fprintf( Note, "OPT__FLAG_NPAR_PATCH            %d\n",      OPT__FLAG_NPAR_PATCH      );
@@ -770,6 +793,15 @@ void Aux_TakeNote()
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
 #     endif // #ifndef SERIAL
+
+
+//    record the parameters of source terms
+      fprintf( Note, "Parameters of Source Terms\n" );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "SRC_DELEPTONIZATION             %d\n",      SRC_DELEPTONIZATION     );
+      fprintf( Note, "SRC_USER                        %d\n",      SRC_USER                );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "\n\n");
 
 
 //    record the parameters of Grackle
@@ -1253,7 +1285,12 @@ void Aux_TakeNote()
          fprintf( Note, "Flag Criterion (User-defined)\n" );
          fprintf( Note, "***********************************************************************************\n" );
          fprintf( Note, "  Level           Threshold\n" );
-         for (int lv=0; lv<MAX_LEVEL; lv++)  fprintf( Note, "%7d%20.7e\n", lv, FlagTable_User[lv] );
+         for (int lv=0; lv<MAX_LEVEL; lv++)
+         {
+                                                         fprintf( Note, "%7d", lv );
+            for ( int t=0; t<OPT__FLAG_USER_NUM; t++ )   fprintf( Note, "%20.7e", FlagTable_User[lv][t] );
+                                                         fprintf( Note, "\n", lv );
+         }
          fprintf( Note, "***********************************************************************************\n" );
          fprintf( Note, "\n\n");
       }
