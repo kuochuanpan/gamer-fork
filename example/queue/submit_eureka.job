@@ -1,12 +1,12 @@
 #!/bin/bash
 
-#PBS -N profile
+#PBS -N gamer
 #PBS -M hyschive@phys.ntu.edu.tw
 #PBS -m abe
 #PBS -q workq
 #PBS -k n
 #PBS -l walltime=720:00:00
-#PBS -l nodes=1:ppn=16
+#PBS -l nodes=2:ppn=16
 ##PBS -o stdout
 ##PBS -e stderr
 ##PBS -W depend=afterok:JOB_ID
@@ -16,9 +16,7 @@ if [ "$PBS_ENVIRONMENT" != "PBS_INTERACTIVE" ]; then
    cd $PBS_O_WORKDIR
 fi
 
-FILE_IN=??
-START_ID=??
-END_ID=??
-DELTA_ID=1
+mpirun -map-by ppr:2:socket:pe=8 --report-bindings ./gamer 1>>log 2>&1
 
-source MultiFiles__GAMER_ExtractProfile.sh $FILE_IN $START_ID $END_ID $DELTA_ID 1>stdout 2>stderr
+## script to restart a simulation automatically if the run failed
+## sh auto_restart.sh 1>>stdout 2>>stderr
