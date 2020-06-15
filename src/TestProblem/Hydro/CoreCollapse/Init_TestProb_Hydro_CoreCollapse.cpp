@@ -11,7 +11,8 @@ static int    var_int;
 static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
 static double rot_omega;                   // Initial rotational speed
 static double rot_A;                       // Scale factor of the rotation
-
+static double Bfield_Ab;                  // magnetic field strength                          [1e15]
+static double Bfield_np;                  // dependence on the density                        [0.0]
 
 // Parameters for the progenitor model
 static double *Progenitor_Prof = NULL; // radial progenitor model
@@ -122,6 +123,10 @@ void SetParameter()
    ReadPara->Add( "progenitor_file",   progenitor_file,        Useless_str,   Useless_str,      Useless_str       );
    ReadPara->Add( "rot_omega",        &rot_omega,              0.0,           0.0,              NoMax_double      );
    ReadPara->Add( "rot_A",            &rot_A,                  1000.0,        0.0,              NoMax_double      );
+#  ifdef MHD
+   ReadPara->Add( "Bfield_Ab",         &Bfield_Ab,             1.0e15,        0.0,              NoMax_double      );
+   ReadPara->Add( "Bfield_np",         &Bfield_np,             0.0,           NoMin_double,     NoMax_double      );
+#  endif 
    //ReadPara->Add( "bounce",            &bounce,                false,         Useless_bool,     Useless_bool      );
    //ReadPara->Add( "bounce_time",       &bounce_time,           0.0,           Eps_double,       NoMax_double      );
 
@@ -201,6 +206,10 @@ void SetParameter()
       Aux_Message( stdout, "  progenitor_file           = %s\n",     progenitor_file );
       Aux_Message( stdout, "  rot_omega                 = %13.7e\n",  rot_omega );
       Aux_Message( stdout, "  rot_A                     = %13.7e\n",  rot_A ); 
+#     ifdef MHD
+      Aux_Message( stdout, "  Bfield_Ab                 = %13.7e\n",  Bfield_Ab );
+      Aux_Message( stdout, "  Bfield_np                 = %13.7e\n",  Bfield_np );
+#     endif
       Aux_Message( stdout, "=============================================================================\n" );
    }
 
@@ -312,6 +321,91 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
 
 } // FUNCTION : SetGridIC
+
+#ifdef MHD
+//-------------------------------------------------------------------------------------------------------
+// Function    :  SetBFieldIC
+// Description :  Set the problem-specific initial condition of magnetic field
+//
+// Note        :  1. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
+//                   (unless OPT__INIT_GRID_WITH_OMP is disabled)
+//                   --> Please ensure that everything here is thread-safe
+//                2. Generate poloidal B field from vector potential in a form similar
+//                   to that defined in Liu+ 2008, Phys. Rev. D78, 024012
+//                     A_phi = Ab * \bar\omega^2 * (1 - rho / rho_max)^np * (P / P_max)
+//                   where
+//                     \omega^2 = (x - x_center)^2 + y^2
+//                   And
+//                     A_x = -(y / \bar\omega^2) * A_phi;  A_y = (x / \bar\omega^2) * A_phi;  A_z = 0
+//
+// Parameter   :  magnetic : Array to store the output magnetic field
+//                x/y/z    : Target physical coordinates
+//                Time     : Target physical time
+//                lv       : Target refinement level
+//                AuxArray : Auxiliary array
+//
+// Return      :  magnetic
+//-------------------------------------------------------------------------------------------------------
+void SetBFieldIC( real magnetic[], const double x, const double y, const double z, const double Time,
+                  const int lv, double AuxArray[] )
+{
+
+   const double  BoxCenter[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+   const double *Table_R      = Progenitor_Prof + 0*Progenitor_NBin;
+   const double *Table_Dens   = Progenitor_Prof + 1*Progenitor_NBin;
+   const double *Table_Pres   = Progenitor_Prof + 3*Progenitor_NBin;
+
+   const double x0 = x - BoxCenter[0];
+   const double y0 = y - BoxCenter[1];
+   const double z0 = z - BoxCenter[2];
+
+   // Use the data at first row as the central density and pressure
+   // to avoid incorrect values extrapolated from the input IC table
+   const double dens_c = Table_Dens[0];
+   const double pres_c = Table_Pres[0];
+   const double Ab     = Bfield_Ab / UNIT_B;
+
+   // Use finite difference to compute the B field
+   double diff = amr->dh[TOP_LEVEL];
+   double r,    dens,    pres;
+   double r_xp, dens_xp, pres_xp;
+   double r_yp, dens_yp, pres_yp;
+   double r_zp, dens_zp, pres_zp;
+
+   r       = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0        ) );
+   r_xp    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 + diff ) );
+   r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
+   r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
+
+   dens    = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Dens, r    ); // code unit
+   dens_xp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Dens, r_xp );
+   dens_yp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Dens, r_yp );
+   dens_zp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Dens, r_zp );
+
+   pres    = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Pres, r    ); // code unit
+   pres_xp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Pres, r_xp );
+   pres_yp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Pres, r_yp );
+   pres_zp = Mis_InterpolateFromTable( Progenitor_NBin, Table_R, Table_Pres, r_zp );
+
+   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, Bfield_np )*( pres_xp / pres_c )   \
+                 -   ( x0        )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                 / diff;
+
+   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, Bfield_np )*( pres_yp / pres_c )   \
+                 -   -( y0        )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                 / diff;
+
+   double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, Bfield_np )*( pres_zp / pres_c )   \
+                   -   POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                   / diff;
+
+
+   magnetic[MAGX] = -x0 * Ab * dAphi_dz;
+   magnetic[MAGY] = -y0 * Ab * dAphi_dz;
+   magnetic[MAGZ] =       Ab * ( dAy_dx - dAx_dy );
+
+} // FUNCTION : SetBFieldIC
+#endif // #ifdef MHD
 
 
 void Record_CoreCollapse()
@@ -601,7 +695,10 @@ void Init_TestProb_Hydro_CoreCollapse()
 // 3. set the corresponding function pointer below to the new problem-specific function
 // 4. enable the corresponding runtime option in "Input__Parameter"
 //    --> for instance, enable OPT__OUTPUT_USER for Output_User_Ptr
-   Init_Function_User_Ptr      = SetGridIC;
+   Init_Function_User_Ptr         = SetGridIC;
+# ifdef MHD
+   Init_Function_BField_User_Ptr  = SetBFieldIC;
+# endif
    Init_Field_User_Ptr         = NULL;    // set NCOMP_PASSIVE_USER;        example: TestProblem/Hydro/Plummer/Init_TestProb_Hydro_Plummer.cpp --> AddNewField()
    Flag_User_Ptr               = Flag_CoreCollapse;    // option: OPT__FLAG_USER;        example: Refine/Flag_User.cpp
    Mis_GetTimeStep_User_Ptr    = NULL;    // option: OPT__DT_USER;          example: Miscellaneous/Mis_GetTimeStep_User.cpp
