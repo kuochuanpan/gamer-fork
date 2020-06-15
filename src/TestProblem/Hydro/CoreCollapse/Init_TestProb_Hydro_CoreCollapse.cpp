@@ -9,8 +9,8 @@ static bool   var_bool;
 static double var_double;
 static int    var_int;
 static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
-static double rot_omega;                   // Initial rotational speed
-static double rot_A;                       // Scale factor of the rotation
+static double rot_omega;                   // Initial rotational speed                  [rad/sec]
+static double rot_A;                       // Scale factor of the rotation              [km]
 static double Bfield_Ab;                  // magnetic field strength                          [1e15]
 static double Bfield_np;                  // dependence on the density                        [0.0]
 
@@ -275,6 +275,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    r_xy = sqrt( SQR(xc) + SQR(yc));
 
+
    if (r_xy == 0.0)
    {
      angle = M_PI/2.;
@@ -294,6 +295,12 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    sign = xc/ abs(xc);
    velx = sign*v_xy*cos(angle); // code unit
    vely = sign*v_xy*sin(angle);
+
+   // Add rotation
+   const double vphi = rot_omega/(1.0+SQR(r/rot_A))*r_xy;
+   velx = velx - sign*sin(angle)*vphi;
+   vely = vely + sign*cos(angle)*vphi;
+
 
    // call EOS to get other variables
    // use temperature mode (1)
