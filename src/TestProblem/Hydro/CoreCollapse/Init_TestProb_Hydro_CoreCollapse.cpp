@@ -308,7 +308,7 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    vely = sign*v_xy*sin(angle);
 
    // Add rotation
-   const double vphi = rot_omega/(1.0+SQR(r/rot_A))*r_xy;
+   const double vphi = (rot_omega * UNIT_T )/(1.0+SQR(r/rot_A))*r_xy;
    velx = velx - sign*sin(angle)*vphi;
    vely = vely + sign*cos(angle)*vphi;
 
