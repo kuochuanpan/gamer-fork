@@ -9,6 +9,8 @@ static bool   var_bool;
 static double var_double;
 static int    var_int;
 static char   progenitor_file[MAX_STRING]; // The supernova progenitor file
+static double rot_omega;                   // Initial rotational speed
+static double rot_A;                       // Scale factor of the rotation
 
 
 // Parameters for the progenitor model
@@ -16,7 +18,7 @@ static double *Progenitor_Prof = NULL; // radial progenitor model
 static int    Progenitor_NBin ;        // number of radial bins in the progenitor model
 // =======================================================================================
 
-
+static bool Flag_CoreCollapse(const int i, const int j, const int k, const int lv, const int PID, const double *Threshold);
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -101,7 +103,7 @@ void Validate()
 void SetParameter()
 {
 
-   if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Setting runtime parameters ...\n" );
+   if ( MPI_Rank == 0 ) Aux_Message( stdout, "   Setting runtime parameters ...\n" );
 
 
 // (1) load the problem-specific runtime parameters
@@ -118,6 +120,8 @@ void SetParameter()
    ReadPara->Add( "var_double",        &var_double,            1.0,           Eps_double,       NoMax_double      );
    ReadPara->Add( "var_int",           &var_int,               2,             0,                5                 );
    ReadPara->Add( "progenitor_file",   progenitor_file,        Useless_str,   Useless_str,      Useless_str       );
+   ReadPara->Add( "rot_omega",        &rot_omega,              0.0,           0.0,              NoMax_double      );
+   ReadPara->Add( "rot_A",            &rot_A,                  1000.0,        0.0,              NoMax_double      );
    //ReadPara->Add( "bounce",            &bounce,                false,         Useless_bool,     Useless_bool      );
    //ReadPara->Add( "bounce_time",       &bounce_time,           0.0,           Eps_double,       NoMax_double      );
 
@@ -195,6 +199,8 @@ void SetParameter()
       //Aux_Message( stdout, "  var_double                = %13.7e\n", var_double );
       //Aux_Message( stdout, "  var_int                   = %d\n",     var_int );
       Aux_Message( stdout, "  progenitor_file           = %s\n",     progenitor_file );
+      Aux_Message( stdout, "  rot_omega                 = %13.7e\n",  rot_omega );
+      Aux_Message( stdout, "  rot_A                     = %13.7e\n",  rot_A ); 
       Aux_Message( stdout, "=============================================================================\n" );
    }
 
@@ -492,6 +498,68 @@ void Record_CoreCollapse()
 
 
 
+
+//---------------------------------------------------------------------------------------------------------
+// Function   : Flag_CoreCollapse
+// Description :  Check if the element (i,j,k) of the input data satisfies the user-defined flag criteria
+//
+// Note        :  1. Invoked by "Flag_Check" using the function pointer "Flag_User_Ptr"
+//                   --> The function pointer may be reset by various test problem initializers, in which case
+//                       this funtion will become useless
+//                2. Enabled by the runtime option "OPT__FLAG_USER"
+//
+// Parameter   :  i,j,k       : Indices of the target element in the patch ptr[ amr->FluSg[lv] ][lv][PID]
+//                lv          : Refinement level of the target patch
+//                PID         : ID of the target patch
+//                Threshold   : User-provided threshold for the flag operation, which is loaded from the
+//                              file "Input__Flag_User"
+//                              In order of radius_min, radius_max, threshold_dens
+//
+// Return      :  "true"  if the flag criteria are satisfied
+//                "false" if the flag criteria are not satisfied
+//---------------------------------------------------------------------------------------------------------
+bool Flag_CoreCollapse( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold )
+{
+    bool Flag = false;
+
+    const double dh        = amr->dh[lv];
+    const double Center[3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
+    const double Pos   [3] = { amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*dh,
+                               amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*dh,
+                               amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*dh };
+
+    const double r = SQRT( SQR(Center[0] - Pos[0])
+                          +SQR(Center[1] - Pos[1])
+                          +SQR(Center[2] - Pos[2]));
+
+    const real (*Rho)[PS1][PS1] = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS]; // Density
+    const real (*Entropy)[PS1][PS1] = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[ENTR]; // Entropy
+
+    real dens = Rho[k][j][i];     // code unit
+    real entr = Entropy[k][j][i]; // code unit
+
+    entr = entr/dens;     // [kb/by]
+    dens = dens * UNIT_D; // [g/cm^3]
+
+    //printf("KC debug: user flags %14.7e  %14.7e %14.7e \n",  Threshold[0],Threshold[1],Threshold[2]);
+    //printf("KC debug: dens entr [cgs] %14.7e  %14.7e\n", dens, entr);
+ 
+    if (!EOS_POSTBOUNCE) {
+        // collapse
+        if ( (r > Threshold[0]) &&  ( r < Threshold[1] ) && (dens > Threshold[2]) )
+           Flag = true;
+
+    } else {
+        // postbounce
+        if ( (r > Threshold[0]) &&  ( r < Threshold[1] ) && (dens > Threshold[2]) )
+           Flag = true;
+        // TODO: extra refinement in shocked region
+    }
+    return Flag;
+
+} // FUNCTION : Flag_CoreCollapse
+
+
 void End_CoreCollapse()
 {
   delete [] Progenitor_Prof;
@@ -535,7 +603,7 @@ void Init_TestProb_Hydro_CoreCollapse()
 //    --> for instance, enable OPT__OUTPUT_USER for Output_User_Ptr
    Init_Function_User_Ptr      = SetGridIC;
    Init_Field_User_Ptr         = NULL;    // set NCOMP_PASSIVE_USER;        example: TestProblem/Hydro/Plummer/Init_TestProb_Hydro_Plummer.cpp --> AddNewField()
-   Flag_User_Ptr               = NULL;    // option: OPT__FLAG_USER;        example: Refine/Flag_User.cpp
+   Flag_User_Ptr               = Flag_CoreCollapse;    // option: OPT__FLAG_USER;        example: Refine/Flag_User.cpp
    Mis_GetTimeStep_User_Ptr    = NULL;    // option: OPT__DT_USER;          example: Miscellaneous/Mis_GetTimeStep_User.cpp
    BC_User_Ptr                 = NULL;    // option: OPT__BC_FLU_*=4;       example: TestProblem/ELBDM/ExtPot/Init_TestProb_ELBDM_ExtPot.cpp --> BC()
    Flu_ResetByUser_Func_Ptr    = NULL;    // option: OPT__RESET_FLUID;      example: Fluid/Flu_ResetByUser.cpp
