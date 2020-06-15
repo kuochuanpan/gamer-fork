@@ -444,6 +444,10 @@ void Record_CoreCollapse()
       if ( fabs( (Time[0]-GW_DumpTime)/Time[0] ) > 1.0e-8 )   OutputData = false;
    }
 
+   // output data if dt > GW_OUTPUT_DT
+   if ( dTime_Base >= GW_OUTPUT_DT )  OutputData = true;
+   
+
    if ( OutputData )
    {
         Record_GWSignal_Full2nd();
@@ -1053,9 +1057,8 @@ bool Flag_CoreCollapse( const int i, const int j, const int k, const int lv, con
 
     } else {
         // postbounce
-        if ( (r > Threshold[0]) &&  ( r < Threshold[1] ) && (dens > Threshold[2]) )
+        if ( (r > Threshold[0]) &&  ( r < Threshold[1] ) && (entr > Threshold[3]) )
            Flag = true;
-        // TODO: extra refinement in shocked region
     }
     return Flag;
 
