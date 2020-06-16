@@ -14,11 +14,11 @@
 
 
 # simulation scale
-BOX_SIZE                      8.e3        # box size along the longest side (in Mpc/h if COMOVING is adopted)
+BOX_SIZE                      2.e4        # box size along the longest side (in Mpc/h if COMOVING is adopted)
 NX0_TOT_X                     32          # number of base-level cells along x
 NX0_TOT_Y                     32          # number of base-level cells along y
 NX0_TOT_Z                     32          # number of base-level cells along z
-OMP_NTHREAD                   9           # number of OpenMP threads (<=0=auto -> omp_get_max_threads) [-1] ##OPENMP ONLY##
+OMP_NTHREAD                   36          # number of OpenMP threads (<=0=auto -> omp_get_max_threads) [-1] ##OPENMP ONLY##
 END_T                         2000.0      # end physical time (<0=auto -> must be set by test problems or restart) [-1.0]
 END_STEP                      10000       # end step (<0=auto -> must be set by test problems or restart) [-1]
 
@@ -31,7 +31,7 @@ TESTPROB_ID                   17          # test problem ID [0]
 # code units (in cgs)
 OPT__UNIT                     1           # specify code units -> must set exactly 3 basic units below [0] ##USELESS FOR COMOVING##
 UNIT_L                        1.e5        # km
-UNIT_M                        1.989e33    # []
+UNIT_M                        1.989e33    # [solar mass]
 UNIT_T                        1.e-3       # ms
 UNIT_V                       -1.0         # auto
 UNIT_D                       -1.0         # auto
@@ -74,8 +74,8 @@ REGRID_COUNT                  4           # refine every REGRID_COUNT sub-step [
 FLAG_BUFFER_SIZE              8           # number of buffer cells for the flag operation (0~PATCH_SIZE) [PATCH_SIZE]
 FLAG_BUFFER_SIZE_MAXM1_LV     4           # FLAG_BUFFER_SIZE at the level MAX_LEVEL-1 (<0=auto -> FLAG_BUFFER_SIZE) [-1]
 FLAG_BUFFER_SIZE_MAXM2_LV    -1           # FLAG_BUFFER_SIZE at the level MAX_LEVEL-2 (<0=auto) [-1]
-MAX_LEVEL                     9           # maximum refinement level (0~NLEVEL-1) [NLEVEL-1]
-OPT__FLAG_RHO                 1           # flag: density (Input__Flag_Rho) [0]
+MAX_LEVEL                    10           # maximum refinement level (0~NLEVEL-1) [NLEVEL-1]
+OPT__FLAG_RHO                 0           # flag: density (Input__Flag_Rho) [0]
 OPT__FLAG_RHO_GRADIENT        0           # flag: density gradient (Input__Flag_RhoGradient) [0]
 OPT__FLAG_PRES_GRADIENT       0           # flag: pressure gradient (Input__Flag_PresGradient) [0] ##HYDRO ONLY##
 OPT__FLAG_VORTICITY           0           # flag: vorticity (Input__Flag_Vorticity) [0] ##HYDRO ONLY##
@@ -85,7 +85,8 @@ OPT__FLAG_LOHNER_ENGY         0           # flag: Lohner for energy density (Inp
 OPT__FLAG_LOHNER_PRES         0           # flag: Lohner for pressure       (Input__Flag_Lohner) [0] ##HYDRO ONLY##
 OPT__FLAG_LOHNER_TEMP         0           # flag: Lohner for temperature    (Input__Flag_Lohner) [0] ##HYDRO ONLY##
 OPT__FLAG_LOHNER_FORM         2           # form of Lohner: (1=FLASH-1, 2=FLASH-2, 3=form-invariant-1, 4=form-invariant-2) [2]
-OPT__FLAG_USER                0           # flag: user-defined (Input__Flag_User) -> edit "Flag_User.cpp" [0]
+OPT__FLAG_USER                1           # flag: user-defined (Input__Flag_User) -> edit "Flag_User.cpp" [0]
+OPT__FLAG_USER_NUM            4           # flag: # of threshold values in user-defined table (Input__Flag_User)
 OPT__FLAG_REGION              1           # flag: specify the regions **allowed** to be refined -> edit "Flag_Region.cpp" [0]
 OPT__FLAG_NPAR_PATCH          2           # flag: # of particles per patch (Input__Flag_NParPatch): (0=off, 1=itself, 2=itself+siblings) [0]
 OPT__FLAG_NPAR_CELL           0           # flag: # of particles per cell  (Input__Flag_NParCell) [0]
@@ -103,6 +104,15 @@ LB_INPUT__PAR_WEIGHT          0.0         # load-balance weighting of one partic
 OPT__RECORD_LOAD_BALANCE      1           # record the load-balance info [1]
 OPT__MINIMIZE_MPI_BARRIER     1           # minimize MPI barriers to improve load balance, especially with particles [1]
                                           # (STORE_POT_GHOST, PAR_IMPROVE_ACC=1, OPT__TIMING_BARRIER=0 only; recommend AUTO_REDUCE_DT=0)
+
+# GREP
+GREP_CENTER_METHOD            1           # 1=box center
+GREP_MAXITER                  1000        # max iteration number
+GREP_LOGBIN                   1           # 1=log;  0=linear
+GREP_LOGBINRATIO              1.005       # bin factor
+GREP_MAXRADIUS               -1.0         # -1: rmax
+GREP_MINBINSIZE               0.5         # -1: min dx
+
 
 # EOS
 EOS_POSTBOUNCE                0           # postbounce or not [0/1]
@@ -132,7 +142,7 @@ EP_COEFF                      1.25        # coefficient of the extrema-preservin
 OPT__LR_LIMITER               4           # slope limiter of data reconstruction in the MHM/MHM_RP/CTU schemes:
                                           # (0=none, 1=vanLeer, 2=generalized MinMod, 3=vanAlbada, 4=vanLeer+generalized MinMod,
                                           #  5=extrema-preserving) [4] ##5 IS DEPRECATED##
-OPT__1ST_FLUX_CORR            2           # correct unphysical results (defined by MIN_DENS/PRES) by the 1st-order fluxes:
+OPT__1ST_FLUX_CORR            -1          # correct unphysical results (defined by MIN_DENS/PRES) by the 1st-order fluxes:
                                           # (0=off, 1=3D, 2=3D+1D) [2] ##MHM/MHM_RP/CTU ONLY##
 OPT__1ST_FLUX_CORR_SCHEME     1           # Riemann solver for OPT__1ST_FLUX_CORR (0=none, 1=Roe, 2=HLLC 3=HLLE) [1]
 DUAL_ENERGY_SWITCH            2.0e-2      # apply dual-energy if E_int/E_kin < DUAL_ENERGY_SWITCH [2.0e-2] ##DUAL_ENERGY ONLY##

@@ -1,2 +1,8 @@
 # problem-specific runtime parameters
 progenitor_file   s20_gamer.txt   # progenitor model file
+rot_omega         0.0
+rot_A             1000.0
+Bfield_Ab         0.0
+Bfield_nb         0.0
+GW_OUTPUT_OPT     1
+GW_OUTPUT_DT      0.001
