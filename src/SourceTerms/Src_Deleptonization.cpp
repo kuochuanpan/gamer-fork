@@ -33,7 +33,7 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
                const int lv, double AuxArray[], const double dt, const double EngyB )
 {
 
-#  if ( EOS == NUCLEAR )  &&  ( defined YeOfRhoFunc )
+#  if ( EOS == NUCLEAR )
 
 // example
    /*
@@ -76,6 +76,9 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
    ye    = fluid[YE]/dens;
    ener  = fluid[ENGY];
    ener  = ener - 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/dens; // internal energy
+#  ifdef MHD
+   ener -= EngyB;
+#  endif
    xenr  = (ener/dens*UNIT_V*UNIT_V) - energy_shift; // specific internal energy [need nuclear EoS]
 
 
@@ -121,6 +124,9 @@ void Src_Deleptonization( real fluid[], const double x, const double y, const do
           &xdpdrhoe, &xmunu, 2, &keyerr, rfeps); // entropy mode
 
       fluid[ENGY] = (dens/(UNIT_V*UNIT_V))*(xenr + energy_shift) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+#  ifdef MHD
+      fluid[ENGY] += EngyB;
+#  endif
 
       // if using Dual energy
 #     ifdef DUAL_ENERGY
