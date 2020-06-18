@@ -96,12 +96,12 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 */
 
 // energy mode: use density, internal energy, and Ye to find the temperature and other quantities
+   xtmp = 10.0; // trial value [MeV]
    nuc_eos_C_short(xdens,&xtmp,ye,&xenr, &xprs, &xent, &xcs2, &xdedt, &xdpderho,
                      &xdpdrhoe, &xmunu, 0, &keyerr, rfeps);
 
    if ( keyerr )   Aux_Error( ERROR_INFO, "Nuclear Table, keyerr = %d !!\n", keyerr );
 
-/*
 // compute the Xn and Xp
    logd = MIN(MAX(xdens, eos_rhomin), eos_rhomax);
    logt = MIN(MAX(xtmp,  eos_tempmin), eos_tempmax);
@@ -117,7 +117,6 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
 
    xXn = res[14];
    xXp = res[15];
-*/
 
    //printf("debug: xXp %13.7e  xXn %13.7e \n", xXp, xXn);
 
@@ -138,10 +137,10 @@ void Src_LightBulb( real fluid[], const double x, const double y, const double z
    dEneut = dEneut - 1.399e20 * T6;
 
    dEneut = dEneut * exp(-xdens*1.e-11);
-//   dEneut = dEneut * (xXp + xXn);  // [cgs]
+   dEneut = dEneut * (xXp + xXn);  // [cgs]
 
 // temporarily set xXp + xXn = 1
-   dEneut = dEneut * (1.0);  // [cgs]
+//   dEneut = dEneut * (1.0);  // [cgs]
 
 
    xenr = xenr + dEneut * (UNIT_T * dt);
