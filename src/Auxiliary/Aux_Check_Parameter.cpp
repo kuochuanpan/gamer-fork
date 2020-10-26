@@ -648,10 +648,6 @@ void Aux_Check_Parameter()
          Aux_Error( ERROR_INFO, "JEANS_MIN_PRES currently only supports EOS_GAMMA !!\n" );
 #  endif // if ( EOS != EOS_GAMMA )
 
-#  if ( EOS == EOS_NUCLEAR )
-      Aux_Error( ERROR_INFO, "EOS_NUCLEAR is not supported yet !!\n" );
-#  endif
-
 #  if ( EOS == EOS_TABULAR )
       Aux_Error( ERROR_INFO, "EOS_TABULAR is not supported yet !!\n" );
 #  endif
