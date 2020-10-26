@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2421)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2422)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -191,7 +191,8 @@ Procedure for outputting new variables:
 //                                      (OPT__SELF_GRAVITY, OPT__EXT_ACC, OPT__EXT_POT)
 //                2419 : 2020/09/25 --> output EXTPOT_BLOCK_SIZE
 //                2420 : 2020/10/12 --> output OPT__FLAG_USER_NUM and use variable-length datatype for FlagTable_User
-//                2421 : 2020/10/26 --> output NEUTRINO_SCHEME
+//                2421 : 2020/10/26 --> output COSMIC_RAY
+//                2422 : 2020/10/26 --> output NEUTRINO_SCHEME
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1392,7 +1393,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 
    const time_t CalTime = time( NULL );   // calendar time
 
-   KeyInfo.FormatVersion        = 2421;
+   KeyInfo.FormatVersion        = 2422;
    KeyInfo.Model                = MODEL;
    KeyInfo.NLevel               = NLEVEL;
    KeyInfo.NCompFluid           = NCOMP_FLUID;
@@ -1426,7 +1427,12 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 #  else
    KeyInfo.Magnetohydrodynamics = 0;
 #  endif
+#  ifdef COSMIC_RAY
+   KeyInfo.CosmicRay            = 1;
+#  else
+   KeyInfo.CosmicRay            = 0;
 #  endif
+#  endif // #if ( MODEL == HYDRO )
 
    for (int d=0; d<3; d++)
    {
@@ -1622,6 +1628,12 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.Magnetohydrodynamics   = 1;
 #  else
    Makefile.Magnetohydrodynamics   = 0;
+#  endif
+
+#  ifdef COSMIC_RAY
+   Makefile.CosmicRay              = 1;
+#  else
+   Makefile.CosmicRay              = 0;
 #  endif
 
    Makefile.EoS                    = EOS;
@@ -2343,6 +2355,7 @@ void GetCompound_KeyInfo( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "CellScale",            HOFFSET(KeyInfo_t,CellScale           ), H5_TypeID_Arr_NLvInt    );
 #  if ( MODEL == HYDRO )
    H5Tinsert( H5_TypeID, "Magnetohydrodynamics", HOFFSET(KeyInfo_t,Magnetohydrodynamics), H5T_NATIVE_INT          );
+   H5Tinsert( H5_TypeID, "CosmicRay",            HOFFSET(KeyInfo_t,CosmicRay),            H5T_NATIVE_INT          );
 #  endif
 
    H5Tinsert( H5_TypeID, "Step",                 HOFFSET(KeyInfo_t,Step                ), H5T_NATIVE_LONG         );
@@ -2432,6 +2445,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
 #  endif
    H5Tinsert( H5_TypeID, "DualEnergy",             HOFFSET(Makefile_t,DualEnergy             ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "Magnetohydrodynamics",   HOFFSET(Makefile_t,Magnetohydrodynamics   ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "CosmicRay",              HOFFSET(Makefile_t,CosmicRay              ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "EoS",                    HOFFSET(Makefile_t,EoS                    ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "BarotropicEoS",          HOFFSET(Makefile_t,BarotropicEoS          ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "NeutrinoScheme",         HOFFSET(Makefile_t,NeutrinoScheme         ), H5T_NATIVE_INT );
