@@ -666,6 +666,9 @@ void Aux_Check_Parameter()
 #     endif
 #  endif // #ifdef BAROTROPIC_EOS ... else ...
 
+#  if ( defined NEUTRINO_SCHEME  &&  NEUTRINO_SCHEME != LIGHTBULB  &&  NEUTRINO_SCHEME != IDSA  &&  NEUTRINO_SCHEME != M1 )
+#     error : ERROR : unsupported neutrino updating scheme (LIGHTBULB/IDSA/M1) !!
+#  endif
 
    if ( OPT__1ST_FLUX_CORR != FIRST_FLUX_CORR_NONE )
    {

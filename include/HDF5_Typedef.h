@@ -131,6 +131,7 @@ struct Makefile_t
    int Magnetohydrodynamics;
    int EoS;
    int BarotropicEoS;
+   int NeutrinoScheme;
 
 #  elif ( MODEL == ELBDM )
    int ConserveMass;

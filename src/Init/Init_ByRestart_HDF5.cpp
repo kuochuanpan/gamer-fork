@@ -1434,6 +1434,7 @@ void Check_Makefile( const char *FileName, const int FormatVersion )
    LoadField( "Magnetohydrodynamics",   &RS.Magnetohydrodynamics,   SID, TID, NonFatal, &RT.Magnetohydrodynamics,   1,    Fatal );
    LoadField( "EoS",                    &RS.EoS,                    SID, TID, NonFatal, &RT.EoS,                    1, NonFatal );
    LoadField( "BarotropicEoS",          &RS.BarotropicEoS,          SID, TID, NonFatal, &RT.BarotropicEoS,          1, NonFatal );
+   LoadField( "NeutrinoScheme",         &RS.NeutrinoScheme,         SID, TID, NonFatal, &RT.NeutrinoScheme,         1, NonFatal );
 
 #  elif ( MODEL == ELBDM )
    LoadField( "ConserveMass",           &RS.ConserveMass,           SID, TID, NonFatal, &RT.ConserveMass,           1, NonFatal );

@@ -187,6 +187,20 @@ void Aux_TakeNote()
       fprintf( Note, "BAROTROPIC_EOS                  OFF\n" );
 #     endif
 
+#     ifdef NEUTRINO_SCHEME
+#     if   ( NEUTRINO_SCHEME == LIGHTBULB )
+      fprintf( Note, "NEUTRINO_SCHEME                 LIGHTBULB\n" );
+#     elif ( NEUTRINO_SCHEME == IDSA )
+      fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
+#     elif ( NEUTRINO_SCHEME == M1 )
+      fprintf( Note, "NEUTRINO_SCHEME                 M1\n" );
+#     else
+      fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
+#     endif
+#     else // #ifdef NEUTRINO_SCHEME
+      fprintf( Note, "NEUTRINO_SCHEME                 OFF\n" );
+#     endif // #ifdef NEUTRINO_SCHEME ... else ...
+
 //    c. options in ELBDM
 #     elif ( MODEL == ELBDM )
 

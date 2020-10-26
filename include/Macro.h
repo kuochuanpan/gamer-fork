@@ -78,6 +78,12 @@
 #define EOS_USER        5
 
 
+// neutrino updating schemes
+#define LIGHTBULB    1
+#define IDSA         2
+#define M1           3
+
+
 // Poisson solvers
 #define SOR          1
 #define MG           2

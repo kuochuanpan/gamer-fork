@@ -87,6 +87,9 @@ SIMU_OPTION += -DEOS=EOS_GAMMA
 # --> mandatory for EOS_ISOTHERMAL; optional for EOS_TABULAR/EOS_USER
 #SIMU_OPTION += -DBAROTROPIC_EOS
 
+# neutrino updating scheme: LIGHTBULB/IDSA/M1
+#SIMU_OPTION += -DNEUTRINO_SCHEME=LIGHTBULB
+
 
 # (b-2) ELBDM options
 # ------------------------------------------------------------------------------------
