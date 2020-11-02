@@ -660,6 +660,10 @@ void Aux_Check_Parameter()
       Aux_Error( ERROR_INFO, "EOS_TABULAR is not supported yet !!\n" );
 #  endif
 
+#  if ( EOS == EOS_NUCLEAR  &&  !defined SUPPORT_HDF5 )
+#     error : ERROR : must enable SUPPORT_HDF5 for EOS_NUCLEAR !!
+#  endif
+
 #  ifdef BAROTROPIC_EOS
 #     if ( EOS == EOS_GAMMA  ||  EOS == EOS_NUCLEAR )
 #        error : ERROR : BAROTROPIC_EOS is incompatible with EOS_GAMMA/EOS_NUCLEAR !!
