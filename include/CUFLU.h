@@ -413,7 +413,11 @@
 
 // 3. dt solver for fluid
 //=========================================================================================
+#  if ( MODEL == HYDRO  &&  EOS == EOS_NUCLEAR )
+#     define DT_FLU_BLOCK_SIZE      256
+#  else
 #     define DT_FLU_BLOCK_SIZE      512
+#  endif
 
 // use shuffle reduction in the KEPLER and later GPUs
 #  if ( GPU_ARCH == KEPLER  ||  GPU_ARCH == MAXWELL  ||  GPU_ARCH == PASCAL  ||  GPU_ARCH == VOLTA  ||  GPU_ARCH == TURING )
