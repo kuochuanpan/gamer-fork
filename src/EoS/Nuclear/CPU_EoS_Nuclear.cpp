@@ -441,6 +441,12 @@ void EoS_SetGPUFunc_Nuclear( EoS_DE2P_t &, EoS_DP2E_t &, EoS_DP2C_t & );
 void EoS_Init_Nuclear()
 {
 
+// check if the default maximum table size is large enough
+   if ( EOS_NTABLE_MAX < NUC_TABLE_NPTR )
+      Aux_Error( ERROR_INFO, "EOS_NTABLE_MAX (%d) < NUC_TABLE_NPTR (%d) for the nuclear EoS !!\n",
+                 EOS_NTABLE_MAX, NUC_TABLE_NPTR );
+
+
    nuc_eos_C_ReadTable( NUC_TABLE );
 
    EoS_SetAuxArray_Nuclear( EoS_AuxArray_Flt, EoS_AuxArray_Int );
