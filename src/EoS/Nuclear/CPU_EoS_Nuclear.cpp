@@ -150,7 +150,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens, const real Eint, const r
 
    int  Mode    = NUC_MODE_ENGY;
    real sEint   = Eint / Dens;
-   real Ye      = Passive[0] / Dens;
+   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
    real Pres    = NULL_REAL;
    real Useless = NULL_REAL;
    int  Err     = NULL_INT;
@@ -239,7 +239,7 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens, const real PresIn, const
    int  Mode    = NUC_MODE_PRES;
    real Eint    = NULL_REAL;
    real sEint   = NULL_REAL;
-   real Ye      = Passive[0] / Dens;
+   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
    real Pres    = PresIn;
    real Useless = NULL_REAL;
    int  Err     = NULL_INT;
@@ -312,7 +312,7 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens, const real PresIn, const
    const int    NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
    int  Mode    = NUC_MODE_PRES;
-   real Ye      = Passive[0] / Dens;
+   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
    real Pres    = PresIn;
    real Cs2     = NULL_REAL;
    real Useless = NULL_REAL;
