@@ -102,30 +102,37 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
 
 
 // allocate memory for tables
-   double *alltables_temp = NULL;
-   if (  ! ( alltables_temp = (double*)malloc(g_nrho*g_neps*g_nye*NUC_TABLE_NVAR*sizeof(double)) )  )
-      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
-
+   double *alltables_temp      = NULL;
    double *alltables_mode_temp = NULL;
-   if (  ! ( alltables_mode_temp = (double*)malloc(g_nrho*g_nmode*g_nye*3*sizeof(double)) )  )
+
+   if (  ! ( alltables_temp      = (double*)malloc(g_nrho*g_neps*g_nye*NUC_TABLE_NVAR*sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
-   if (  ! ( g_logrho = (double*)malloc(g_nrho*sizeof(double)) )  )
+   if (  ! ( alltables_mode_temp = (double*)malloc(g_nrho*g_nmode*g_nye*3            *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
-   if (  ! ( g_logeps = (double*)malloc(g_neps*sizeof(double)) )  )
+   if (  ! ( g_alltables         = (double*)malloc(g_nrho*g_neps*g_nye*NUC_TABLE_NVAR*sizeof(double)) )  )
+      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
+
+   if (  ! ( g_alltables_mode    = (double*)malloc(g_nrho*g_nmode*g_nye*3            *sizeof(double)) )  )
+      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
+
+   if (  ! ( g_logrho            = (double*)malloc(g_nrho                            *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
 
-   if (  ! ( g_yes = (double*)malloc(g_nye*sizeof(double)) )  )
+   if (  ! ( g_logeps            = (double*)malloc(g_neps                            *sizeof(double)) )  )
+      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n" );
+
+   if (  ! ( g_yes               = (double*)malloc(g_nye                             *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
 
-   if (  ! ( g_logtemp_mode = (double*)malloc(g_nmode*sizeof(double)) )  )
+   if (  ! ( g_logtemp_mode      = (double*)malloc(g_nmode                           *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
 
-   if (  ! ( g_entr_mode = (double*)malloc(g_nmode*sizeof(double)) )  )
+   if (  ! ( g_entr_mode         = (double*)malloc(g_nmode                           *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
 
-   if (  ! ( g_logprss_mode = (double*)malloc(g_nmode*sizeof(double)) )  )
+   if (  ! ( g_logprss_mode      = (double*)malloc(g_nmode                           *sizeof(double)) )  )
       Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
 
 
@@ -184,9 +191,6 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
 
 
 // change ordering of g_alltables[] so that the table kind is the fastest changing index
-   if (  ! ( g_alltables = (double*)malloc(g_nrho*g_neps*g_nye*NUC_TABLE_NVAR*sizeof(double)) )  )
-      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
-
    for (int iv=0; iv<NUC_TABLE_NVAR; iv++)
    for (int k=0; k<g_nye;  k++)
    for (int j=0; j<g_neps; j++)
@@ -197,9 +201,6 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
 
       g_alltables[indnew] = alltables_temp[indold];
    }
-
-   if (  ! ( g_alltables_mode = (double*)malloc(g_nrho*g_nmode*g_nye*3*sizeof(double)) )  )
-      Aux_Error( ERROR_INFO, "cannot allocate memory for EOS table !!\n");
 
    for (int iv=0; iv<3; iv++)
    for (int k=0; k<g_nye;   k++)
