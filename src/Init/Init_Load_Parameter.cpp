@@ -222,6 +222,9 @@ void Init_Load_Parameter()
 #  else
    ReadPara->Add( "ISO_TEMP",                   &ISO_TEMP,                       __DBL_MAX__,      NoMin_double,  NoMax_double   );
 #  endif
+#  if ( EOS == EOS_NUCLEAR )
+   ReadPara->Add( "NUC_TABLE",                  NUC_TABLE,                        Useless_str,     Useless_str,   Useless_str    );
+#  endif
    ReadPara->Add( "MINMOD_COEFF",               &MINMOD_COEFF,                    1.5,             1.0,           2.0            );
    ReadPara->Add( "OPT__LR_LIMITER",            &OPT__LR_LIMITER,                 VL_GMINMOD,      0,             5              );
    ReadPara->Add( "OPT__1ST_FLUX_CORR",         &OPT__1ST_FLUX_CORR,             -1,               NoMin_int,     2              );

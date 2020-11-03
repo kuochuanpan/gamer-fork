@@ -441,7 +441,7 @@ void EoS_SetGPUFunc_Nuclear( EoS_DE2P_t &, EoS_DP2E_t &, EoS_DP2C_t & );
 void EoS_Init_Nuclear()
 {
 
-   nuc_eos_C_ReadTable( "./LS220_eps.h5" );
+   nuc_eos_C_ReadTable( NUC_TABLE );
 
    EoS_SetAuxArray_Nuclear( EoS_AuxArray_Flt, EoS_AuxArray_Int );
    EoS_SetCPUFunc_Nuclear( EoS_DensEint2Pres_CPUPtr, EoS_DensPres2Eint_CPUPtr, EoS_DensPres2CSqr_CPUPtr );
