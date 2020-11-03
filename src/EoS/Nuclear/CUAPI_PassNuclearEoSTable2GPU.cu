@@ -44,7 +44,7 @@ void CUAPI_PassNuclearEoSTable2GPU()
    if ( MPI_Rank == 0 )
    {
       long TotalSize = 0;
-      for (int t=0; t<NUC_TABLE_NPTR; t++)   TotalSize += EoS_TableSize[0];
+      for (int t=0; t<NUC_TABLE_NPTR; t++)   TotalSize += EoS_TableSize[t];
 
       Aux_Message( stdout, "NOTE : total memory requirement in GPU nuclear EoS table = %ld MB\n", TotalSize/(1<<20) );
    }
