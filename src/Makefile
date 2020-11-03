@@ -462,7 +462,7 @@ ifeq "$(filter -DMODEL=HYDRO, $(SIMU_OPTION))" "-DMODEL=HYDRO"
 GPU_FILE    += CUFLU_dtSolver_HydroCFL.cu  CUFLU_FluidSolver_RTVD.cu  CUFLU_FluidSolver_MHM.cu  CUFLU_FluidSolver_CTU.cu
 
 GPU_FILE    += GPU_EoS_Gamma.cu  GPU_EoS_User_Template.cu  GPU_EoS_Isothermal.cu  GPU_EoS_Nuclear.cu \
-               CUAPI_PassNuclearEoSTable2GPU.cu
+               CUAPI_PassNuclearEoSTable2GPU.cu  CUAPI_MemFree_NuclearEoS.cu
 
 CPU_FILE    += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolver_CTU.cpp \
                CPU_Shared_DataReconstruction.cpp  CPU_Shared_FluUtility.cpp  CPU_Shared_ComputeFlux.cpp \
@@ -471,7 +471,7 @@ CPU_FILE    += CPU_FluidSolver_RTVD.cpp  CPU_FluidSolver_MHM.cpp  CPU_FluidSolve
                CPU_dtSolver_HydroCFL.cpp
 
 CPU_FILE    += CPU_EoS_Gamma.cpp  CPU_EoS_User_Template.cpp  CPU_EoS_Isothermal.cpp  CPU_EoS_Nuclear.cpp \
-               EoS_Init.cpp  EoS_End.cpp  NuclearEoS.cpp  cubinterp_some.cpp  linterp_some.cpp \
+               EoS_Init.cpp  EoS_End.cpp  EoS_End_Nuclear.cpp  NuclearEoS.cpp  cubinterp_some.cpp  linterp_some.cpp \
                findenergy.cpp  readtable.cpp
 
 CPU_FILE    += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
