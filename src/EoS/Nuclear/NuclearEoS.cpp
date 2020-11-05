@@ -89,16 +89,20 @@ void nuc_eos_C_short( const real xrho, real *xenr, const real xye,
                       const int keymode, int *keyerr, const real rfeps )
 {
 
+   real lr   = LOG10( xrho );
+   real leps = ( keymode == NUC_MODE_ENGY ) ? LOG10( *xenr + energy_shift ) : NULL_REAL;
+
+
 // check whether (rho, eps, Y_e) is within the table
    *keyerr = 0;
 
-   if ( LOG10(xrho) > logrho[nrho-1] )
+   if ( lr > logrho[nrho-1] )
    {
       *keyerr = 105;
       return;
    }
 
-   if ( LOG10(xrho) < logrho[0] )
+   if ( lr < logrho[0] )
    {
       *keyerr = 106;
       return;
@@ -118,13 +122,13 @@ void nuc_eos_C_short( const real xrho, real *xenr, const real xye,
 
    if ( keymode == NUC_MODE_ENGY )
    {
-      if (  LOG10( *xenr + energy_shift ) > logeps[neps-1]  )
+      if ( leps > logeps[neps-1] )
       {
          *keyerr = 103;
          return;
       }
 
-      if (  LOG10( *xenr + energy_shift ) < logeps[0]  )
+      if ( leps < logeps[0] )
       {
          *keyerr = 104;
          return;
@@ -133,16 +137,11 @@ void nuc_eos_C_short( const real xrho, real *xenr, const real xye,
 
 
 // find energy
-   const real lr = LOG10( xrho );
-   real leps;
-
    switch ( keymode )
    {
       case NUC_MODE_ENGY :
       {
-         const real xeps = *xenr + energy_shift;
-
-         leps = LOG10( MAX(xeps, (real)1.0) );
+         leps = MAX( leps, (real)0.0 );
       }
       break;
 
