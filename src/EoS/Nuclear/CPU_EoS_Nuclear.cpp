@@ -113,6 +113,31 @@ void EoS_SetAuxArray_Nuclear( double AuxArray_Flt[], int AuxArray_Int[] )
 //     (3) EoS_DensPres2CSqr_*
 // =============================================
 
+#ifdef GAMER_DEBUG
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Nuc_Overflow
+// Description :  Check whether the input floating-point value is finite
+//
+// Note        :  1. Definition of "finite" --> not NaN, Inf, -Inf
+//                2. Overflow may occur during unit conversion for improper code units
+//
+// Parameter   :  x : Floating-point value to be checked
+//
+// Return      :  true  : infinite
+//                false : finite
+//-------------------------------------------------------------------------------------------------------
+GPU_DEVICE static
+bool Nuc_Overflow( const real x )
+{
+
+   if ( x != x  ||  x < -__FLT_MAX__  ||  x > __FLT_MAX__ )    return true;
+   else                                                        return false;
+
+} // FUNCTION : Nuc_Overflow
+#endif // #ifdef GAMER_DEBUG
+
+
+
 //-------------------------------------------------------------------------------------------------------
 // Function    :  EoS_DensEint2Pres_Nuclear
 // Description :  Convert gas mass density and internal energy density to gas pressure
@@ -145,6 +170,11 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    if ( Hydro_CheckNegative(Dens_Code) )
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
               Dens_Code, __FILE__, __LINE__, __FUNCTION__ );
+
+// still require Eint>0 for the nuclear EoS
+   if ( Hydro_CheckNegative(Eint_Code) )
+      printf( "ERROR : invalid input internal energy (%14.7e) at file <%s>, line <%d>, function <%s>\n",
+              Eint_Code, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -166,25 +196,37 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
    real Useless   = NULL_REAL;
    int  Err       = NULL_INT;
 
+
+// check floating-point overflow and Ye
+#  ifdef GAMER_DEBUG
+   if ( Nuc_Overflow(Dens_CGS) )
+      printf( "ERROR : EoS overflow (Dens_CGS %13.7e, Dens_Code %13.7e, Dens2CGS %13.7e) in %s() !!\n",
+              Dens_CGS, Dens_Code, Dens2CGS, __FUNCTION__ );
+
+   if ( Nuc_Overflow(sEint_CGS) )
+      printf( "ERROR : EoS overflow (sEint_CGS %13.7e, Eint_Code %13.7e, Dens_Code %13.7e, sEint2CGS %13.7e) in %s() !!\n",
+              sEint_CGS, Eint_Code, Dens_Code, sEint2CGS, __FUNCTION__ );
+
+   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+#  endif // GAMER_DEBUG
+
+
+// invoke the nuclear EoS driver
    nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Useless, &Useless, &Pres_CGS, &Useless, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
                     Mode, &Err, NULL_REAL );
 
-   if ( Err )
-   {
-      Pres_CGS = NAN;
-
-#     ifdef GAMER_DEBUG
-      printf( "ERROR : EoS failed with error %d !!\n", Err );
-#     endif
-   }
+// trigger a *hard failure* if the EoS driver fails
+   if ( Err )  Pres_CGS = NAN;
 
    const real Pres_Code = Pres_CGS * Pres2Code;
 
 
-// check
+// final check
 #  ifdef GAMER_DEBUG
    if ( Hydro_CheckNegative(Pres_Code) )
    {
@@ -194,6 +236,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
       printf( "        Passive scalars:" );
       for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive_Code[v] );
       printf( "\n" );
+      printf( "        EoS error code: %d\n", Err );
 #     endif
    }
 #  endif // GAMER_DEBUG
@@ -262,22 +305,51 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
    real Useless   = NULL_REAL;
    int  Err       = NULL_INT;
 
+
+// check floating-point overflow and Ye
+#  ifdef GAMER_DEBUG
+   if ( Nuc_Overflow(Dens_CGS) )
+      printf( "ERROR : EoS overflow (Dens_CGS %13.7e, Dens_Code %13.7e, Dens2CGS %13.7e) in %s() !!\n",
+              Dens_CGS, Dens_Code, Dens2CGS, __FUNCTION__ );
+
+   if ( Nuc_Overflow(Pres_CGS) )
+      printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
+              Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
+
+   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+#  endif // GAMER_DEBUG
+
+
+// invoke the nuclear EoS driver
    nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Useless, &Useless, &Pres_CGS, &Useless, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
                     Mode, &Err, NULL_REAL );
 
-   if ( Err )
-   {
-      sEint_CGS = NAN;
-
-#     ifdef GAMER_DEBUG
-      printf( "ERROR : EoS failed with error %d !!\n", Err );
-#     endif
-   }
+// trigger a *hard failure* if the EoS driver fails
+   if ( Err )  sEint_CGS = NAN;
 
    const real Eint_Code = ( sEint_CGS * sEint2Code ) * Dens_Code;
+
+
+// final check
+#  ifdef GAMER_DEBUG
+// still require Eint>0 for the nuclear EoS
+   if ( Hydro_CheckNegative(Eint_Code) )
+   {
+      printf( "ERROR : invalid output internal energy density (%13.7e) in %s() !!\n", Eint_Code, __FUNCTION__ );
+      printf( "        Dens=%13.7e, Pres=%13.7e\n", Dens_Code, Pres_Code );
+#     if ( NCOMP_PASSIVE > 0 )
+      printf( "        Passive scalars:" );
+      for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive_Code[v] );
+      printf( "\n" );
+      printf( "        EoS error code: %d\n", Err );
+#     endif
+   }
+#  endif // GAMER_DEBUG
 
 
    return Eint_Code;
@@ -342,25 +414,37 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
    real Useless  = NULL_REAL;
    int  Err      = NULL_INT;
 
+
+// check floating-point overflow and Ye
+#  ifdef GAMER_DEBUG
+   if ( Nuc_Overflow(Dens_CGS) )
+      printf( "ERROR : EoS overflow (Dens_CGS %13.7e, Dens_Code %13.7e, Dens2CGS %13.7e) in %s() !!\n",
+              Dens_CGS, Dens_Code, Dens2CGS, __FUNCTION__ );
+
+   if ( Nuc_Overflow(Pres_CGS) )
+      printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
+              Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
+
+   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+#  endif // GAMER_DEBUG
+
+
+// invoke the nuclear EoS driver
    nuc_eos_C_short( Dens_CGS, &Useless, Ye, &Useless, &Useless, &Pres_CGS, &Cs2_CGS, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
                     Mode, &Err, NULL_REAL );
 
-   if ( Err )
-   {
-      Cs2_CGS = NAN;
-
-#     ifdef GAMER_DEBUG
-      printf( "ERROR : EoS failed with error %d !!\n", Err );
-#     endif
-   }
+// trigger a *hard failure* if the EoS driver fails
+   if ( Err )  Cs2_CGS = NAN;
 
    const real Cs2_Code = Cs2_CGS * CsSqr2Code;
 
 
-// check
+// final check
 #  ifdef GAMER_DEBUG
    if ( Hydro_CheckNegative(Cs2_Code) )
    {
@@ -370,6 +454,7 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
       printf( "        Passive scalars:" );
       for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive_Code[v] );
       printf( "\n" );
+      printf( "        EoS error code: %d\n", Err );
 #     endif
    }
 #  endif // GAMER_DEBUG
