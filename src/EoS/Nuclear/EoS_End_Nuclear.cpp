@@ -8,14 +8,14 @@ void CUAPI_MemFree_NuclearEoS();
 #endif
 
 
-extern double *g_alltables;
-extern double *g_alltables_mode;
-extern double *g_logrho;
-extern double *g_logeps;
-extern double *g_logtemp_mode;
-extern double *g_logprss_mode;
-extern double *g_yes;
-extern double *g_entr_mode;
+extern real *g_alltables;
+extern real *g_alltables_mode;
+extern real *g_logrho;
+extern real *g_logeps;
+extern real *g_logtemp_mode;
+extern real *g_logprss_mode;
+extern real *g_yes;
+extern real *g_entr_mode;
 
 
 

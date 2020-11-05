@@ -6,10 +6,10 @@
 
 #ifdef __CUDACC__
 GPU_DEVICE static
-void nuc_eos_C_linterp_some( double x, double y, double z,
-                             double *output_vars, const double *alltables,
-                             int nx, int ny, int nz, int nvars,
-                             const double *xt, const double *yt, const double *zt );
+void nuc_eos_C_linterp_some( const real x, const real y, const real z,
+                             real *output_vars, const real *alltables,
+                             const int nx, const int ny, const int nz, const int nvars,
+                             const real *xt, const real *yt, const real *zt );
 #endif
 
 
@@ -38,33 +38,33 @@ void nuc_eos_C_linterp_some( double x, double y, double z,
 // Return      :  output_vars
 //-------------------------------------------------------------------------------------
 GPU_DEVICE
-void nuc_eos_C_linterp_some( double x, double y, double z,
-                             double *output_vars, const double *alltables,
-                             int nx, int ny, int nz, int nvars,
-                             const double *xt, const double *yt, const double *zt )
+void nuc_eos_C_linterp_some( const real x, const real y, const real z,
+                             real *output_vars, const real *alltables,
+                             const int nx, const int ny, const int nz, const int nvars,
+                             const real *xt, const real *yt, const real *zt )
 {
 
 // helper variables
-   double fh[8], delx, dely, delz, a[8];
-   double dx, dy, dz, dxi, dyi, dzi, dxyi, dxzi, dyzi, dxyzi;
-   int    ix, iy, iz;
+   real fh[8], delx, dely, delz, a[8];
+   real dx, dy, dz, dxi, dyi, dzi, dxyi, dxzi, dyzi, dxyzi;
+   int  ix, iy, iz;
 
 
 // determine spacing parameters of equidistant (!!!) table
 #  if 1
-   dx = ( xt[nx-1] - xt[0] ) / ( 1.0*(nx-1) );
-   dy = ( yt[ny-1] - yt[0] ) / ( 1.0*(ny-1) );
-   dz = ( zt[nz-1] - zt[0] ) / ( 1.0*(nz-1) );
+   dx  = ( xt[nx-1] - xt[0] ) / (real)(nx-1);
+   dy  = ( yt[ny-1] - yt[0] ) / (real)(ny-1);
+   dz  = ( zt[nz-1] - zt[0] ) / (real)(nz-1);
 
-   dxi = 1.0 / dx;
-   dyi = 1.0 / dy;
-   dzi = 1.0 / dz;
+   dxi = (real)1.0 / dx;
+   dyi = (real)1.0 / dy;
+   dzi = (real)1.0 / dz;
 #  endif
 
 #  if 0
-   dx = drho;
-   dy = deps;
-   dz = dye;
+   dx  = drho;
+   dy  = deps;
+   dz  = dye;
 
    dxi = drhoi;
    dyi = depsi;
@@ -76,14 +76,16 @@ void nuc_eos_C_linterp_some( double x, double y, double z,
    dyzi  = dyi*dzi;
    dxyzi = dxi*dyi*dzi;
 
+
 // determine location in table
-   ix = 1 + (int)( (x - xt[0] - 1.0e-10)*dxi );
-   iy = 1 + (int)( (y - yt[0] - 1.0e-10)*dyi );
-   iz = 1 + (int)( (z - zt[0] - 1.0e-10)*dzi );
+   ix = 1 + (int)( (x - xt[0] - (real)1.0e-10)*dxi );
+   iy = 1 + (int)( (y - yt[0] - (real)1.0e-10)*dyi );
+   iz = 1 + (int)( (z - zt[0] - (real)1.0e-10)*dzi );
 
    ix = MAX( 1, MIN( ix, nx-1 ) );
    iy = MAX( 1, MIN( iy, ny-1 ) );
    iz = MAX( 1, MIN( iz, nz-1 ) );
+
 
 // set up aux vars for interpolation
    delx = xt[ix] - x;
@@ -105,33 +107,34 @@ void nuc_eos_C_linterp_some( double x, double y, double z,
    for (int iv=0; iv<nvars; iv++)
    {
 //    set up aux vars for interpolation assuming array ordering (iv, ix, iy, iz)
-      fh[0] = alltables[iv+idx[0]];
-      fh[1] = alltables[iv+idx[1]];
-      fh[2] = alltables[iv+idx[2]];
-      fh[3] = alltables[iv+idx[3]];
-      fh[4] = alltables[iv+idx[4]];
-      fh[5] = alltables[iv+idx[5]];
-      fh[6] = alltables[iv+idx[6]];
-      fh[7] = alltables[iv+idx[7]];
+      fh[0] = alltables[ iv + idx[0] ];
+      fh[1] = alltables[ iv + idx[1] ];
+      fh[2] = alltables[ iv + idx[2] ];
+      fh[3] = alltables[ iv + idx[3] ];
+      fh[4] = alltables[ iv + idx[4] ];
+      fh[5] = alltables[ iv + idx[5] ];
+      fh[6] = alltables[ iv + idx[6] ];
+      fh[7] = alltables[ iv + idx[7] ];
 
 //    set up coeffs of interpolation polynomical and evaluate function values
       a[0] = fh[0];
-      a[1] = dxi   * ( fh[1] - fh[0] );
-      a[2] = dyi   * ( fh[2] - fh[0] );
-      a[3] = dzi   * ( fh[3] - fh[0] );
-      a[4] = dxyi  * ( fh[4] - fh[1] - fh[2] + fh[0] );
-      a[5] = dxzi  * ( fh[5] - fh[1] - fh[3] + fh[0] );
-      a[6] = dyzi  * ( fh[6] - fh[2] - fh[3] + fh[0] );
-      a[7] = dxyzi * ( fh[7] - fh[0] + fh[1] + fh[2] +
-                       fh[3] - fh[4] - fh[5] - fh[6] );
+      a[1] = dxi  *( fh[1] - fh[0] );
+      a[2] = dyi  *( fh[2] - fh[0] );
+      a[3] = dzi  *( fh[3] - fh[0] );
+      a[4] = dxyi *( fh[4] - fh[1] - fh[2] + fh[0] );
+      a[5] = dxzi *( fh[5] - fh[1] - fh[3] + fh[0] );
+      a[6] = dyzi *( fh[6] - fh[2] - fh[3] + fh[0] );
+      a[7] = dxyzi*( fh[7] - fh[0] + fh[1] + fh[2] +
+                     fh[3] - fh[4] - fh[5] - fh[6] );
 
-      output_vars[iv] = a[0] + a[1] * delx
-                      + a[2] * dely
-                      + a[3] * delz
-                      + a[4] * delx * dely
-                      + a[5] * delx * delz
-                      + a[6] * dely * delz
-                      + a[7] * delx * dely * delz;
+      output_vars[iv] = a[0]
+                      + a[1]*delx
+                      + a[2]*dely
+                      + a[3]*delz
+                      + a[4]*delx*dely
+                      + a[5]*delx*delz
+                      + a[6]*dely*delz
+                      + a[7]*delx*dely*delz;
    } // for (int iv=0; iv<nvars; iv++)
 
 

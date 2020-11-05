@@ -15,30 +15,30 @@
 #else
 
 // global variables
-int    g_nrho;
-int    g_neps;
-int    g_nye;
-int    g_nmode;
-double g_energy_shift;
+int   g_nrho;
+int   g_neps;
+int   g_nye;
+int   g_nmode;
+real  g_energy_shift;
 
-double *g_alltables      = NULL;
-double *g_alltables_mode = NULL;
-double *g_logrho         = NULL;
-double *g_logeps         = NULL;
-double *g_yes            = NULL;
-double *g_logtemp_mode   = NULL;
-double *g_entr_mode      = NULL;
-double *g_logprss_mode   = NULL;
+real *g_alltables      = NULL;
+real *g_alltables_mode = NULL;
+real *g_logrho         = NULL;
+real *g_logeps         = NULL;
+real *g_yes            = NULL;
+real *g_logtemp_mode   = NULL;
+real *g_entr_mode      = NULL;
+real *g_logprss_mode   = NULL;
 
 // prototypes
-void nuc_eos_C_short( double xrho, double *xenr, double xye,
-                      double *xtemp, double *xent, double *xprs,
-                      double *xcs2, double *xmunu, double energy_shift,
-                      int nrho, int neps, int nye, int nmode,
-                      const double *alltables, const double *alltables_mode,
-                      const double *logrho, const double *logeps, const double *yes,
-                      const double *logtemp_mode, const double *entr_mode, const double *logprss_mode,
-                      int keymode, int *keyerr, double rfeps );
+void nuc_eos_C_short( const real xrho, real *xenr, const real xye,
+                      real *xtemp, real *xent, real *xprs,
+                      real *xcs2, real *xmunu, const real energy_shift,
+                      const int nrho, const int neps, const int nye, const int nmode,
+                      const real *alltables, const real *alltables_mode,
+                      const real *logrho, const real *logeps, const real *yes,
+                      const real *logtemp_mode, const real *entr_mode, const real *logprss_mode,
+                      const int keymode, int *keyerr, const real rfeps );
 void nuc_eos_C_ReadTable( char *nuceos_table_name );
 void CUAPI_PassNuclearEoSTable2GPU();
 #endif // #ifdef __CUDACC__ ... else ...
@@ -142,11 +142,11 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens, const real Eint, const r
 #  endif // GAMER_DEBUG
 
 
-   const double EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
-   const int    NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
-   const int    NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
-   const int    NYe         = AuxArray_Int[NUC_AUX_NYE   ];
-   const int    NMode       = AuxArray_Int[NUC_AUX_NMODE ];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
+   const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
+   const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
+   const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
    int  Mode    = NUC_MODE_ENGY;
    real sEint   = Eint / Dens;
@@ -223,18 +223,18 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens, const real PresIn, const
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
               Dens, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Pres) )
+   if ( Hydro_CheckNegative(PresIn) )
       printf( "ERROR : invalid input pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Pres, __FILE__, __LINE__, __FUNCTION__ );
+              PresIn, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
 
-   const double EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
-   const int    NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
-   const int    NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
-   const int    NYe         = AuxArray_Int[NUC_AUX_NYE   ];
-   const int    NMode       = AuxArray_Int[NUC_AUX_NMODE ];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
+   const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
+   const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
+   const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
    int  Mode    = NUC_MODE_PRES;
    real Eint    = NULL_REAL;
@@ -299,17 +299,17 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens, const real PresIn, const
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
               Dens, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Pres) )
+   if ( Hydro_CheckNegative(PresIn) )
       printf( "ERROR : invalid input pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Pres, __FILE__, __LINE__, __FUNCTION__ );
+              PresIn, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
-   const double EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
-   const int    NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
-   const int    NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
-   const int    NYe         = AuxArray_Int[NUC_AUX_NYE   ];
-   const int    NMode       = AuxArray_Int[NUC_AUX_NMODE ];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
+   const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
+   const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
+   const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
    int  Mode    = NUC_MODE_PRES;
    real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;

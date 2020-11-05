@@ -5,14 +5,18 @@
 
 
 GPU_DEVICE static
-void findenergy_bdry( double x, double y, double z, double *found_leps, const double *alltables_mode,
-                      int nx, int ny, int nz, int neps, const double *xt, const double *yt, const double *zt,
-                      const double *logeps, int keymode, int *keyerr );
+void findenergy_bdry( const real x, const real y, const real z,
+                      real *found_leps, const real *alltables_mode,
+                      const int nx, const int ny, const int nz, const int neps,
+                      const real *xt, const real *yt, const real *zt,
+                      const real *logeps, const int keymode, int *keyerr );
 #ifdef __CUDACC__
 GPU_DEVICE static
-void findenergy( double x, double y, double z, double *found_leps, const double *alltables_mode,
-                 int nx, int ny, int nz, int neps, const double *xt, const double *yt, const double *zt, const double *logeps,
-                 int keymode, int *keyerr );
+void findenergy( const real x, const real y, const real z,
+                 real *found_leps, const real *alltables_mode,
+                 const int nx, const int ny, const int nz, const int neps,
+                 const real *xt, const real *yt, const real *zt,
+                 const real *logeps, const int keymode, int *keyerr );
 #endif
 
 
@@ -43,108 +47,125 @@ void findenergy( double x, double y, double z, double *found_leps, const double 
 //                zt             : Vector of z-coordinates of table
 //                logeps         : log(eps) array in the table
 //                keymode        : Which mode we will use
-//                                 --> 1: temperature mode (coming in with T)
-//                                     2: entropy mode     (coming in with entropy)
-//                                     3: pressure mode    (coming in with P)
+//                                 --> 1: Temperature mode (coming in with T)
+//                                     2: Entropy mode     (coming in with entropy)
+//                                     3: Pressure mode    (coming in with P)
 //                keyerr         : Output error
 //
 // Return      :  found_leps
 //-------------------------------------------------------------------------------------
 GPU_DEVICE
-void findenergy( double x, double y, double z, double *found_leps, const double *alltables_mode,
-                 int nx, int ny, int nz, int neps, const double *xt, const double *yt, const double *zt,
-                 const double *logeps, int keymode, int *keyerr )
+void findenergy( const real x, const real y, const real z,
+                 real *found_leps, const real *alltables_mode,
+                 const int nx, const int ny, const int nz, const int neps,
+                 const real *xt, const real *yt, const real *zt,
+                 const real *logeps, const int keymode, int *keyerr )
 {
 
-   const double *pv = NULL;
+   const real *pv = NULL;
 
-   double dx, dy, dz, dxi, dyi, dzi;
-   double delx, dely, delz;
-   double u[4], v[4], w[4];
-   double r[4], q[4];
-   double vox;
-   int    ix, iy, iz;
-   int    nxy;
+   real dx, dy, dz, dxi, dyi, dzi;
+   real delx, dely, delz;
+   real u[4], v[4], w[4];
+   real r[4], q[4];
+   real vox;
+   int  ix, iy, iz;
+   int  nxy;
 
    nxy = nx*ny;
 
 // determine spacing parameters of equidistant (!!!) table
 #  if 1
-   dx = ( xt[nx-1] - xt[0] ) / ( 1.0*(nx-1) );
-   dy = ( yt[ny-1] - yt[0] ) / ( 1.0*(ny-1) );
-   dz = ( zt[nz-1] - zt[0] ) / ( 1.0*(nz-1) );
+   dx  = ( xt[nx-1] - xt[0] ) / (real)(nx-1);
+   dy  = ( yt[ny-1] - yt[0] ) / (real)(ny-1);
+   dz  = ( zt[nz-1] - zt[0] ) / (real)(nz-1);
 
-   dxi = 1.0/dx;
-   dyi = 1.0/dy;
-   dzi = 1.0/dz;
+   dxi = (real)1.0 / dx;
+   dyi = (real)1.0 / dy;
+   dzi = (real)1.0 / dz;
 #  endif
 
 #  if 0
-   dx = drho;
-   dy = deps;
-   dz = dye;
+   dx  = drho;
+   dy  = deps;
+   dz  = dye;
+
    dxi = drhoi;
    dyi = depsi;
    dzi = dyei;
 #  endif
 
-// determine location in table
-   ix = (int)( (x - xt[0] + 1.0e-10)*dxi );
-   iy = (int)( (y - yt[0] + 1.0e-10)*dyi );
-   iz = (int)( (z - zt[0] + 1.0e-10)*dzi );
 
-   if ( ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz )
+// determine location in table
+   ix = (int)( (x - xt[0] + (real)1.0e-10)*dxi );
+   iy = (int)( (y - yt[0] + (real)1.0e-10)*dyi );
+   iz = (int)( (z - zt[0] + (real)1.0e-10)*dzi );
+
+   if ( ix < 0  ||  ix >= nx  ||
+        iy < 0  ||  iy >= ny  ||
+        iz < 0  ||  iz >= nz )
    {
       *keyerr = 667; // out of range
       return;
    }
 
+
 // linear interpolation at boundaries
-   if ( ix == 0 || iy == 0 || iz == 0 ||
-        ix == nx-2 || iy == ny-2 || iz == nz-2 )
+   if ( ix == 0  ||  iy == 0  ||  iz == 0  ||
+        ix == nx-2  ||  iy == ny-2  ||  iz == nz-2 )
    {
-      findenergy_bdry( x, y, z, found_leps, alltables_mode,
-                       nx, ny, nz, neps, xt, yt, zt, logeps, keymode, keyerr );
+      findenergy_bdry( x, y, z, found_leps, alltables_mode, nx, ny, nz, neps,
+                       xt, yt, zt, logeps, keymode, keyerr );
       return;
    }
+
 
 // differences
    delx = ( x - xt[ix] )*dxi;
    dely = ( y - yt[iy] )*dyi;
    delz = ( z - zt[iz] )*dzi;
 
+
 // factors for Catmull-Rom interpolation
-   u[0] = -0.5*CUBE(delx) +     SQR(delx) - 0.5*delx;
-   u[1] =  1.5*CUBE(delx) - 2.5*SQR(delx) + 1.0;
-   u[2] = -1.5*CUBE(delx) + 2.0*SQR(delx) + 0.5*delx;
-   u[3] =  0.5*CUBE(delx) - 0.5*SQR(delx);
+   const real delx2 =  SQR( delx );
+   const real dely2 =  SQR( dely );
+   const real delz2 =  SQR( delz );
+   const real delx3 = CUBE( delx );
+   const real dely3 = CUBE( dely );
+   const real delz3 = CUBE( delz );
 
-   v[0] = -0.5*CUBE(dely) +     SQR(dely) - 0.5*dely;
-   v[1] =  1.5*CUBE(dely) - 2.5*SQR(dely) + 1.0;
-   v[2] = -1.5*CUBE(dely) + 2.0*SQR(dely) + 0.5*dely;
-   v[3] =  0.5*CUBE(dely) - 0.5*SQR(dely);
+   u[0] = (real)-0.5*delx3 +           delx2 - (real)0.5*delx;
+   u[1] = (real) 1.5*delx3 - (real)2.5*delx2 + (real)1.0;
+   u[2] = (real)-1.5*delx3 + (real)2.0*delx2 + (real)0.5*delx;
+   u[3] = (real) 0.5*delx3 - (real)0.5*delx2;
 
-   w[0] = -0.5*CUBE(delz) +     SQR(delz) - 0.5*delz;
-   w[1] =  1.5*CUBE(delz) - 2.5*SQR(delz) + 1.0;
-   w[2] = -1.5*CUBE(delz) + 2.0*SQR(delz) + 0.5*delz;
-   w[3] =  0.5*CUBE(delz) - 0.5*SQR(delz);
+   v[0] = (real)-0.5*dely3 +           dely2 - (real)0.5*dely;
+   v[1] = (real) 1.5*dely3 - (real)2.5*dely2 + (real)1.0;
+   v[2] = (real)-1.5*dely3 + (real)2.0*dely2 + (real)0.5*dely;
+   v[3] = (real) 0.5*dely3 - (real)0.5*dely2;
+
+   w[0] = (real)-0.5*delz3 +           delz2 - (real)0.5*delz;
+   w[1] = (real) 1.5*delz3 - (real)2.5*delz2 + (real)1.0;
+   w[2] = (real)-1.5*delz3 + (real)2.0*delz2 + (real)0.5*delz;
+   w[3] = (real) 0.5*delz3 - (real)0.5*delz2;
+
 
    int iv;
-   if      ( keymode == 1 ) iv = 0; // energy table for the temperature mode
-   else if ( keymode == 2 ) iv = 1; // energy table for the entropy mode
-   else if ( keymode == 3 ) iv = 2; // energy table for the pressure mode
+   if      ( keymode == NUC_MODE_TEMP )   iv = 0; // energy table for the temperature mode
+   else if ( keymode == NUC_MODE_ENTR )   iv = 1; // energy table for the entropy mode
+   else if ( keymode == NUC_MODE_PRES )   iv = 2; // energy table for the pressure mode
 
-   vox = 0.0;
+   vox = (real)0.0;
 
    pv = alltables_mode + iv + 3*( (ix-1) + (iy-1)*nx + (iz-1)*nxy );
 
    for (int k=0; k<4; k++)
    {
-      q[k] = 0.0;
+      q[k] = (real)0.0;
 
       for (int j=0; j<4; j++)
       {
-         r[j] = 0.0;
+         r[j] = (real)0.0;
 
          for (int i=0; i<4; i++)
          {
@@ -158,23 +179,23 @@ void findenergy( double x, double y, double z, double *found_leps, const double 
 
       vox += w[k]*q[k];
       pv  += nxy*3 - 4*3*nx;
-   }
+   } // for (int k=0; k<4; k++)
 
    *found_leps = vox;
 
 
 // linear interpolation when cubic interpolations failed
-   if ( isnan(vox) )
+   if ( vox != vox )
    {
-      findenergy_bdry( x, y, z, found_leps, alltables_mode,
-                       nx, ny, nz, neps, xt, yt, zt, logeps, keymode, keyerr );
+      findenergy_bdry( x, y, z, found_leps, alltables_mode, nx, ny, nz,
+                       neps, xt, yt, zt, logeps, keymode, keyerr );
       return;
    }
 
 
   return;
 
-} // FUMCTIOM : findenergy
+} // FUNCTIOM : findenergy
 
 
 
@@ -211,52 +232,56 @@ void findenergy( double x, double y, double z, double *found_leps, const double 
 // Return      :  found_leps
 //-------------------------------------------------------------------------------------
 GPU_DEVICE
-void findenergy_bdry( double x, double y, double z, double *found_leps, const double *alltables_mode,
-                      int nx, int ny, int nz, int neps, const double *xt, const double *yt, const double *zt,
-                      const double *logeps, int keymode, int *keyerr )
+void findenergy_bdry( const real x, const real y, const real z,
+                      real *found_leps, const real *alltables_mode,
+                      const int nx, const int ny, const int nz, const int neps,
+                      const real *xt, const real *yt, const real *zt,
+                      const real *logeps, const int keymode, int *keyerr )
 {
 
 
 // helper variables
-   double fh[8], delx, dely, delz, a[8];
-   double dx, dy, dz, dxi, dyi, dzi, dxyi, dxzi, dyzi, dxyzi;
-   int    ix, iy, iz;
+   real fh[8], delx, dely, delz, a[8];
+   real dx, dy, dz, dxi, dyi, dzi, dxyi, dxzi, dyzi, dxyzi;
+   int  ix, iy, iz;
+
 
 // determine spacing parameters of equidistant (!!!) table
 #  if 1
-   dx = ( xt[nx-1] - xt[0] ) / ( 1.0*(nx-1) );
-   dy = ( yt[ny-1] - yt[0] ) / ( 1.0*(ny-1) );
-   dz = ( zt[nz-1] - zt[0] ) / ( 1.0*(nz-1) );
+   dx  = ( xt[nx-1] - xt[0] ) / (real)(nx-1);
+   dy  = ( yt[ny-1] - yt[0] ) / (real)(ny-1);
+   dz  = ( zt[nz-1] - zt[0] ) / (real)(nz-1);
 
-   dxi = 1.0 / dx;
-   dyi = 1.0 / dy;
-   dzi = 1.0 / dz;
+   dxi = (real)1.0 / dx;
+   dyi = (real)1.0 / dy;
+   dzi = (real)1.0 / dz;
 #  endif
 
 #  if 0
-   dx = drho;
-   dy = deps;
-   dz = dye;
+   dx  = drho;
+   dy  = deps;
+   dz  = dye;
 
    dxi = drhoi;
    dyi = depsi;
    dzi = dyei;
 #  endif
 
-   dxyi = dxi*dyi;
-   dxzi = dxi*dzi;
-   dyzi = dyi*dzi;
-
+   dxyi  = dxi*dyi;
+   dxzi  = dxi*dzi;
+   dyzi  = dyi*dzi;
    dxyzi = dxi*dyi*dzi;
 
+
 // determine location in table
-   ix = 1 + (int)( (x - xt[0] - 1.0e-10)*dxi );
-   iy = 1 + (int)( (y - yt[0] - 1.0e-10)*dyi );
-   iz = 1 + (int)( (z - zt[0] - 1.0e-10)*dzi );
+   ix = 1 + (int)( (x - xt[0] - (real)1.0e-10)*dxi );
+   iy = 1 + (int)( (y - yt[0] - (real)1.0e-10)*dyi );
+   iz = 1 + (int)( (z - zt[0] - (real)1.0e-10)*dzi );
 
    ix = MAX( 1, MIN( ix, nx-1 ) );
    iy = MAX( 1, MIN( iy, ny-1 ) );
    iz = MAX( 1, MIN( iz, nz-1 ) );
+
 
 // set up aux vars for interpolation
    delx = xt[ix] - x;
@@ -264,22 +289,22 @@ void findenergy_bdry( double x, double y, double z, double *found_leps, const do
    delz = zt[iz] - z;
 
    int idx[8];
-   idx[0] = 3 * (ix + nx * (iy+ny*iz));
-   idx[1] = 3 * ((ix-1) + nx * (iy + ny*iz));
-   idx[2] = 3 * (ix + nx * ((iy-1) + ny*iz));
-   idx[3] = 3 * (ix + nx * (iy + ny * (iz-1))) ;
-   idx[4] = 3 * ((ix-1) + nx * ((iy-1) + ny*iz));
-   idx[5] = 3 * ((ix-1)  + nx * (iy + ny * (iz-1)));
-   idx[6] = 3 * (ix + nx * ((iy-1) + ny * (iz-1))) ;
-   idx[7] = 3 * ((ix-1) + nx * ((iy-1) + ny * (iz-1)));
+   idx[0] = 3*(  (ix  ) + nx*( (iy  ) + ny*(iz  ) )  );
+   idx[1] = 3*(  (ix-1) + nx*( (iy  ) + ny*(iz  ) )  );
+   idx[2] = 3*(  (ix  ) + nx*( (iy-1) + ny*(iz  ) )  );
+   idx[3] = 3*(  (ix  ) + nx*( (iy  ) + ny*(iz-1) )  );
+   idx[4] = 3*(  (ix-1) + nx*( (iy-1) + ny*(iz  ) )  );
+   idx[5] = 3*(  (ix-1) + nx*( (iy  ) + ny*(iz-1) )  );
+   idx[6] = 3*(  (ix  ) + nx*( (iy-1) + ny*(iz-1) )  );
+   idx[7] = 3*(  (ix-1) + nx*( (iy-1) + ny*(iz-1) )  );
 
    int iv;
-   if      ( keymode == 1 ) iv = 0;
-   else if ( keymode == 2 ) iv = 1;
-   else if ( keymode == 3 ) iv = 2;
+   if      ( keymode == NUC_MODE_TEMP )   iv = 0; // energy table for the temperature mode
+   else if ( keymode == NUC_MODE_ENTR )   iv = 1; // energy table for the entropy mode
+   else if ( keymode == NUC_MODE_PRES )   iv = 2; // energy table for the pressure mode
+
 
 // set up aux vars for interpolation assuming array ordering (iv, ix, iy, iz)
-
    fh[0] = alltables_mode[ iv + idx[0] ];
    fh[1] = alltables_mode[ iv + idx[1] ];
    fh[2] = alltables_mode[ iv + idx[2] ];
@@ -289,26 +314,29 @@ void findenergy_bdry( double x, double y, double z, double *found_leps, const do
    fh[6] = alltables_mode[ iv + idx[6] ];
    fh[7] = alltables_mode[ iv + idx[7] ];
 
+
 // set up coeffs of interpolation polynomical and evaluate function values
    a[0] = fh[0];
-   a[1] = dxi   * ( fh[1] - fh[0] );
-   a[2] = dyi   * ( fh[2] - fh[0] );
-   a[3] = dzi   * ( fh[3] - fh[0] );
-   a[4] = dxyi  * ( fh[4] - fh[1] - fh[2] + fh[0] );
-   a[5] = dxzi  * ( fh[5] - fh[1] - fh[3] + fh[0] );
-   a[6] = dyzi  * ( fh[6] - fh[2] - fh[3] + fh[0] );
-   a[7] = dxyzi * ( fh[7] - fh[0] + fh[1] + fh[2] +
-                    fh[3] - fh[4] - fh[5] - fh[6] );
+   a[1] = dxi  *( fh[1] - fh[0] );
+   a[2] = dyi  *( fh[2] - fh[0] );
+   a[3] = dzi  *( fh[3] - fh[0] );
+   a[4] = dxyi *( fh[4] - fh[1] - fh[2] + fh[0] );
+   a[5] = dxzi *( fh[5] - fh[1] - fh[3] + fh[0] );
+   a[6] = dyzi *( fh[6] - fh[2] - fh[3] + fh[0] );
+   a[7] = dxyzi*( fh[7] - fh[0] + fh[1] + fh[2] +
+                  fh[3] - fh[4] - fh[5] - fh[6] );
 
-   *found_leps = a[0] + a[1] * delx
-               + a[2] * dely
-               + a[3] * delz
-               + a[4] * delx * dely
-               + a[5] * delx * delz
-               + a[6] * dely * delz
-               + a[7] * delx * dely * delz;
+   *found_leps = a[0]
+               + a[1]*delx
+               + a[2]*dely
+               + a[3]*delz
+               + a[4]*delx*dely
+               + a[5]*delx*delz
+               + a[6]*dely*delz
+               + a[7]*delx*dely*delz;
 
-   if (  isnan(*found_leps)  ||  ! ( *found_leps>logeps[0] && *found_leps<logeps[neps-1] )  )
+   if (  *found_leps != *found_leps  ||
+         ! ( *found_leps>logeps[0] && *found_leps<logeps[neps-1] )  )
       *keyerr = 667;
 
 

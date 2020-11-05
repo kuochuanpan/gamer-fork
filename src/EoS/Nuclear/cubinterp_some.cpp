@@ -9,16 +9,16 @@
 #include "linterp_some.cu"
 
 GPU_DEVICE static
-void nuc_eos_C_cubinterp_some( double x, double y, double z,
-                               double *output_vars, const double *alltables,
-                               int nx, int ny, int nz, int nvars,
-                               const double *xt, const double *yt, const double *zt );
+void nuc_eos_C_cubinterp_some( const real x, const real y, const real z,
+                               real *output_vars, const real *alltables,
+                               const int nx, const int ny, const int nz, const int nvars,
+                               const real *xt, const real *yt, const real *zt );
 #else
 
-void nuc_eos_C_linterp_some( double x, double y, double z,
-                             double *output_vars, const double *alltables,
-                             int nx, int ny, int nz, int nvars,
-                             const double *xt, const double *yt, const double *zt ) ;
+void nuc_eos_C_linterp_some( const real x, const real y, const real z,
+                             real *output_vars, const real *alltables,
+                             const int nx, const int ny, const int nz, const int nvars,
+                             const real *xt, const real *yt, const real *zt );
 
 #endif // #ifdef __CUDACC__ ... else ...
 
@@ -48,39 +48,40 @@ void nuc_eos_C_linterp_some( double x, double y, double z,
 // Return      :  output_vars
 //-------------------------------------------------------------------------------------
 GPU_DEVICE
-void nuc_eos_C_cubinterp_some( double x, double y, double z,
-                               double *output_vars, const double *alltables,
-                               int nx, int ny, int nz, int nvars,
-                               const double *xt, const double *yt, const double *zt )
+void nuc_eos_C_cubinterp_some( const real x, const real y, const real z,
+                               real *output_vars, const real *alltables,
+                               const int nx, const int ny, const int nz, const int nvars,
+                               const real *xt, const real *yt, const real *zt )
 {
 
-   const double *pv = NULL;
+   const real *pv = NULL;
 
-   double dx, dy, dz, dxi, dyi, dzi;
-   double delx, dely, delz;
-   double u[4], v[4], w[4];
-   double r[4], q[4];
-   double vox;
-   int    ix, iy, iz;
-   int    nxy;
+   real dx, dy, dz, dxi, dyi, dzi;
+   real delx, dely, delz;
+   real u[4], v[4], w[4];
+   real r[4], q[4];
+   real vox;
+   int  ix, iy, iz;
+   int  nxy;
 
    nxy = nx*ny;
 
+
 // determine spacing parameters of equidistant (!!!) table
 #  if 1
-   dx = ( xt[nx-1] - xt[0] ) / ( 1.0*(nx-1) );
-   dy = ( yt[ny-1] - yt[0] ) / ( 1.0*(ny-1) );
-   dz = ( zt[nz-1] - zt[0] ) / ( 1.0*(nz-1) );
+   dx  = ( xt[nx-1] - xt[0] ) / (real)(nx-1);
+   dy  = ( yt[ny-1] - yt[0] ) / (real)(ny-1);
+   dz  = ( zt[nz-1] - zt[0] ) / (real)(nz-1);
 
-   dxi = 1.0/dx;
-   dyi = 1.0/dy;
-   dzi = 1.0/dz;
+   dxi = (real)1.0 / dx;
+   dyi = (real)1.0 / dy;
+   dzi = (real)1.0 / dz;
 #  endif
 
 #  if 0
-   dx = drho;
-   dy = deps;
-   dz = dye;
+   dx  = drho;
+   dy  = deps;
+   dz  = dye;
 
    dxi = drhoi;
    dyi = depsi;
@@ -89,16 +90,17 @@ void nuc_eos_C_cubinterp_some( double x, double y, double z,
 
 
 // determine location in table
-   ix = (int)( ( x - xt[0] + 1.0e-10 ) * dxi );
-   iy = (int)( ( y - yt[0] + 1.0e-10 ) * dyi );
-   iz = (int)( ( z - zt[0] + 1.0e-10 ) * dzi );
+   ix = (int)( ( x - xt[0] + (real)1.0e-10 )*dxi );
+   iy = (int)( ( y - yt[0] + (real)1.0e-10 )*dyi );
+   iz = (int)( ( z - zt[0] + (real)1.0e-10 )*dzi );
 
-   if ( ix < 0 || ix >= nx || iy < 0 || iy >= ny || iz < 0 || iz >= nz )
-      return;
+   if ( ix < 0  ||  ix >= nx  ||
+        iy < 0  ||  iy >= ny  ||
+        iz < 0  ||  iz >= nz )   return;
 
 // linear interpolation at boundaries
-   if ( ix == 0 || iy == 0 || iz == 0 ||
-        ix == nx-2 || iy == ny-2 || iz == nz-2 )
+   if ( ix == 0  ||  iy == 0  ||  iz == 0  ||
+        ix == nx-2  ||  iy == ny-2  ||  iz == nz-2 )
    {
       nuc_eos_C_linterp_some( x, y, z, output_vars, alltables,
                               nx, ny, nz, nvars, xt, yt, zt );
@@ -107,38 +109,46 @@ void nuc_eos_C_cubinterp_some( double x, double y, double z,
 
 
 // difference
-   delx = ( x - xt[ix] ) * dxi;
-   dely = ( y - yt[iy] ) * dyi;
-   delz = ( z - zt[iz] ) * dzi;
+   delx = ( x - xt[ix] )*dxi;
+   dely = ( y - yt[iy] )*dyi;
+   delz = ( z - zt[iz] )*dzi;
+
 
 // factors for Catmull-Rom interpolation
-   u[0] = -0.5*CUBE(delx) +     SQR(delx) - 0.5*delx;
-   u[1] =  1.5*CUBE(delx) - 2.5*SQR(delx) + 1.0;
-   u[2] = -1.5*CUBE(delx) + 2.0*SQR(delx) + 0.5*delx;
-   u[3] =  0.5*CUBE(delx) - 0.5*SQR(delx);
+   const real delx2 =  SQR( delx );
+   const real dely2 =  SQR( dely );
+   const real delz2 =  SQR( delz );
+   const real delx3 = CUBE( delx );
+   const real dely3 = CUBE( dely );
+   const real delz3 = CUBE( delz );
 
-   v[0] = -0.5*CUBE(dely) +     SQR(dely) - 0.5*dely;
-   v[1] =  1.5*CUBE(dely) - 2.5*SQR(dely) + 1.0;
-   v[2] = -1.5*CUBE(dely) + 2.0*SQR(dely) + 0.5*dely;
-   v[3] =  0.5*CUBE(dely) - 0.5*SQR(dely);
+   u[0] = (real)-0.5*delx3 +           delx2 - (real)0.5*delx;
+   u[1] = (real) 1.5*delx3 - (real)2.5*delx2 + (real)1.0;
+   u[2] = (real)-1.5*delx3 + (real)2.0*delx2 + (real)0.5*delx;
+   u[3] = (real) 0.5*delx3 - (real)0.5*delx2;
 
-   w[0] = -0.5*CUBE(delz) +     SQR(delz) - 0.5*delz;
-   w[1] =  1.5*CUBE(delz) - 2.5*SQR(delz) + 1.0;
-   w[2] = -1.5*CUBE(delz) + 2.0*SQR(delz) + 0.5*delz;
-   w[3] =  0.5*CUBE(delz) - 0.5*SQR(delz);
+   v[0] = (real)-0.5*dely3 +           dely2 - (real)0.5*dely;
+   v[1] = (real) 1.5*dely3 - (real)2.5*dely2 + (real)1.0;
+   v[2] = (real)-1.5*dely3 + (real)2.0*dely2 + (real)0.5*dely;
+   v[3] = (real) 0.5*dely3 - (real)0.5*dely2;
+
+   w[0] = (real)-0.5*delz3 +           delz2 - (real)0.5*delz;
+   w[1] = (real) 1.5*delz3 - (real)2.5*delz2 + (real)1.0;
+   w[2] = (real)-1.5*delz3 + (real)2.0*delz2 + (real)0.5*delz;
+   w[3] = (real) 0.5*delz3 - (real)0.5*delz2;
 
    for (int iv=0; iv<nvars; iv++)
    {
-      vox = 0.0;
-      pv = alltables + iv + NUC_TABLE_NVAR*((ix-1) + (iy-1)*nx + (iz-1)*nxy);
+      vox = (real)0.0;
+      pv  = alltables + iv + NUC_TABLE_NVAR*( (ix-1) + (iy-1)*nx + (iz-1)*nxy );
 
       for (int k=0; k<4; k++)
       {
-         q[k] = 0.0;
+         q[k] = (real)0.0;
 
          for (int j=0; j<4; j++)
          {
-            r[j] = 0.0;
+            r[j] = (real)0.0;
 
             for (int i=0; i<4; i++)
             {
@@ -157,8 +167,9 @@ void nuc_eos_C_cubinterp_some( double x, double y, double z,
       output_vars[iv] = vox;
    } // for (int iv=0; iv<nvars; iv++)
 
-// linear interpolation at boundaries
-   if ( isnan(*output_vars) )
+
+// linear interpolation at boundaries (where output_vars[0] will be NaN)
+   if ( output_vars[0] != output_vars[0] )
    {
       nuc_eos_C_linterp_some( x, y, z, output_vars, alltables,
                               nx, ny, nz, nvars, xt, yt, zt );
