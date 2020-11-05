@@ -849,7 +849,7 @@ else ifeq "$(filter -DGPU_ARCH=TURING, $(SIMU_OPTION))" "-DGPU_ARCH=TURING"
    ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
      NVCCFLAG_FLU += --maxrregcount=224
    else
-     NVCCFLAG_FLU += --maxrregcount=128
+     NVCCFLAG_FLU += --maxrregcount=160
    endif
 endif
 
