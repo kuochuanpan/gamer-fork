@@ -190,7 +190,7 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
 
    int  Mode      = NUC_MODE_ENGY;
    real Dens_CGS  = Dens_Code * Dens2CGS;
-   real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS;
+   real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS - EnergyShift;
    real Ye        = Passive_Code[ YE - NCOMP_FLUID ] / Dens_Code;
    real Pres_CGS  = NULL_REAL;
    real Useless   = NULL_REAL;
@@ -332,7 +332,7 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
 // trigger a *hard failure* if the EoS driver fails
    if ( Err )  sEint_CGS = NAN;
 
-   const real Eint_Code = ( sEint_CGS * sEint2Code ) * Dens_Code;
+   const real Eint_Code = (  ( sEint_CGS + EnergyShift ) * sEint2Code  ) * Dens_Code;
 
 
 // final check
