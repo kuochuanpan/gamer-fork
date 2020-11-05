@@ -835,13 +835,13 @@ else ifeq "$(filter -DGPU_ARCH=MAXWELL, $(SIMU_OPTION))" "-DGPU_ARCH=MAXWELL"
    endif
 else ifeq "$(filter -DGPU_ARCH=PASCAL, $(SIMU_OPTION))" "-DGPU_ARCH=PASCAL"
    ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
-     NVCCFLAG_FLU += --maxrregcount=192
+     NVCCFLAG_FLU += --maxrregcount=224
    else
      NVCCFLAG_FLU += --maxrregcount=128
    endif
 else ifeq "$(filter -DGPU_ARCH=VOLTA, $(SIMU_OPTION))" "-DGPU_ARCH=VOLTA"
    ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
-     NVCCFLAG_FLU += --maxrregcount=192
+     NVCCFLAG_FLU += --maxrregcount=224
    else
      NVCCFLAG_FLU += --maxrregcount=128
    endif
