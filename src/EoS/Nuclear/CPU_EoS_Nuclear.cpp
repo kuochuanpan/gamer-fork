@@ -207,9 +207,9 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Cod
       printf( "ERROR : EoS overflow (sEint_CGS %13.7e, Eint_Code %13.7e, Dens_Code %13.7e, sEint2CGS %13.7e) in %s() !!\n",
               sEint_CGS, Eint_Code, Dens_Code, sEint2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
-      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -316,9 +316,9 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Cod
       printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
               Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
-      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
@@ -425,9 +425,9 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Cod
       printf( "ERROR : EoS overflow (Pres_CGS %13.7e, Pres_Code %13.7e, Pres2CGS %13.7e) in %s() !!\n",
               Pres_CGS, Pres_Code, Pres2CGS, __FUNCTION__ );
 
-   if ( Ye < (real)0.0  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
-      printf( "ERROR : invalid Ye = %13.7e (max = %13.7e) in %s() !!\n",
-              Ye, Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
+   if ( Ye < (real)Table[NUC_TAB_YE][0]  ||  Ye > (real)Table[NUC_TAB_YE][NYe-1] )
+      printf( "ERROR : invalid Ye = %13.7e (min = %13.7e, max = %13.7e) in %s() !!\n",
+              Ye, Table[NUC_TAB_YE][0], Table[NUC_TAB_YE][NYe-1], __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
