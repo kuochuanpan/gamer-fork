@@ -291,8 +291,12 @@
 #     ifdef FLOAT8
 #     define FLU_BLOCK_SIZE_X       256
 #     else
+#     if ( EOS == EOS_NUCLEAR )
+#     define FLU_BLOCK_SIZE_X       384      // not optimized yet
+#     else
 #     define FLU_BLOCK_SIZE_X       512      // not optimized yet
-#     endif
+#     endif // EOS
+#     endif // FLOAT8
 #  else
 #     define FLU_BLOCK_SIZE_X       NULL_INT
 #     ifdef GPU
