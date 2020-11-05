@@ -89,12 +89,17 @@ void CUAPI_PassNuclearEoSTable2GPU();
 void EoS_SetAuxArray_Nuclear( double AuxArray_Flt[], int AuxArray_Int[] )
 {
 
-   AuxArray_Flt[NUC_AUX_ESHIFT] = g_energy_shift;
+   AuxArray_Flt[NUC_AUX_ESHIFT   ] = g_energy_shift;
+   AuxArray_Flt[NUC_AUX_DENS2CGS ] = UNIT_D;
+   AuxArray_Flt[NUC_AUX_PRES2CGS ] = UNIT_P;
+   AuxArray_Flt[NUC_AUX_VSQR2CGS ] = SQR( UNIT_V );
+   AuxArray_Flt[NUC_AUX_PRES2CODE] = 1.0 / UNIT_P;
+   AuxArray_Flt[NUC_AUX_VSQR2CODE] = 1.0 / SQR(UNIT_V);
 
-   AuxArray_Int[NUC_AUX_NRHO  ] = g_nrho;
-   AuxArray_Int[NUC_AUX_NEPS  ] = g_neps;
-   AuxArray_Int[NUC_AUX_NYE   ] = g_nye;
-   AuxArray_Int[NUC_AUX_NMODE ] = g_nmode;
+   AuxArray_Int[NUC_AUX_NRHO     ] = g_nrho;
+   AuxArray_Int[NUC_AUX_NEPS     ] = g_neps;
+   AuxArray_Int[NUC_AUX_NYE      ] = g_nye;
+   AuxArray_Int[NUC_AUX_NMODE    ] = g_nmode;
 
 } // FUNCTION : EoS_SetAuxArray_Nuclear
 #endif // #ifndef __CUDACC__
@@ -115,47 +120,53 @@ void EoS_SetAuxArray_Nuclear( double AuxArray_Flt[], int AuxArray_Int[] )
 // Note        :  1. Internal energy density here is per unit volume instead of per unit mass
 //                2. See EoS_SetAuxArray_Nuclear() for the values stored in AuxArray_Flt/Int[]
 //
-// Parameter   :  Dens       : Gas mass density
-//                Eint       : Gas internal energy density
-//                Passive    : Passive scalars
-//                AuxArray_* : Auxiliary arrays (see the Note above)
-//                Table      : EoS tables
+// Parameter   :  Dens_Code    : Gas mass density            (in code unit)
+//                Eint_Code    : Gas internal energy density (in code unit)
+//                Passive_Code : Passive scalars             (in code unit)
+//                AuxArray_*   : Auxiliary arrays (see the Note above)
+//                Table        : EoS tables
 //
-// Return      :  Gas pressure
+// Return      :  Gas pressure (in code unit)
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE_NOINLINE
-static real EoS_DensEint2Pres_Nuclear( const real Dens, const real Eint, const real Passive[], const double AuxArray_Flt[],
-                                       const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+static real EoS_DensEint2Pres_Nuclear( const real Dens_Code, const real Eint_Code, const real Passive_Code[],
+                                       const double AuxArray_Flt[], const int AuxArray_Int[],
+                                       const real *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
 #  ifdef GAMER_DEBUG
 #  if ( NCOMP_PASSIVE > 0 )
-   if ( Passive == NULL )  printf( "ERROR : Passive == NULL in %s !!\n", __FUNCTION__ );
+   if ( Passive_Code == NULL )   printf( "ERROR : Passive_Code == NULL in %s !!\n", __FUNCTION__ );
 #  endif
    if ( AuxArray_Flt == NULL )   printf( "ERROR : AuxArray_Flt == NULL in %s !!\n", __FUNCTION__ );
    if ( AuxArray_Int == NULL )   printf( "ERROR : AuxArray_Int == NULL in %s !!\n", __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Dens) )
+   if ( Hydro_CheckNegative(Dens_Code) )
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Dens, __FILE__, __LINE__, __FUNCTION__ );
+              Dens_Code, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
-   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT   ];
+   const real Dens2CGS    = AuxArray_Flt[NUC_AUX_DENS2CGS ];
+   const real sEint2CGS   = AuxArray_Flt[NUC_AUX_VSQR2CGS ];
+   const real Pres2Code   = AuxArray_Flt[NUC_AUX_PRES2CODE];
+
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
    const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
    const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
    const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
-   int  Mode    = NUC_MODE_ENGY;
-   real sEint   = Eint / Dens;
-   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
-   real Pres    = NULL_REAL;
-   real Useless = NULL_REAL;
-   int  Err     = NULL_INT;
+   int  Mode      = NUC_MODE_ENGY;
+   real Dens_CGS  = Dens_Code * Dens2CGS;
+   real sEint_CGS = ( Eint_Code / Dens_Code ) * sEint2CGS;
+   real Ye        = Passive_Code[ YE - NCOMP_FLUID ] / Dens_Code;
+   real Pres_CGS  = NULL_REAL;
+   real Useless   = NULL_REAL;
+   int  Err       = NULL_INT;
 
-   nuc_eos_C_short( Dens, &sEint, Ye, &Useless, &Useless, &Pres, &Useless, &Useless,
+   nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Useless, &Useless, &Pres_CGS, &Useless, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
@@ -163,30 +174,32 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens, const real Eint, const r
 
    if ( Err )
    {
-      Pres = NAN;
+      Pres_CGS = NAN;
 
 #     ifdef GAMER_DEBUG
       printf( "ERROR : EoS failed with error %d !!\n", Err );
 #     endif
    }
 
+   const real Pres_Code = Pres_CGS * Pres2Code;
+
 
 // check
 #  ifdef GAMER_DEBUG
-   if ( Hydro_CheckNegative(Pres) )
+   if ( Hydro_CheckNegative(Pres_Code) )
    {
-      printf( "ERROR : invalid output pressure (%13.7e) in %s() !!\n", Pres, __FUNCTION__ );
-      printf( "        Dens=%13.7e, Eint=%13.7e\n", Dens, Eint );
+      printf( "ERROR : invalid output pressure (%13.7e) in %s() !!\n", Pres_Code, __FUNCTION__ );
+      printf( "        Dens=%13.7e, Eint=%13.7e\n", Dens_Code, Eint_Code );
 #     if ( NCOMP_PASSIVE > 0 )
       printf( "        Passive scalars:" );
-      for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive[v] );
+      for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive_Code[v] );
       printf( "\n" );
 #     endif
    }
 #  endif // GAMER_DEBUG
 
 
-   return Pres;
+   return Pres_Code;
 
 } // FUNCTION : EoS_DensEint2Pres_Nuclear
 
@@ -198,53 +211,58 @@ static real EoS_DensEint2Pres_Nuclear( const real Dens, const real Eint, const r
 //
 // Note        :  1. See EoS_DensEint2Pres_Nuclear()
 //
-// Parameter   :  Dens       : Gas mass density
-//                PresIn     : Gas pressure
-//                Passive    : Passive scalars
-//                AuxArray_* : Auxiliary arrays (see the Note above)
-//                Table      : EoS tables
+// Parameter   :  Dens_Code    : Gas mass density (in code unit)
+//                Pres_Code    : Gas pressure     (in code unit)
+//                Passive_Code : Passive scalars  (in code unit)
+//                AuxArray_*   : Auxiliary arrays (see the Note above)
+//                Table        : EoS tables
 //
-// Return      :  Gas internal energy density
+// Return      :  Gas internal energy density (in code unit)
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE_NOINLINE
-static real EoS_DensPres2Eint_Nuclear( const real Dens, const real PresIn, const real Passive[], const double AuxArray_Flt[],
-                                       const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+static real EoS_DensPres2Eint_Nuclear( const real Dens_Code, const real Pres_Code, const real Passive_Code[],
+                                       const double AuxArray_Flt[], const int AuxArray_Int[],
+                                       const real *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
 #  ifdef GAMER_DEBUG
 #  if ( NCOMP_PASSIVE > 0 )
-   if ( Passive == NULL )  printf( "ERROR : Passive == NULL in %s !!\n", __FUNCTION__ );
+   if ( Passive_Code == NULL )   printf( "ERROR : Passive_Code == NULL in %s !!\n", __FUNCTION__ );
 #  endif
    if ( AuxArray_Flt == NULL )   printf( "ERROR : AuxArray_Flt == NULL in %s !!\n", __FUNCTION__ );
    if ( AuxArray_Int == NULL )   printf( "ERROR : AuxArray_Int == NULL in %s !!\n", __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Dens) )
+   if ( Hydro_CheckNegative(Dens_Code) )
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Dens, __FILE__, __LINE__, __FUNCTION__ );
+              Dens_Code, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(PresIn) )
+   if ( Hydro_CheckNegative(Pres_Code) )
       printf( "ERROR : invalid input pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              PresIn, __FILE__, __LINE__, __FUNCTION__ );
+              Pres_Code, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
 
-   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT   ];
+   const real Dens2CGS    = AuxArray_Flt[NUC_AUX_DENS2CGS ];
+   const real Pres2CGS    = AuxArray_Flt[NUC_AUX_PRES2CGS ];
+   const real sEint2Code  = AuxArray_Flt[NUC_AUX_VSQR2CODE];
+
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
    const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
    const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
    const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
-   int  Mode    = NUC_MODE_PRES;
-   real Eint    = NULL_REAL;
-   real sEint   = NULL_REAL;
-   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
-   real Pres    = PresIn;
-   real Useless = NULL_REAL;
-   int  Err     = NULL_INT;
+   int  Mode      = NUC_MODE_PRES;
+   real Dens_CGS  = Dens_Code * Dens2CGS;
+   real Pres_CGS  = Pres_Code * Pres2CGS;
+   real Ye        = Passive_Code[ YE - NCOMP_FLUID ] / Dens_Code;
+   real sEint_CGS = NULL_REAL;
+   real Useless   = NULL_REAL;
+   int  Err       = NULL_INT;
 
-   nuc_eos_C_short( Dens, &sEint, Ye, &Useless, &Useless, &Pres, &Useless, &Useless,
+   nuc_eos_C_short( Dens_CGS, &sEint_CGS, Ye, &Useless, &Useless, &Pres_CGS, &Useless, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
@@ -252,17 +270,17 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens, const real PresIn, const
 
    if ( Err )
    {
-      sEint = NAN;
+      sEint_CGS = NAN;
 
 #     ifdef GAMER_DEBUG
       printf( "ERROR : EoS failed with error %d !!\n", Err );
 #     endif
    }
 
-   Eint = sEint*Dens;
+   const real Eint_Code = ( sEint_CGS * sEint2Code ) * Dens_Code;
 
 
-   return Eint;
+   return Eint_Code;
 
 } // FUNCTION : EoS_DensPres2Eint_Nuclear
 
@@ -274,51 +292,57 @@ static real EoS_DensPres2Eint_Nuclear( const real Dens, const real PresIn, const
 //
 // Note        :  1. See EoS_DensEint2Pres_Nuclear()
 //
-// Parameter   :  Dens       : Gas mass density
-//                Pres       : Gas pressure
-//                Passive    : Passive scalars
-//                AuxArray_* : Auxiliary arrays (see the Note above)
-//                Table      : EoS tables
+// Parameter   :  Dens_Code    : Gas mass density (in code unit)
+//                Pres_Code    : Gas pressure     (in code unit)
+//                Passive_Code : Passive scalars  (in code unit)
+//                AuxArray_*   : Auxiliary arrays (see the Note above)
+//                Table        : EoS tables
 //
-// Return      :  Sound speed square
+// Return      :  Sound speed square (in code unit)
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE_NOINLINE
-static real EoS_DensPres2CSqr_Nuclear( const real Dens, const real PresIn, const real Passive[], const double AuxArray_Flt[],
-                                       const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] )
+static real EoS_DensPres2CSqr_Nuclear( const real Dens_Code, const real Pres_Code, const real Passive_Code[],
+                                       const double AuxArray_Flt[], const int AuxArray_Int[],
+                                       const real *const Table[EOS_NTABLE_MAX] )
 {
 
 // check
 #  ifdef GAMER_DEBUG
 #  if ( NCOMP_PASSIVE > 0 )
-   if ( Passive == NULL )  printf( "ERROR : Passive == NULL in %s !!\n", __FUNCTION__ );
+   if ( Passive_Code == NULL )   printf( "ERROR : Passive_Code == NULL in %s !!\n", __FUNCTION__ );
 #  endif
    if ( AuxArray_Flt == NULL )   printf( "ERROR : AuxArray_Flt == NULL in %s !!\n", __FUNCTION__ );
    if ( AuxArray_Int == NULL )   printf( "ERROR : AuxArray_Int == NULL in %s !!\n", __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Dens) )
+   if ( Hydro_CheckNegative(Dens_Code) )
       printf( "ERROR : invalid input density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Dens, __FILE__, __LINE__, __FUNCTION__ );
+              Dens_Code, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(PresIn) )
+   if ( Hydro_CheckNegative(Pres_Code) )
       printf( "ERROR : invalid input pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              PresIn, __FILE__, __LINE__, __FUNCTION__ );
+              Pres_Code, __FILE__, __LINE__, __FUNCTION__ );
 #  endif // GAMER_DEBUG
 
 
-   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT];
+   const real EnergyShift = AuxArray_Flt[NUC_AUX_ESHIFT   ];
+   const real Dens2CGS    = AuxArray_Flt[NUC_AUX_DENS2CGS ];
+   const real Pres2CGS    = AuxArray_Flt[NUC_AUX_PRES2CGS ];
+   const real CsSqr2Code  = AuxArray_Flt[NUC_AUX_VSQR2CODE];
+
    const int  NRho        = AuxArray_Int[NUC_AUX_NRHO  ];
    const int  NEps        = AuxArray_Int[NUC_AUX_NEPS  ];
    const int  NYe         = AuxArray_Int[NUC_AUX_NYE   ];
    const int  NMode       = AuxArray_Int[NUC_AUX_NMODE ];
 
-   int  Mode    = NUC_MODE_PRES;
-   real Ye      = Passive[ YE - NCOMP_FLUID ] / Dens;
-   real Pres    = PresIn;
-   real Cs2     = NULL_REAL;
-   real Useless = NULL_REAL;
-   int  Err     = NULL_INT;
+   int  Mode     = NUC_MODE_PRES;
+   real Dens_CGS = Dens_Code * Dens2CGS;
+   real Pres_CGS = Pres_Code * Pres2CGS;
+   real Ye       = Passive_Code[ YE - NCOMP_FLUID ] / Dens_Code;
+   real Cs2_CGS  = NULL_REAL;
+   real Useless  = NULL_REAL;
+   int  Err      = NULL_INT;
 
-   nuc_eos_C_short( Dens, &Useless, Ye, &Useless, &Useless, &Pres, &Cs2, &Useless,
+   nuc_eos_C_short( Dens_CGS, &Useless, Ye, &Useless, &Useless, &Pres_CGS, &Cs2_CGS, &Useless,
                     EnergyShift, NRho, NEps, NYe, NMode,
                     Table[NUC_TAB_ALL], Table[NUC_TAB_ALL_MODE], Table[NUC_TAB_RHO], Table[NUC_TAB_EPS],
                     Table[NUC_TAB_YE], Table[NUC_TAB_TEMP_MODE], Table[NUC_TAB_ENTR_MODE], Table[NUC_TAB_PRES_MODE],
@@ -326,30 +350,32 @@ static real EoS_DensPres2CSqr_Nuclear( const real Dens, const real PresIn, const
 
    if ( Err )
    {
-      Cs2 = NAN;
+      Cs2_CGS = NAN;
 
 #     ifdef GAMER_DEBUG
       printf( "ERROR : EoS failed with error %d !!\n", Err );
 #     endif
    }
 
+   const real Cs2_Code = Cs2_CGS * CsSqr2Code;
+
 
 // check
 #  ifdef GAMER_DEBUG
-   if ( Hydro_CheckNegative(Cs2) )
+   if ( Hydro_CheckNegative(Cs2_Code) )
    {
-      printf( "ERROR : invalid output sound speed squared (%13.7e) in %s() !!\n", Cs2, __FUNCTION__ );
-      printf( "        Dens=%13.7e, Pres=%13.7e\n", Dens, Pres );
+      printf( "ERROR : invalid output sound speed squared (%13.7e) in %s() !!\n", Cs2_Code, __FUNCTION__ );
+      printf( "        Dens=%13.7e, Pres=%13.7e\n", Dens_Code, Pres_Code );
 #     if ( NCOMP_PASSIVE > 0 )
       printf( "        Passive scalars:" );
-      for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive[v] );
+      for (int v=0; v<NCOMP_PASSIVE; v++)    printf( " %d=%13.7e", v, Passive_Code[v] );
       printf( "\n" );
 #     endif
    }
 #  endif // GAMER_DEBUG
 
 
-   return Cs2;
+   return Cs2_Code;
 
 } // FUNCTION : EoS_DensPres2CSqr_Nuclear
 

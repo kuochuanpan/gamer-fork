@@ -12,6 +12,12 @@
 
 // auxiliary array indices
 #define NUC_AUX_ESHIFT        0     // AuxArray_Flt: energy_shift
+#define NUC_AUX_DENS2CGS      1     // AuxArray_Flt: convert density    to cgs
+#define NUC_AUX_PRES2CGS      2     // AuxArray_Flt: convert pressure   to cgs
+#define NUC_AUX_VSQR2CGS      3     // AuxArray_Flt: convert velocity^2 to cgs
+#define NUC_AUX_PRES2CODE     4     // AuxArray_Flt: convert pressure   to code unit
+#define NUC_AUX_VSQR2CODE     5     // AuxArray_Flt: convert velocity^2 to code unit
+
 #define NUC_AUX_NRHO          0     // AuxArray_Int: nrho
 #define NUC_AUX_NEPS          1     // AuxArray_Int: neps
 #define NUC_AUX_NYE           2     // AuxArray_Int: nye
