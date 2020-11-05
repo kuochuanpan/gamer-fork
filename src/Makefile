@@ -829,7 +829,7 @@ else ifeq "$(filter -DGPU_ARCH=KEPLER, $(SIMU_OPTION))" "-DGPU_ARCH=KEPLER"
    endif
 else ifeq "$(filter -DGPU_ARCH=MAXWELL, $(SIMU_OPTION))" "-DGPU_ARCH=MAXWELL"
    ifeq "$(filter -DFLOAT8, $(SIMU_OPTION))" "-DFLOAT8"
-     NVCCFLAG_FLU += --maxrregcount=192
+     NVCCFLAG_FLU += --maxrregcount=224
    else
      NVCCFLAG_FLU += --maxrregcount=128
    endif
