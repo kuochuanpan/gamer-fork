@@ -12,10 +12,10 @@ extern real *g_alltables;
 extern real *g_alltables_mode;
 extern real *g_logrho;
 extern real *g_logeps;
-extern real *g_logtemp_mode;
-extern real *g_logprss_mode;
 extern real *g_yes;
+extern real *g_logtemp_mode;
 extern real *g_entr_mode;
+extern real *g_logprss_mode;
 
 
 
