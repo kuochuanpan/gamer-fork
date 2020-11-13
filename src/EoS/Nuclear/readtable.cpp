@@ -23,11 +23,11 @@
 
 
 
-extern int   g_nrho;
-extern int   g_neps;
-extern int   g_nye;
-extern int   g_nmode;
-extern real  g_energy_shift;
+extern int    g_nrho;
+extern int    g_neps;
+extern int    g_nye;
+extern int    g_nmode;
+extern double g_energy_shift;
 
 extern real *g_alltables;
 extern real *g_alltables_mode;
@@ -192,13 +192,13 @@ void nuc_eos_C_ReadTable( char *nuceos_table_name )
    READ_EOSTABLE_MODE_HDF5( "logenergy_prss", 2 );
 
 // read additional tables and variables
-   READ_EOS_HDF5( "logrho",        g_logrho,        H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "logenergy",     g_logeps,        H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "ye",            g_yes,           H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "logtemp_mode",  g_logtemp_mode,  H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "entr_mode",     g_entr_mode,     H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "logprss_mode",  g_logprss_mode,  H5T_GAMER_REAL, H5S_ALL );
-   READ_EOS_HDF5( "energy_shift", &g_energy_shift,  H5T_GAMER_REAL, H5S_ALL );
+   READ_EOS_HDF5( "logrho",        g_logrho,        H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "logenergy",     g_logeps,        H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "ye",            g_yes,           H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "logtemp_mode",  g_logtemp_mode,  H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "entr_mode",     g_entr_mode,     H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "logprss_mode",  g_logprss_mode,  H5T_GAMER_REAL,    H5S_ALL );
+   READ_EOS_HDF5( "energy_shift", &g_energy_shift,  H5T_NATIVE_DOUBLE, H5S_ALL );
 
    HDF5_ERROR(  H5Sclose( mem3      )  );
    HDF5_ERROR(  H5Sclose( mem3_mode )  );

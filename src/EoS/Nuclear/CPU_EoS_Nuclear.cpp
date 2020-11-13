@@ -15,11 +15,11 @@
 #else
 
 // global variables
-int   g_nrho;
-int   g_neps;
-int   g_nye;
-int   g_nmode;
-real  g_energy_shift;
+int    g_nrho;
+int    g_neps;
+int    g_nye;
+int    g_nmode;
+double g_energy_shift;
 
 real *g_alltables      = NULL;
 real *g_alltables_mode = NULL;
