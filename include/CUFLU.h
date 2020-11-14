@@ -145,9 +145,13 @@
 //           (2) incompatible with CTU as it requires applying the characteristic tracing step to internal energy,
 //               which has not been implemented
 // --> unnecessary for EOS_GAMMA/EOS_ISOTHERMAL as they are fast
-// --> disable it by default
+// --> disable it by default (except for the nuclear EoS for which this option helps reduce unphysical oscillations)
 #if ( EOS != EOS_GAMMA  &&  EOS != EOS_ISOTHERMAL  &&  FLU_SCHEME != CTU )
+# if ( EOS == EOS_NUCLEAR )
+#  define LR_EINT
+# else
 //#  define LR_EINT
+# endif
 #endif
 
 
