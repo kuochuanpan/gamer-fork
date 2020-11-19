@@ -20,7 +20,7 @@ const Riemann_t
 #endif
   ,NOH            = 9
 #if ( EOS == EOS_NUCLEAR )
-  ,NUC_CCSN       = 10
+  ,NUCLEAR1       = 10
 #endif
   ;
 
@@ -240,7 +240,7 @@ void SetParameter()
                             break;
 
 #     if ( EOS == EOS_NUCLEAR )
-      case NUC_CCSN       : Riemann_RhoL = 4.0e14/UNIT_D;  Riemann_VelL = 0.0/UNIT_V;  Riemann_PreL = 2.504797e+34/UNIT_P;  Riemann_VelL_T1 = 0.0/UNIT_V;  Riemann_VelL_T2 = 0.0/UNIT_V;
+      case NUCLEAR1       : Riemann_RhoL = 4.0e14/UNIT_D;  Riemann_VelL = 0.0/UNIT_V;  Riemann_PreL = 2.504797e+34/UNIT_P;  Riemann_VelL_T1 = 0.0/UNIT_V;  Riemann_VelL_T2 = 0.0/UNIT_V;
                             Riemann_RhoR = 1.0e8 /UNIT_D;  Riemann_VelR = 0.0/UNIT_V;  Riemann_PreR = 5.838680e+27/UNIT_P;  Riemann_VelR_T1 = 0.0/UNIT_V;  Riemann_VelR_T2 = 0.0/UNIT_V;
                             Riemann_YeL  = 0.15;
                             Riemann_YeR  = 0.45;
