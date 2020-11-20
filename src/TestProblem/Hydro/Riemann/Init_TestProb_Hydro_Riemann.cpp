@@ -246,7 +246,10 @@ void SetParameter()
                             Riemann_YeR  = 0.45;
                             Riemann_EndT = 1.0e-4/UNIT_T;
 #                           ifdef MHD
-                            Riemann_Mag = Riemann_MagL_T1 = Riemann_MagL_T2 = Riemann_MagR_T1 = Riemann_MagR_T2 = 0.0;
+                            const double Gauss2CodeB = Const_Gauss/UNIT_B;
+                            Riemann_MagL_T1 = +5.0e14*Gauss2CodeB;  Riemann_MagL_T2 = 0.0*Gauss2CodeB;
+                            Riemann_MagR_T1 = -5.0e14*Gauss2CodeB;  Riemann_MagR_T2 = 0.0*Gauss2CodeB;
+                            Riemann_Mag     =  1.0e15*Gauss2CodeB;
 #                           endif
                             sprintf( Riemann_Name, "CCSN-like shock tube with nuclear EoS" );
                             break;
