@@ -21,6 +21,7 @@ const Riemann_t
   ,NOH            = 9
 #if ( EOS == EOS_NUCLEAR )
   ,NUCLEAR1       = 10
+  ,NUCLEAR2       = 11
 #endif
   ;
 
@@ -129,7 +130,7 @@ void SetParameter()
 // ********************************************************************************************************************************
 // ReadPara->Add( "KEY_IN_THE_FILE",   &VARIABLE,              DEFAULT,       MIN,              MAX               );
 // ********************************************************************************************************************************
-   ReadPara->Add( "Riemann_Prob",      &Riemann_Prob,          -1,            0,                10                );
+   ReadPara->Add( "Riemann_Prob",      &Riemann_Prob,          -1,            0,                11                );
    ReadPara->Add( "Riemann_LR",        &Riemann_LR,             1,            NoMin_int,        NoMax_int         );
    ReadPara->Add( "Riemann_XYZ",       &Riemann_XYZ,            0,            0,                2                 );
    ReadPara->Add( "Riemann_Pos",       &Riemann_Pos,            NoDef_double, NoMin_double,     NoMax_double      );
@@ -140,6 +141,10 @@ void SetParameter()
    delete ReadPara;
 
 // (1-2) set the default values
+#  ifdef MHD
+   const double Gauss2CodeB = Const_Gauss/UNIT_B;
+#  endif
+
    if ( Riemann_Pos   == NoDef_double )   Riemann_Pos   = amr->BoxCenter[Riemann_XYZ];
    if ( Riemann_Width == NoDef_double )   Riemann_Width = 1.0e-10/UNIT_L;  // mimic a step function
 
@@ -246,12 +251,24 @@ void SetParameter()
                             Riemann_YeR  = 0.45;
                             Riemann_EndT = 1.0e-4/UNIT_T;
 #                           ifdef MHD
-                            const double Gauss2CodeB = Const_Gauss/UNIT_B;
                             Riemann_MagL_T1 = +5.0e14*Gauss2CodeB;  Riemann_MagL_T2 = 0.0*Gauss2CodeB;
                             Riemann_MagR_T1 = -5.0e14*Gauss2CodeB;  Riemann_MagR_T2 = 0.0*Gauss2CodeB;
                             Riemann_Mag     =  1.0e15*Gauss2CodeB;
 #                           endif
-                            sprintf( Riemann_Name, "CCSN-like shock tube with nuclear EoS" );
+                            sprintf( Riemann_Name, "nuclear EoS case 1" );
+                            break;
+
+      case NUCLEAR2       : Riemann_RhoL = 5.0e9/UNIT_D;  Riemann_VelL = 0.0/UNIT_V;  Riemann_PreL = 6.448892e+28/UNIT_P;  Riemann_VelL_T1 = 0.0/UNIT_V;  Riemann_VelL_T2 = 0.0/UNIT_V;
+                            Riemann_RhoR = 7.0e7/UNIT_D;  Riemann_VelR = 0.0/UNIT_V;  Riemann_PreR = 2.294131e+25/UNIT_P;  Riemann_VelR_T1 = 0.0/UNIT_V;  Riemann_VelR_T2 = 0.0/UNIT_V;
+                            Riemann_YeL  = 0.25;
+                            Riemann_YeR  = 0.45;
+                            Riemann_EndT = 5.0e-4/UNIT_T;
+#                           ifdef MHD
+                            Riemann_MagL_T1 = +1.0e15*Gauss2CodeB;  Riemann_MagL_T2 = 0.0*Gauss2CodeB;
+                            Riemann_MagR_T1 = -1.0e15*Gauss2CodeB;  Riemann_MagR_T2 = 0.0*Gauss2CodeB;
+                            Riemann_Mag     =  7.5e14*Gauss2CodeB;
+#                           endif
+                            sprintf( Riemann_Name, "nuclear EoS case 2" );
                             break;
 #     endif
 
