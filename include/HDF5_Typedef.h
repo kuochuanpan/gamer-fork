@@ -430,6 +430,9 @@ struct InputPara_t
    double Gamma;
    double MolecularWeight;
    double IsoTemp;
+#  if ( EOS == EOS_NUCLEAR )
+   char  *NucTable;
+#  endif
    double MinMod_Coeff;
    int    Opt__LR_Limiter;
    int    Opt__1stFluxCorr;

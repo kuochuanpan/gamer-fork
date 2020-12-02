@@ -223,6 +223,11 @@ EoS_DE2P_t EoS_DensEint2Pres_GPUPtr = NULL;
 EoS_DP2E_t EoS_DensPres2Eint_GPUPtr = NULL;
 EoS_DP2C_t EoS_DensPres2CSqr_GPUPtr = NULL;
 #endif
+
+// c. others
+#if ( EOS == EOS_NUCLEAR )
+char NUC_TABLE[MAX_STRING];
+#endif
 #endif // HYDRO
 
 
