@@ -101,14 +101,6 @@ void findenergy( const real x, const real y, const real z,
    iy = (int)( (y - yt[0] + (real)1.0e-10)*dyi );
    iz = (int)( (z - zt[0] + (real)1.0e-10)*dzi );
 
-   if ( ix < 0  ||  ix >= nx  ||
-        iy < 0  ||  iy >= ny  ||
-        iz < 0  ||  iz >= nz )
-   {
-      *keyerr = 667; // out of range
-      return;
-   }
-
 
 // linear interpolation at boundaries
    if ( ix == 0  ||  iy == 0  ||  iz == 0  ||
@@ -195,7 +187,7 @@ void findenergy( const real x, const real y, const real z,
 
   return;
 
-} // FUNCTIOM : findenergy
+} // FUNCTION : findenergy
 
 
 

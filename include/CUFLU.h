@@ -421,7 +421,7 @@
 
 // 3. dt solver for fluid
 //=========================================================================================
-#  if ( MODEL == HYDRO  &&  EOS == EOS_NUCLEAR )
+#  if ( EOS == EOS_NUCLEAR )
 #     define DT_FLU_BLOCK_SIZE      256
 #  else
 #     define DT_FLU_BLOCK_SIZE      512
