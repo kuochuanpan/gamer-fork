@@ -301,6 +301,14 @@ void Init_Load_Parameter()
    ReadPara->Add( "OPT__EXT_ACC",               &OPT__EXT_ACC,                    0,               0,             2              );
    ReadPara->Add( "OPT__EXT_POT",               &OPT__EXT_POT,                    0,               0,             2              );
    ReadPara->Add( "OPT__GRAVITY_EXTRA_MASS",    &OPT__GRAVITY_EXTRA_MASS,         false,           Useless_bool,  Useless_bool   );
+#  ifdef GREP
+   ReadPara->Add( "GREP_CENTER_METHOD",        &GREP_CENTER_METHOD,               1,               1,              1             );
+   ReadPara->Add( "GREP_MAXITER",              &GREP_MAXITER,                     1000,            100,            NoMax_int     );
+   ReadPara->Add( "GREP_LOGBIN",               &GREP_LOGBIN,                      true,            Useless_bool,   Useless_bool  );
+   ReadPara->Add( "GREP_LOGBINRATIO",          &GREP_LOGBINRATIO,                 1.25,            1.001,          NoMax_double  );
+   ReadPara->Add( "GREP_MAXRADIUS",            &GREP_MAXRADIUS,                  -1.0,             NoMin_double,   NoMax_double  );
+   ReadPara->Add( "GREP_MINBINSIZE",           &GREP_MINBINSIZE,                 -1.0,             1.0,            NoMax_double  );
+#  endif // #ifdef GREP
 #  endif // #ifdef GRAVITY
 
 

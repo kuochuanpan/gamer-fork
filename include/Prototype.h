@@ -374,6 +374,11 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 #ifdef STORE_POT_GHOST
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
+#ifdef GREP
+void Init_GREP();
+void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve, Profile_t *Phi_eff );
+void Poi_Prepare_GREP( const double Time, const int lv );
+#endif // #ifdef GREP
 #endif // #ifdef GRAVITY
 
 
@@ -543,6 +548,9 @@ void CUAPI_Asyn_PoissonGravitySolver( const real h_Rho_Array    [][RHO_NXT][RHO_
                                       const int GPU_NStream );
 void CUAPI_MemAllocate_PoissonGravity( const int Pot_NPatchGroup );
 void CUAPI_MemFree_PoissonGravity();
+#ifdef GREP
+void CUAPI_SetConstMemory_ExtPot_GREP();
+#endif // #ifdef GREP
 #endif // #ifdef GRAVITY
 #endif // #ifdef GPU
 

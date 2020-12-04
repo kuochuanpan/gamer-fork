@@ -1,0 +1,13 @@
+Compilation flags:
+========================================
+Enable : MODEL=HYDRO, GRAVITY, GREP
+Disable:
+
+Default setup:
+========================================
+
+
+Note:
+========================================
+For neutron star migration test.
+The central density is recorded in Record__CentralDens.
