@@ -1,10 +1,5 @@
 # problem-specific runtime parameters
-NeutronStar_ICFile   tovstar_short  # input file for initial condition
+NeutronStar_ICFile   tovstar_short  # input file of initial condition
 
-Bfield_Ab            0.0            # magnetic field strength (in gauss)
-Bfield_np            0.0            # dependence on the density
-
-
-GW_OUTPUT_OPT        0              # output the 2nd-order time derivative of mass quadrupole moment
-GW_OUTPUT_VERBOSE    0              # output the spherically summed mass quadrupole moment
-#GW_OUTPUT_DT        0.1            # output time interval
+Bfield_Ab            0.0            # magnetic field strength (in gauss) [1e15]
+Bfield_np            0.0            # dependence on the density          [0.0]

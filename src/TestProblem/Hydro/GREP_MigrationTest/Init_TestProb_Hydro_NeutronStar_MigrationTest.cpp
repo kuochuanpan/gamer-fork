@@ -4,29 +4,21 @@
 
 // problem-specific global variables
 // =======================================================================================
-// Parameters for the toroidal B field
+// Parameters for a toroidal B field
 #ifdef MHD
 static double  Bfield_Ab;                       // magnetic field strength                            [1e15]
 static double  Bfield_np;                       // dependence on the density                          [0.0]
 #endif
 
-// Parameters for GW emissions output
-static int     GW_OUTPUT_OPT;                   // output GW signal (0=off)                           [0]
-static int     GW_OUTPUT_VERBOSE;               // output spherically summed GW signal (0=off)        [0]
-static double  GW_OUTPUT_DT;                    // output GW signals every GW_OUTPUT_DT time interval [0.0]
-
 // Parameters for initial condition
 static double *NeutronStar_Prof = NULL;         // radial progenitor model
 static int     NeutronStar_NBin;                // number of radial bins in the progenitor model
-static char    NeutronStar_ICFile[MAX_STRING];  // Filename for initial condition
+static char    NeutronStar_ICFile[MAX_STRING];  // Filename of initial condition
 // =======================================================================================
 
-static double Mis_InterpolateFromTable_Ext( Profile_t *Phi, const double r );
 static void   LoadICTable();
 static void   Record_MigrationTest();
 static void   Record_CentralDens();
-static void   Record_GWSignal_1st();
-static void   Record_GWSignal_2nd();
 
 #if ( defined GRAVITY  &&  defined GREP )
 extern void   Init_ExtPot_GREP();
@@ -52,9 +44,6 @@ void Validate()
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Validating test problem %d ...\n", TESTPROB_ID );
 
 
-// examples
-/*
-// errors
 #  if ( MODEL != HYDRO )
    Aux_Error( ERROR_INFO, "MODEL != HYDRO !!\n" );
 #  endif
@@ -63,27 +52,9 @@ void Validate()
    Aux_Error( ERROR_INFO, "GRAVITY must be enabled !!\n" );
 #  endif
 
-#  ifdef PARTICLE
-   Aux_Error( ERROR_INFO, "PARTICLE must be disabled !!\n" );
+#  ifndef GREP
+   Aux_Error( ERROR_INFO, "GREP must be enabled !!\n" );
 #  endif
-
-#  ifdef GRAVITY
-   if ( OPT__BC_FLU[0] == BC_FLU_PERIODIC  ||  OPT__BC_POT == BC_POT_PERIODIC )
-      Aux_Error( ERROR_INFO, "do not use periodic BC for this test !!\n" );
-#  endif
-
-
-// warnings
-   if ( MPI_Rank == 0 )
-   {
-#     ifndef DUAL_ENERGY
-         Aux_Message( stderr, "WARNING : it's recommended to enable DUAL_ENERGY for this test !!\n" );
-#     endif
-
-      if ( FLAG_BUFFER_SIZE < 5 )
-         Aux_Message( stderr, "WARNING : it's recommended to set FLAG_BUFFER_SIZE >= 5 for this test !!\n" );
-   } // if ( MPI_Rank == 0 )
-*/
 
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "   Validating test problem %d ... done\n", TESTPROB_ID );
@@ -92,7 +63,6 @@ void Validate()
 
 
 
-// replace HYDRO by the target model (e.g., MHD/ELBDM) and also check other compilation flags if necessary (e.g., GRAVITY/PARTICLE)
 #if ( MODEL == HYDRO )
 //-------------------------------------------------------------------------------------------------------
 // Function    :  SetParameter
@@ -125,19 +95,11 @@ void SetParameter()
 // ********************************************************************************************************************************
 // ReadPara->Add( "KEY_IN_THE_FILE",   &VARIABLE,              DEFAULT,       MIN,              MAX               );
 // ********************************************************************************************************************************
-//   ReadPara->Add( "var_bool",          &var_bool,              true,          Useless_bool,     Useless_bool      );
-//   ReadPara->Add( "var_double",        &var_double,            1.0,           Eps_double,       NoMax_double      );
-//   ReadPara->Add( "var_int",           &var_int,               2,             0,                5                 );
-//   ReadPara->Add( "var_str",            var_str,               Useless_str,   Useless_str,      Useless_str       );
    ReadPara->Add( "NeutronStar_ICFile",   NeutronStar_ICFile,    Useless_str,   Useless_str,      Useless_str       );
-   ReadPara->Add( "GW_OUTPUT_OPT",       &GW_OUTPUT_OPT,         0,             0,                NoMax_int         );
-   ReadPara->Add( "GW_OUTPUT_VERBOSE",   &GW_OUTPUT_VERBOSE,     0,             0,                NoMax_int         );
-   ReadPara->Add( "GW_OUTPUT_DT",        &GW_OUTPUT_DT,          0.0,           0.0,              NoMax_double      );
 #  ifdef MHD
    ReadPara->Add( "Bfield_Ab",           &Bfield_Ab,             1.0e15,        0.0,              NoMax_double      );
    ReadPara->Add( "Bfield_np",           &Bfield_np,             0.0,           NoMin_double,     NoMax_double      );
 #  endif
-
 
    ReadPara->Read( FileName );
 
@@ -173,9 +135,6 @@ void SetParameter()
       Aux_Message( stdout, "=============================================================================\n" );
       Aux_Message( stdout, "  test problem ID           = %d\n",      TESTPROB_ID );
       Aux_Message( stdout, "  NeutronStar_ICFile        = %s\n",      NeutronStar_ICFile );
-      Aux_Message( stdout, "  GW_OUTPUT_OPT             = %d\n",      GW_OUTPUT_OPT );
-      Aux_Message( stdout, "  GW_OUTPUT_VERBOSE         = %d\n",      GW_OUTPUT_VERBOSE );
-      Aux_Message( stdout, "  GW_OUTPUT_DT              = %13.7e\n",  GW_OUTPUT_DT );
 #     ifdef MHD
       Aux_Message( stdout, "  Bfield_Ab                 = %13.7e\n",  Bfield_Ab );
       Aux_Message( stdout, "  Bfield_np                 = %13.7e\n",  Bfield_np );
@@ -219,30 +178,31 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double *Table_Dens   = NeutronStar_Prof + 2*NeutronStar_NBin;
    const double *Table_Pres   = NeutronStar_Prof + 3*NeutronStar_NBin;
 
-   double dens, velr, pres;
-   double momx, momy, momz, eint, etot;
+   double Dens, Velr, Pres, Momx, Momy, Momz, Eint, Etot;
 
    const double x0 = x - BoxCenter[0];
    const double y0 = y - BoxCenter[1];
    const double z0 = z - BoxCenter[2];
-   const double r = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
+   const double r  = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 ) );
 
-   dens = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
-   velr = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr, r);
-   pres = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
+   Dens = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r);
+   Velr = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Velr, r);
+   Pres = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r);
 
-   momx = dens*velr*x0/r;
-   momy = dens*velr*y0/r;
-   momz = dens*velr*z0/r;
+   Momx = Dens*Velr*x0/r;
+   Momy = Dens*Velr*y0/r;
+   Momz = Dens*Velr*z0/r;
 
-   eint = EoS_DensPres2Eint_CPUPtr( dens, pres, NULL, EoS_AuxArray );   // assuming EoS requires no passive scalars
-   etot = Hydro_ConEint2Etot( dens, momx, momy, momz, eint, 0.0 );      // do NOT include magnetic energy here
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt,
+                                    EoS_AuxArray_Int, h_EoS_Table );    // assuming EoS requires no passive scalars
+   Etot = Hydro_ConEint2Etot( Dens, Momx, Momy, Momz, Eint, 0.0 );      // do NOT include magnetic energy here
 
-   fluid[DENS] = dens;
-   fluid[MOMX] = momx;
-   fluid[MOMY] = momy;
-   fluid[MOMZ] = momz;
-   fluid[ENGY] = etot;
+
+   fluid[DENS] = Dens;
+   fluid[MOMX] = Momx;
+   fluid[MOMY] = Momy;
+   fluid[MOMZ] = Momz;
+   fluid[ENGY] = Etot;
 
 } // FUNCTION : SetGridIC
 
@@ -284,23 +244,22 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    const double y0 = y - BoxCenter[1];
    const double z0 = z - BoxCenter[2];
 
-   // Use the data at first row as the central density and pressure
-   // to avoid incorrect values extrapolated from the input IC table
+   // approximate the central density and pressure by the data at the first row
    const double dens_c = Table_Dens[0];
    const double pres_c = Table_Pres[0];
    const double Ab     = Bfield_Ab / UNIT_B;
 
    // Use finite difference to compute the B field
-   double diff = amr->dh[TOP_LEVEL];
+   double delta = amr->dh[TOP_LEVEL];
    double r,    dens,    pres;
    double r_xp, dens_xp, pres_xp;
    double r_yp, dens_yp, pres_yp;
    double r_zp, dens_zp, pres_zp;
 
-   r       = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0        ) );
-   r_xp    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 + diff ) );
-   r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + diff ) );
-   r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + diff ) );
+   r       = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0         ) );
+   r_xp    = SQRT( SQR( y0 ) + SQR( z0 ) + SQR( x0 + delta ) );
+   r_yp    = SQRT( SQR( z0 ) + SQR( x0 ) + SQR( y0 + delta ) );
+   r_zp    = SQRT( SQR( x0 ) + SQR( y0 ) + SQR( z0 + delta ) );
 
    dens    = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r   );
    dens_xp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Dens, r_xp);
@@ -312,17 +271,17 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    pres_yp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_yp);
    pres_zp = Mis_InterpolateFromTable(NeutronStar_NBin, Table_R, Table_Pres, r_zp);
 
-   double dAy_dx = ( ( x0 + diff )*POW( 1.0 - dens_xp/dens_c, Bfield_np )*( pres_xp / pres_c )   \
-                 -   ( x0        )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
-                 / diff;
+   double dAy_dx = ( ( x0 + delta )*POW( 1.0 - dens_xp/dens_c, Bfield_np )*( pres_xp / pres_c )   \
+                   - ( x0         )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                 / delta;
 
-   double dAx_dy = ( -( y0 + diff )*POW( 1.0 - dens_yp/dens_c, Bfield_np )*( pres_yp / pres_c )   \
-                 -   -( y0        )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
-                 / diff;
+   double dAx_dy = ( -( y0 + delta )*POW( 1.0 - dens_yp/dens_c, Bfield_np )*( pres_yp / pres_c )   \
+                   - -( y0         )*POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                 / delta;
 
    double dAphi_dz = ( POW( 1.0 - dens_zp/dens_c, Bfield_np )*( pres_zp / pres_c )   \
-                   -   POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
-                   / diff;
+                     - POW( 1.0 - dens   /dens_c, Bfield_np )*( pres    / pres_c ) ) \
+                   / delta;
 
 
    magnetic[MAGX] = -x0 * Ab * dAphi_dz;
@@ -355,7 +314,6 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
    Validate();
 
 
-// replace HYDRO by the target model (e.g., MHD/ELBDM) and also check other compilation flags if necessary (e.g., GRAVITY/PARTICLE)
 #  if ( MODEL == HYDRO )
 // set the problem-specific runtime parameters
    SetParameter();
@@ -373,25 +331,12 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
 #  ifdef MHD
    Init_Function_BField_User_Ptr  = SetBFieldIC;
 #  endif
-   Init_Field_User_Ptr            = NULL; // set NCOMP_PASSIVE_USER;          example: TestProblem/Hydro/Plummer/Init_TestProb_Hydro_Plummer.cpp --> AddNewField()
    Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
-   Mis_GetTimeStep_User_Ptr       = NULL; // option: OPT__DT_USER;            example: Miscellaneous/Mis_GetTimeStep_User.cpp
-   BC_User_Ptr                    = NULL; // option: OPT__BC_FLU_*=4;         example: TestProblem/ELBDM/ExtPot/Init_TestProb_ELBDM_ExtPot.cpp --> BC()
-   Flu_ResetByUser_Func_Ptr       = NULL; // option: OPT__RESET_FLUID;        example: Fluid/Flu_ResetByUser.cpp
-   Output_User_Ptr                = NULL; // option: OPT__OUTPUT_USER;        example: TestProblem/Hydro/AcousticWave/Init_TestProb_Hydro_AcousticWave.cpp --> OutputError()
    Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
-   Init_User_Ptr                  = NULL; // option: none;                    example: none
-   End_User_Ptr                   = NULL; // option: none;                    example: TestProblem/Hydro/ClusterMerger_vs_Flash/Init_TestProb_ClusterMerger_vs_Flash.cpp --> End_ClusterMerger()
-   Src_User_Ptr                   = NULL; // option: SRC_USER
-   Poi_AddExtraMassForGravity_Ptr = NULL; // option: OPT__GRAVITY_EXTRA_MASS; example: none
 #if ( defined GRAVITY  &&  defined GREP )
    Init_ExtPot_Ptr                = Init_ExtPot_GREP;
    Poi_UserWorkBeforePoisson_Ptr  = Poi_UserWorkBeforePoisson_GREP;
 #endif
-#  ifdef PARTICLE
-   Par_Init_ByFunction_Ptr        = NULL; // option: PAR_INIT=1;              example: Particle/Par_Init_ByFunction.cpp
-   Par_Init_Attribute_User_Ptr    = NULL; // set PAR_NATT_USER;               example: TestProblem/Hydro/AGORA_IsolatedGalaxy/Init_TestProb_Hydro_AGORA_IsolatedGalaxy.cpp --> AddNewParticleAttribute()
-#  endif
 #  endif // #if ( MODEL == HYDRO )
 
 
@@ -403,7 +348,7 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  LoadICTable
-// Description :  Load inpu table file for initial condition
+// Description :  Load data from the file assigned to 'NeutronStar_ICFile' in Input__TestProb
 //-------------------------------------------------------------------------------------------------------
 void LoadICTable()
 {
@@ -442,18 +387,8 @@ void LoadICTable()
 void Record_MigrationTest()
 {
 
-// the maximum density near the domain center
+// the maximum density around the box center
    Record_CentralDens();
-
-// GW Signal
-   if ( GW_OUTPUT_OPT )
-   {
-      double GW_DumpTime = ( GW_OUTPUT_DT > 0.0 ) ? int( Time[0]/GW_OUTPUT_DT )*GW_OUTPUT_DT : Time[0];
-
-//    output data when the elapsed time ~ GW_OUTPUT_DT or dt > GW_OUTPUT_DT
-      if ( Time[0] == 0.0  ||  fabs( (Time[0]-GW_DumpTime)/Time[0] ) <= 1.0e-8  ||  dTime_Base >= GW_OUTPUT_DT )
-         Record_GWSignal_2nd();
-   }
 
 } // FUNCTION : Record_MigrationTest()
 
@@ -461,14 +396,14 @@ void Record_MigrationTest()
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Record_CentralDens
-// Description :  Record the maximum central density
+// Description :  Record the maximum density around the box center
 //-------------------------------------------------------------------------------------------------------
 void Record_CentralDens()
 {
 
    const char   filename_central_dens[] = "Record__CentralDens";
    const double BoxCenter[3]            = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-// the farthest distance of cells to be considered
+// the distance from the box center to the farthest cells considered
    const double r_max2                  = SQR( amr->dh[TOP_LEVEL] );
 
 // allocate memory for per-thread arrays
@@ -591,572 +526,3 @@ void Record_CentralDens()
    } // if ( MPI_Rank == 0 )
 
 } // FUNCTION : Record_CentralDens()
-
-
-
-//-------------------------------------------------------------------------------------------------------
-// Function    :  Mis_InterpolateFromTable_Ext
-// Description :  Extended Mis_InterpolateFromTable() for extrapolation
-//-------------------------------------------------------------------------------------------------------
-static double Mis_InterpolateFromTable_Ext( Profile_t *Phi, const double r )
-{
-
-   const int    NBin = Phi->NBin;
-   const double rmin = Phi->Radius[0];
-   const double rmax = Phi->Radius[NBin - 1];
-
-   double Phi_interp;
-
-   if      ( r < rmin )   Phi_interp = Phi->Data[0];
-   else if ( r < rmax )   Phi_interp = Mis_InterpolateFromTable( NBin, Phi->Radius, Phi->Data, r );
-   else                   Phi_interp = Phi->Data[NBin-1];
-
-   return Phi_interp;
-
-}
-
-
-
-//-------------------------------------------------------------------------------------------------------
-// Function    :  Record_GWSignal_1st
-// Description :  Record the first-order time derivative of mass quadrupole moments
-//                see Nakamura & Oohara (1989), Oohara et al. (1997)
-//-------------------------------------------------------------------------------------------------------
-void Record_GWSignal_1st()
-{
-
-   const char   filename_QuadMom_1st[] = "Record__QuadMom_1st";
-   const double BoxCenter[3]           = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-
-// allocate memory for per-thread arrays
-#  ifdef OPENMP
-   const int NT = OMP_NTHREAD;   // number of OpenMP threads
-#  else
-   const int NT = 1;
-#  endif
-
-// in order of xx, xy, xz, yy, yz, zz
-   const int NData = 6;
-
-   double QuadMom_1st[NData] = { 0.0 };
-   double **OMP_QuadMom_1st  = NULL;
-   Aux_AllocateArray2D( OMP_QuadMom_1st, NT, NData );
-
-
-#  pragma omp parallel
-   {
-#     ifdef OPENMP
-      const int TID = omp_get_thread_num();
-#     else
-      const int TID = 0;
-#     endif
-
-//    initialize arrays
-      for (int b=0; b<NData; b++)   OMP_QuadMom_1st[TID][b] = 0.0;
-
-      for (int lv=0; lv<NLEVEL; lv++)
-      {
-         const double dh = amr->dh[lv];
-         const double dv = CUBE( dh );
-
-#        pragma omp for schedule( runtime )
-         for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
-         {
-            if ( amr->patch[0][lv][PID]->son != -1 )  continue;
-
-            for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*dh;
-            for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*dh;
-            for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*dh;
-
-               const double dx = x - BoxCenter[0];
-               const double dy = y - BoxCenter[1];
-               const double dz = z - BoxCenter[2];
-
-               const double momx = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMX][k][j][i];
-               const double momy = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMY][k][j][i];
-               const double momz = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMZ][k][j][i];
-
-               const double trace = dx * momx + dy * momy + dz * momz;
-
-               OMP_QuadMom_1st[TID][0] += dv * ( 2.0 * dx * momx - (2.0 / 3.0) * trace     );  // xx
-               OMP_QuadMom_1st[TID][1] += dv * (       dx * momy +               dy * momx );  // xy
-               OMP_QuadMom_1st[TID][2] += dv * (       dx * momz +               dz * momx );  // xz
-               OMP_QuadMom_1st[TID][3] += dv * ( 2.0 * dy * momy - (2.0 / 3.0) * trace     );  // yy
-               OMP_QuadMom_1st[TID][4] += dv * (       dy * momz +               dz * momy );  // yz
-               OMP_QuadMom_1st[TID][5] += dv * ( 2.0 * dz * momz - (2.0 / 3.0) * trace     );  // zz
-
-            }}} // i,j,k
-         } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
-      } // for (int lv=0; lv<NLEVEL; lv++)
-   } // OpenMP parallel region
-
-
-// sum over all OpenMP threads
-   for (int b=0; b<NData; b++)
-   for (int t=0; t<NT; t++)
-   {
-      QuadMom_1st[b] += OMP_QuadMom_1st[t][b];
-   }
-
-// free per-thread arrays
-   Aux_DeallocateArray2D( OMP_QuadMom_1st );
-
-
-// collect data from all ranks (in-place reduction)
-#  ifndef SERIAL
-   if ( MPI_Rank == 0 )   MPI_Reduce( MPI_IN_PLACE, QuadMom_1st, NData, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-   else                   MPI_Reduce( QuadMom_1st,  NULL,        NData, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-#  endif // ifndef SERIAL
-
-
-// multiply the coefficient and unit
-   const double UNIT_QuadMom_1st = UNIT_M * UNIT_L * UNIT_V;
-   const double coe = 2.0 * Const_NewtonG / pow( Const_c, 4.0 );
-
-   for (int b=0; b<NData; b++)   QuadMom_1st[b] *= coe * UNIT_QuadMom_1st;
-
-
-// output to file
-   if ( MPI_Rank == 0 )
-   {
-
-      static bool FirstTime = true;
-
-//    output file header
-      if ( FirstTime )
-      {
-         if ( Aux_CheckFileExist(filename_QuadMom_1st) )
-         {
-             Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_QuadMom_1st );
-         }
-         else
-         {
-             FILE *file_QuadMom_1st = fopen( filename_QuadMom_1st, "w" );
-             fprintf( file_QuadMom_1st, "#%14s %7s %16s %16s %16s %16s %16s %16s\n",
-                                        "Time", "Step", "xx", "xy", "xz", "yy", "yz", "zz" );
-             fclose( file_QuadMom_1st );
-         }
-
-         FirstTime = false;
-      }
-
-      FILE *file_QuadMom_1st = fopen( filename_QuadMom_1st, "a" );
-
-                                    fprintf( file_QuadMom_1st, "%15.7e %7ld", Time[0] * UNIT_T, Step );
-      for (int b=0; b<NData; b++)   fprintf( file_QuadMom_1st, "%17.7e", QuadMom_1st[b] );
-                                    fprintf( file_QuadMom_1st, "\n" );
-
-      fclose( file_QuadMom_1st );
-
-   } // if ( MPI_Rank == 0 )
-
-} // FUNCTION : Record_GWSignal_1st()
-
-
-
-//-------------------------------------------------------------------------------------------------------
-// Function    :  Record_GWSignal_2nd
-// Description :  Record the second-order time derivative of mass quadrupole moments
-//                see Nakamura & Oohara (1989), Oohara et al. (1997)
-//-------------------------------------------------------------------------------------------------------
-void Record_GWSignal_2nd()
-{
-
-#  if ( defined GRAVITY  &&  defined GREP )
-
-   const char   filename_QuadMom_2nd[ ] = "Record__QuadMom_2nd";
-   const double BoxCenter           [3] = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-
-// allocate memory for per-thread arrays
-#  ifdef OPENMP
-   const int NT = OMP_NTHREAD;   // number of OpenMP threads
-#  else
-   const int NT = 1;
-#  endif
-
-// in order of xx, xy, xz, yy, yz, zz
-   const int NData   = 6;
-   const int ArrayID = 0;
-   const int NPG_Max = POT_GPU_NPGROUP;
-
-   double QuadMom_2nd[NData] = { 0.0 };
-   double **OMP_QuadMom_2nd  = NULL;
-   Aux_AllocateArray2D( OMP_QuadMom_2nd, NT, NData );
-
-
-// compute and output the spherically summed GW signal if GW_OUTPUT_VERBOSE is enabled
-   Profile_t *QuadMom_Prof[NData];
-   double dr_min, r_max, Center[3];
-   double ***OMP_Data =NULL;
-   long   ***OMP_NCell=NULL;
-
-
-   if ( GW_OUTPUT_VERBOSE )
-   {
-//    use GREP parameters to set up the GW signal profiles
-      switch ( GREP_CENTER_METHOD )
-      {
-         case 1:
-            for (int i=0; i<3; i++)   Center[i] = amr->BoxCenter[i];
-         break;
-
-         default:
-            Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "GREP_CENTER_METHOD", GREP_CENTER_METHOD );
-      }
-
-      dr_min = ( GREP_MINBINSIZE > 0.0 ) ? GREP_MINBINSIZE : amr->dh[MAX_LEVEL];
-      r_max  = ( GREP_MAXRADIUS  > 0.0 ) ? GREP_MAXRADIUS
-                                         : SQRT( SQR( MAX( amr->BoxSize[0] - Center[0], Center[0] ) )
-                                         +       SQR( MAX( amr->BoxSize[1] - Center[1], Center[1] ) )
-                                         +       SQR( MAX( amr->BoxSize[2] - Center[2], Center[2] ) ) );
-
-//    initialize the profile objects
-      for (int p=0; p<NData; p++)
-      {
-
-         QuadMom_Prof[p] = new Profile_t();
-
-//       get the total number of radial bins and the corresponding maximum radius
-         if ( GREP_LOGBIN )
-         {
-            QuadMom_Prof[p]->NBin      = int( log(r_max/dr_min)/log(GREP_LOGBINRATIO) ) + 2;
-            QuadMom_Prof[p]->MaxRadius = dr_min*pow( GREP_LOGBINRATIO, QuadMom_Prof[p]->NBin-1 );
-         }
-
-         else // linear bin
-         {
-            QuadMom_Prof[p]->NBin      = (int)ceil( r_max / dr_min );
-            QuadMom_Prof[p]->MaxRadius = dr_min*QuadMom_Prof[p]->NBin;
-         }
-
-//       record profile parameters
-         for (int d=0; d<3; d++)   QuadMom_Prof[p]->Center[d] = Center[d];
-
-         QuadMom_Prof[p]->LogBin = GREP_LOGBIN;
-
-         if ( GREP_LOGBIN )   QuadMom_Prof[p]->LogBinRatio = GREP_LOGBINRATIO;
-
-         QuadMom_Prof[p]->AllocateMemory();
-
-//       record radial coordinates
-         if ( GREP_LOGBIN )
-            for (int b=0; b<QuadMom_Prof[0]->NBin; b++)   QuadMom_Prof[p]->Radius[b] = dr_min*pow( GREP_LOGBINRATIO, b-0.5 );
-         else
-            for (int b=0; b<QuadMom_Prof[0]->NBin; b++)   QuadMom_Prof[p]->Radius[b] = (b+0.5)*dr_min;
-
-      } // for (int p=0; p<NData; p++)
-
-
-      Aux_AllocateArray3D( OMP_Data,  NData, NT, QuadMom_Prof[0]->NBin );
-      Aux_AllocateArray3D( OMP_NCell, NData, NT, QuadMom_Prof[0]->NBin );
-   }
-
-
-#  pragma omp parallel
-   {
-#     ifdef OPENMP
-      const int TID = omp_get_thread_num();
-#     else
-      const int TID = 0;
-#     endif
-
-//    initialize arrays
-      for (int b=0; b<NData; b++)   OMP_QuadMom_2nd[TID][b] = 0.0;
-
-      if ( GW_OUTPUT_VERBOSE )
-      {
-         for (int p=0; p<NData; p++)
-         for (int b=0; b<QuadMom_Prof[0]->NBin; b++)
-         {
-            OMP_Data  [p][TID][b] = 0.0;
-            OMP_NCell [p][TID][b] = 0;
-         }
-      }
-
-
-      for (int lv=0; lv<NLEVEL; lv++)
-      {
-
-         const double dh = amr->dh[lv];
-         const double dv = CUBE( dh );
-
-         const double TimeNew   = Time[lv];
-         const int    NTotal    = amr->NPatchComma[lv][1] / 8;
-               int   *PID0_List = new int [NTotal];
-
-         for (int t=0; t<NTotal; t++)   PID0_List[t] = 8*t;
-
-
-         for (int Disp=0; Disp<NTotal; Disp+=NPG_Max)
-         {
-
-            int NPG = ( NPG_Max < NTotal-Disp ) ? NPG_Max : NTotal-Disp;
-
-            Prepare_PatchData( lv, TimeNew, &h_Pot_Array_P_Out[ArrayID][0][0][0][0], NULL,
-                               GRA_GHOST_SIZE, NPG, PID0_List+Disp, _POTE, _NONE,
-                               OPT__GRA_INT_SCHEME, INT_NONE, UNIT_PATCH, (GRA_GHOST_SIZE==0)?NSIDE_00:NSIDE_06, false,
-                               OPT__BC_FLU, OPT__BC_POT, -1.0, -1.0, false );
-
-#        pragma omp for schedule( runtime )
-         for (int PID_IDX=0; PID_IDX<8*NPG; PID_IDX++)
-         {
-            int PID = 8*Disp + PID_IDX;
-
-            if ( amr->patch[0][lv][PID]->son != -1 )  continue;
-
-            for (int k=0; k<PS1; k++)  {  const double z = amr->patch[0][lv][PID]->EdgeL[2] + (k+0.5)*dh; const int kk = k + GRA_GHOST_SIZE;
-            for (int j=0; j<PS1; j++)  {  const double y = amr->patch[0][lv][PID]->EdgeL[1] + (j+0.5)*dh; const int jj = j + GRA_GHOST_SIZE;
-            for (int i=0; i<PS1; i++)  {  const double x = amr->patch[0][lv][PID]->EdgeL[0] + (i+0.5)*dh; const int ii = i + GRA_GHOST_SIZE;
-
-               const double dx = x - BoxCenter[0];
-               const double dy = y - BoxCenter[1];
-               const double dz = z - BoxCenter[2];
-               const double r = SQRT( SQR(dx) + SQR(dy) + SQR(dz) );
-
-               const double dens  = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
-               const double momx  = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMX][k][j][i];
-               const double momy  = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMY][k][j][i];
-               const double momz  = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[MOMZ][k][j][i];
-               const double _dens = 1.0 / dens;
-
-               const real (*PrepPotPtr)[GRA_NXT][GRA_NXT] = h_Pot_Array_P_Out[ArrayID][PID_IDX];
-
-               const double dPhi_dx = ( PrepPotPtr[kk  ][jj  ][ii+1] - PrepPotPtr[kk  ][jj  ][ii-1] ) / (2.0 * dh);
-               const double dPhi_dy = ( PrepPotPtr[kk  ][jj+1][ii  ] - PrepPotPtr[kk  ][jj-1][ii  ] ) / (2.0 * dh);
-               const double dPhi_dz = ( PrepPotPtr[kk+1][jj  ][ii  ] - PrepPotPtr[kk-1][jj  ][ii  ] ) / (2.0 * dh);
-
-               const double trace = _dens * ( SQR(momx) + SQR(momy) + SQR(momz) )
-                                  -  dens * ( dx * dPhi_dx + dy * dPhi_dy + dz * dPhi_dz );
-
-               const double QuadMom_xx = dv * ( 2.0 * _dens * momx * momx - (2.0 / 3.0) * trace
-                                              - 2.0 *  dens * dx * dPhi_dx                      );  // xx
-               const double QuadMom_xy = dv * ( 2.0 * _dens * momx * momy
-                                              -        dens * ( dx * dPhi_dy + dy * dPhi_dx )   );  // xy
-               const double QuadMom_xz = dv * ( 2.0 * _dens * momx * momz
-                                              -        dens * ( dx * dPhi_dz + dz * dPhi_dx )   );  // xz
-               const double QuadMom_yy = dv * ( 2.0 * _dens * momy * momy - (2.0 / 3.0) * trace
-                                              - 2.0 *  dens * dy * dPhi_dy                      );  // yy
-               const double QuadMom_yz = dv * ( 2.0 * _dens * momy * momz
-                                              -        dens * ( dy * dPhi_dz + dz * dPhi_dy )   );  // yz
-               const double QuadMom_zz = dv * ( 2.0 * _dens * momz * momz - (2.0 / 3.0) * trace
-                                              - 2.0 *  dens * dz * dPhi_dz                      );  // zz
-
-               OMP_QuadMom_2nd[TID][0] += QuadMom_xx;
-               OMP_QuadMom_2nd[TID][1] += QuadMom_xy;
-               OMP_QuadMom_2nd[TID][2] += QuadMom_xz;
-               OMP_QuadMom_2nd[TID][3] += QuadMom_yy;
-               OMP_QuadMom_2nd[TID][4] += QuadMom_yz;
-               OMP_QuadMom_2nd[TID][5] += QuadMom_zz;
-
-
-//             store the spherically summed profiles
-               if ( GW_OUTPUT_VERBOSE )
-               {
-                  const double dx = x - Center[0];
-                  const double dy = y - Center[1];
-                  const double dz = z - Center[2];
-                  const double r = SQRT( SQR(dx) + SQR(dy) + SQR(dz) );
-
-                  if ( r <= QuadMom_Prof[0]->MaxRadius )
-                  {
-                     const int bin = ( GREP_LOGBIN ) ? (  (r<dr_min) ? 0 : int( log(r/dr_min)/log(GREP_LOGBINRATIO) ) + 1  )
-                                                     : int( r/dr_min );
-//                   prevent from round-off errors
-                     if ( bin >= QuadMom_Prof[0]->NBin )   continue;
-
-//                   store the data only
-                     OMP_Data[0][TID][bin] += QuadMom_xx;
-                     OMP_Data[1][TID][bin] += QuadMom_xy;
-                     OMP_Data[2][TID][bin] += QuadMom_xz;
-                     OMP_Data[3][TID][bin] += QuadMom_yy;
-                     OMP_Data[4][TID][bin] += QuadMom_yz;
-                     OMP_Data[5][TID][bin] += QuadMom_zz;
-
-                     for (int p=0; p<NData; p++)   OMP_NCell [p][TID][bin] ++;
-                  }
-               }
-
-            }}} // i,j,k
-         } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
-#        pragma omp barrier
-         } // for (int Disp=0; Disp<NTotal; Disp+=NPG_Max)
-      } // for (int lv=0; lv<NLEVEL; lv++)
-   } // OpenMP parallel region
-
-
-// sum over all OpenMP threads
-   for (int b=0; b<NData; b++)
-   for (int t=0; t<NT; t++)
-   {
-      QuadMom_2nd[b] += OMP_QuadMom_2nd[t][b];
-   }
-
-// free per-thread arrays
-   Aux_DeallocateArray2D( OMP_QuadMom_2nd );
-
-
-// collect data from all ranks (in-place reduction)
-#  ifndef SERIAL
-   if ( MPI_Rank == 0 )   MPI_Reduce( MPI_IN_PLACE, QuadMom_2nd, NData, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-   else                   MPI_Reduce( QuadMom_2nd,  NULL,        NData, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-#  endif // ifndef SERIAL
-
-
-// multiply the coefficient and unit
-   const double UNIT_QuadMom_2nd = UNIT_M * UNIT_V * UNIT_V;
-   const double coe = 2.0 * Const_NewtonG / pow( Const_c, 4.0 );
-
-   for (int b=0; b<NData; b++)   QuadMom_2nd[b] *= coe * UNIT_QuadMom_2nd;
-
-
-// output to file
-   if ( MPI_Rank == 0 )
-   {
-
-      static bool FirstTime = true;
-
-//    output file header
-      if ( FirstTime )
-      {
-         if ( Aux_CheckFileExist(filename_QuadMom_2nd) )
-         {
-             Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_QuadMom_2nd );
-         }
-         else
-         {
-             FILE *file_QuadMom_2nd = fopen( filename_QuadMom_2nd, "w" );
-             fprintf( file_QuadMom_2nd, "#%14s %7s %16s %16s %16s %16s %16s %16s\n",
-                                        "Time", "Step", "xx", "xy", "xz", "yy", "yz", "zz" );
-             fclose( file_QuadMom_2nd );
-         }
-
-         FirstTime = false;
-      }
-
-      FILE *file_QuadMom_2nd = fopen( filename_QuadMom_2nd, "a" );
-
-                                    fprintf( file_QuadMom_2nd, "%15.7e %7ld", Time[0] * UNIT_T, Step );
-      for (int b=0; b<NData; b++)   fprintf( file_QuadMom_2nd, "%17.7e", QuadMom_2nd[b] );
-                                    fprintf( file_QuadMom_2nd, "\n" );
-
-      fclose( file_QuadMom_2nd );
-
-   } // if ( MPI_Rank == 0 )
-
-
-// postprocess and output the spherically summed profiles
-   if ( GW_OUTPUT_VERBOSE )
-   {
-//    sum over all OpenMP threads
-      for (int p=0; p<NData; p++)
-      {
-         for (int b=0; b<QuadMom_Prof[0]->NBin; b++)
-         {
-            QuadMom_Prof[p]->Data  [b]  = OMP_Data  [p][0][b];
-            QuadMom_Prof[p]->NCell [b]  = OMP_NCell [p][0][b];
-         }
-
-         for (int t=1; t<NT; t++)
-         for (int b=0; b<QuadMom_Prof[0]->NBin; b++)
-         {
-            QuadMom_Prof[p]->Data  [b] += OMP_Data  [p][t][b];
-            QuadMom_Prof[p]->NCell [b] += OMP_NCell [p][t][b];
-         }
-      }
-
-      Aux_DeallocateArray3D( OMP_Data );
-
-//    collect data from all ranks (in-place reduction)
-#     ifndef SERIAL
-      for (int p=0; p<NData; p++)
-      {
-         const int NBin = QuadMom_Prof[p]->NBin;
-
-         if ( MPI_Rank == 0 )
-         {
-            MPI_Reduce( MPI_IN_PLACE,           QuadMom_Prof[p]->Data,  NBin, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-            MPI_Reduce( MPI_IN_PLACE,           QuadMom_Prof[p]->NCell, NBin, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD );
-         }
-
-         else
-         {
-            MPI_Reduce( QuadMom_Prof[p]->Data,  NULL,                   NBin, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD );
-            MPI_Reduce( QuadMom_Prof[p]->NCell, NULL,                   NBin, MPI_LONG,   MPI_SUM, 0, MPI_COMM_WORLD );
-         }
-      }
-#     endif
-
-
-// remove the empty bins
-      for (int b=0; b<QuadMom_Prof[0]->NBin; b++)
-      {
-         if ( QuadMom_Prof[0]->NCell[b] != 0L )   continue;
-
-//       remove consecutive empty bins at the same time for better performance
-         int b_up;
-         for (b_up=b+1; b_up<QuadMom_Prof[0]->NBin; b_up++)
-            if ( QuadMom_Prof[0]->NCell[b_up] != 0L )   break;
-
-         const int stride = b_up - b;
-
-         for (b_up=b+stride; b_up<QuadMom_Prof[0]->NBin; b_up++)
-         {
-            const int b_up_ms = b_up - stride;
-
-            for (int p=0; p<NData; p++)
-            {
-               QuadMom_Prof[p]->Radius[b_up_ms] = QuadMom_Prof[p]->Radius[b_up];
-               QuadMom_Prof[p]->Data  [b_up_ms] = QuadMom_Prof[p]->Data  [b_up];
-               QuadMom_Prof[p]->NCell [b_up_ms] = QuadMom_Prof[p]->NCell [b_up];
-            }
-         }
-
-//       reset the total number of bins
-         for (int p=0; p<NData; p++)   QuadMom_Prof[p]->NBin -= stride;
-      } // for (int b=0; b<QuadMom_Prof->NBin; b++)
-
-
-//    output to file
-      if ( MPI_Rank == 0 )
-      {
-
-         char filename_QuadMom_Prof[50];
-         sprintf( filename_QuadMom_Prof, "Record__QuadMom_Prof_%06ld", Step );
-
-//       file header
-         if ( Aux_CheckFileExist(filename_QuadMom_Prof) )
-         {
-             Aux_Message( stderr, "WARNING : file \"%s\" already exists !!\n", filename_QuadMom_Prof );
-         }
-         else
-         {
-             FILE *file_QuadMom_Prof = fopen( filename_QuadMom_Prof, "w" );
-             fprintf( file_QuadMom_Prof, "# Time : %13.7e,  Step : %8ld\n", Time[0] * UNIT_T, Step );
-             fprintf( file_QuadMom_Prof, "#%4s %8s %15s %15s %15s %15s %15s %15s %15s\n",
-                                         "Bin", "NCell", "Radius", "xx", "xy", "xz", "yy", "yz", "zz" );
-             fclose( file_QuadMom_Prof );
-         }
-
-         FILE *file_QuadMom_Prof = fopen( filename_QuadMom_Prof, "a" );
-
-         for (int b=0; b<QuadMom_Prof[0]->NBin; b++)
-         {
-                                          fprintf( file_QuadMom_Prof, "%5d %8ld %15.7e",
-                                                   b, QuadMom_Prof[0]->NCell[b], QuadMom_Prof[0]->Radius[b] * UNIT_L );
-            for (int p=0; p<NData; p++)   fprintf( file_QuadMom_Prof, "%16.7e",
-                                                   QuadMom_Prof[p]->Data[b] * coe * UNIT_QuadMom_2nd );
-                                          fprintf( file_QuadMom_Prof, "\n" );
-         }
-
-         fclose( file_QuadMom_Prof );
-
-      } // if ( MPI_Rank == 0 )
-
-//    free memory
-      for (int p=0; p<NData; p++)   QuadMom_Prof[p]->FreeMemory();
-   } // if ( GW_OUTPUT_VERBOSE )
-
-#  endif // if ( defined GRAVITY  &&  defined GREP )
-
-} // FUNCTION : Record_GWSignal_2nd()
-
