@@ -220,8 +220,10 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 //                     A_phi = Ab * \bar\omega^2 * (1 - rho / rho_max)^np * (P / P_max)
 //                   where
 //                     \omega^2 = (x - x_center)^2 + y^2
-//                   And
-//                     A_x = -(y / \bar\omega^2) * A_phi;  A_y = (x / \bar\omega^2) * A_phi;  A_z = 0
+//
+//                     A_x = -(y / \bar\omega^2) * A_phi
+//                     A_y =  (x / \bar\omega^2) * A_phi
+//                     A_z =  0
 //
 // Parameter   :  magnetic : Array to store the output magnetic field
 //                x/y/z    : Target physical coordinates
