@@ -206,6 +206,10 @@ struct SymConst_t
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
 
+#  ifdef GREP
+   int    ExtPotGREPNAuxMax;
+#  endif
+
 #  if   ( POT_SCHEME == SOR )
    int    Pot_BlockSize_z;
    int    UsePSolver_10to14;
@@ -631,6 +635,16 @@ struct InputPara_t
    int    Opt__Ck_InterfaceB;
    int    Opt__Ck_DivergenceB;
 #  endif
+
+// GREP
+#  if ( defined(GRAVITY)  && defined(GREP) )
+   int    GREP_Center_Method;
+   int    GREP_MaxIter;
+   int    GREP_LogBin;
+   double GREP_LogBinRatio;
+   double GREP_MaxRadius;
+   double GREP_MinBinSize;
+#endif
 
 // flag tables
    double FlagTable_Rho         [NLEVEL-1];

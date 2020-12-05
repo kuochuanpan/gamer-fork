@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2424)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2425)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -195,6 +195,7 @@ Procedure for outputting new variables:
 //                2422 : 2020/10/26 --> output NEUTRINO_SCHEME
 //                2423 : 2020/11/01 --> output EOS_NTABLE_MAX
 //                2424 : 2020/11/02 --> output NUC_TABLE
+//                2425 : 2020/12/06 --> output GREP runtime parameters and EXT_POT_GREP_NAUX_MAX
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1395,7 +1396,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 
    const time_t CalTime = time( NULL );   // calendar time
 
-   KeyInfo.FormatVersion        = 2424;
+   KeyInfo.FormatVersion        = 2425;
    KeyInfo.Model                = MODEL;
    KeyInfo.NLevel               = NLEVEL;
    KeyInfo.NCompFluid           = NCOMP_FLUID;
@@ -1756,6 +1757,11 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.Gra_BlockSize        = GRA_BLOCK_SIZE;
    SymConst.ExtPotNAuxMax        = EXT_POT_NAUX_MAX;
    SymConst.ExtAccNAuxMax        = EXT_ACC_NAUX_MAX;
+
+#  ifdef GREP
+   SymConst.ExtPotGREPNAuxMax    = EXT_POT_GREP_NAUX_MAX;
+#  endif
+
 
 #  if   ( POT_SCHEME == SOR )
    SymConst.Pot_BlockSize_z      = POT_BLOCK_SIZE_Z;
@@ -2266,6 +2272,16 @@ void FillIn_InputPara( InputPara_t &InputPara )
    InputPara.Opt__Ck_DivergenceB     = OPT__CK_DIVERGENCE_B;
 #  endif
 
+// GREP
+#  if ( defined(GRAVITY)  && defined(GREP) )
+   InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
+   InputPara.GREP_MaxIter            = GREP_MAXITER;
+   InputPara.GREP_LogBin             = GREP_LOGBIN;
+   InputPara.GREP_LogBinRatio        = GREP_LOGBINRATIO;
+   InputPara.GREP_MaxRadius          = GREP_MAXRADIUS;
+   InputPara.GREP_MinBinSize         = GREP_MINBINSIZE;
+#endif
+
 // flag tables
 #  if   ( MODEL == HYDRO )
    const bool Opt__FlagLohner = ( OPT__FLAG_LOHNER_DENS || OPT__FLAG_LOHNER_ENGY || OPT__FLAG_LOHNER_PRES || OPT__FLAG_LOHNER_TEMP );
@@ -2527,6 +2543,9 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Gra_BlockSize",        HOFFSET(SymConst_t,Gra_BlockSize       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtPotNAuxMax",        HOFFSET(SymConst_t,ExtPotNAuxMax       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtAccNAuxMax",        HOFFSET(SymConst_t,ExtAccNAuxMax       ), H5T_NATIVE_INT    );
+#  ifdef GREP
+   H5Tinsert( H5_TypeID, "ExtPotGREPNAuxMax",    HOFFSET(SymConst_t,ExtPotGREPNAuxMax   ), H5T_NATIVE_INT    );
+#  endif
 #  if   ( POT_SCHEME == SOR )
    H5Tinsert( H5_TypeID, "Pot_BlockSize_z",      HOFFSET(SymConst_t,Pot_BlockSize_z     ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "UsePSolver_10to14",    HOFFSET(SymConst_t,UsePSolver_10to14   ), H5T_NATIVE_INT    );
@@ -3023,6 +3042,15 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Opt__Ck_InterfaceB",      HOFFSET(InputPara_t,Opt__Ck_InterfaceB     ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Opt__Ck_DivergenceB",     HOFFSET(InputPara_t,Opt__Ck_DivergenceB    ), H5T_NATIVE_INT     );
 #  endif
+// GREP
+#  if ( defined(GRAVITY)  && defined(GREP) )
+   H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBinRatio",        HOFFSET(InputPara_t,GREP_LogBinRatio       ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MaxRadius",          HOFFSET(InputPara_t,GREP_MaxRadius         ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MinBinSize",         HOFFSET(InputPara_t,GREP_MinBinSize        ), H5T_NATIVE_DOUBLE  );
+#endif
 
 // flag tables
 #  if ( NLEVEL > 1 )
