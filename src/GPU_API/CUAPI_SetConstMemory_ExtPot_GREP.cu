@@ -15,7 +15,7 @@ extern Profile_t *Phi_eff [NLEVEL][2];
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  CUAPI_SetConstMemory_ExtPot_GREP
-// Description :  Set the constant memory variables on GPU used by GREP
+// Description :  Set the constant memory variables on GPU for GREP
 //
 // Note        :  1. Adopt the suggested approach for CUDA version >= 5.0
 //                2. Invoked by Poi_UserWorkBeforePoisson_GREP()

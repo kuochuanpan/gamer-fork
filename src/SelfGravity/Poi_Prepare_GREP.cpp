@@ -25,7 +25,9 @@ double GREPSgTime [NLEVEL][2];
 double GREP_Prof_Center   [3];
 
 
-// temporary switch for test different approaches: do interpolation in ComputeProfile() or in stored profiles
+// temporary switch for test different schemes for temporal interpolation:
+//   True : apply temporal interpolation in Aux_ComputeProfile()
+//   False: apply temporal interpolation when combining the stored profiles
 static bool Do_TEMPINT_in_ComputeProfile = true;
 
 
@@ -37,7 +39,7 @@ static bool Do_TEMPINT_in_ComputeProfile = true;
 //
 // Note        :  1. Enabled if macro GRAVITY and GREP are set
 //                2. Invoked by Poi_UserWorkBeforePoisson_GREP()
-//                3. The total averaged profile is stored at QUANT[NLEVEL]
+//                3. The GREP evalutaed at each level is stored at Phi_eff[level]
 //-------------------------------------------------------------------------------------------------------
 void Poi_Prepare_GREP( const double Time, const int lv )
 {
@@ -80,7 +82,8 @@ void Poi_Prepare_GREP( const double Time, const int lv )
 // Function    :  Update_GREP_Profile
 // Description :  Update the spherical-averaged profiles
 //
-// Note        :  1. The contribution from non-leaf patches on level = lv is stored QUANT[NLEVEL]
+// Note        :  1. The contribution from     leaf patches on level = lv is stored QUANT[    lv]
+//                                         non-leaf patches on level = lv is stored QUANT[NLEVEL]
 //                2. Apply temporal interpolation in Aux_ComputeProfile if PrepTime < 0
 //-------------------------------------------------------------------------------------------------------
 static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTime )
@@ -104,7 +107,7 @@ static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTi
                              GREP_LOGBIN,   GREP_LOGBINRATIO, false, TVar, 4, lv, -1, PATCH_LEAF,    PrepTime );
 
 //###CHECK: does the refinment correction affect leaf patch? If no, this part is not necesary.
-//    update the USG profile from leaf patches on level = lv to account the corrections from finer level
+//    update the USG profile from leaf patches on level = lv to account the correction from finer level
       if ( ( lv < TOP_LEVEL )  &&  ( GREPSgTime[lv][1 - Sg] >= 0 ) )
       {
          int               Sg_USG    = 1 - Sg;
@@ -164,7 +167,8 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
 
    else
    {
-//    combine contributions from leaf patches on level <= lv with temporal interpolation and non-leaf patches on level = lv
+//    combine contributions from leaf patches on level <= lv with temporal interpolation,
+//    and non-leaf patches on level = lv
       for (int level=0; level<=lv; level++)
       {
 //       temporal interpolation parameters
@@ -179,7 +183,8 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
          Profile_t *Prof_Leaf_IntT = ( FluIntTime ) ? Prof[level][FluSg_IntT] : NULL;
 
 
-//CHECK: Are the radii of each bin the same in Prof_Leaf and Prof_Leaf_IntT, if the center is not fixed with time?
+//REVISE: If the profile center is allowed to change with time in future,
+//        the number of bin and its location could be different between Prof_Leaf and Prof_Leaf_IntT
          for (int b=0; b<Prof_Leaf->NBin; b++)
          {
             if ( Prof_Leaf->NCell[b] == 0L )  continue;

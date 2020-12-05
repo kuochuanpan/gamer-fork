@@ -7,7 +7,7 @@
 
 //-------------------------------------------------------------------------------------------------------
 // Function    :  CPU_ComputeGREP
-// Description :  Compute the effective GR potential
+// Description :  Construct the effective GR potential
 //
 // Note        :  1. Enabled if macro GRAVITY and GREP are set
 //                2. Invoked by Poi_UserWorkBeforePoisson_GREP()
@@ -128,7 +128,7 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
                       Mass_NW[i], Mass_TOV[i], Mass_TOV_USG[i],
                       FABS( Mass_TOV_USG[i] - Mass_TOV[i] ) / Mass_TOV[i], Gamma_TOV[i]);
 
-            Aux_Error( ERROR_INFO, "Too many iterations in computing effective potential\n" );
+            Aux_Error( ERROR_INFO, "Too many iterations in constructing effective potential\n" );
          }
       }
 

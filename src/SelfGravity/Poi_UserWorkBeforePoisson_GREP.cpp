@@ -42,11 +42,11 @@ void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv )
    Poi_Prepare_GREP( Time, lv );
 
 
-// reset the auxiliary arrays for GREP
+// update the auxiliary arrays for GREP
    SetExtPotAuxArray_GREP( ExtPot_AuxArray );
 
 
-// set up the CPU pointer
+// update the CPU pointer
    const int Lv   = GREP_LvUpdate;
    const int FaLv = ( Lv > 0 ) ? Lv - 1 : Lv;
 
@@ -68,7 +68,7 @@ void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv )
    h_GREP_FaLv_NBin_Old   = Phi_FaLv_Old->NBin;
 
 
-// initialize the auxiliary GPU arrays
+// update the auxiliary GPU arrays
 #  ifdef GPU
    CUAPI_SetConstMemory_ExtAccPot();
    CUAPI_SetConstMemory_ExtPot_GREP();
