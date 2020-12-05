@@ -336,7 +336,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Init_TestProb_Hydro_NeutronStar_MigrationTest
+// Function    :  Init_TestProb_Hydro_GREP_MigrationTest
 // Description :  Test problem initializer
 //
 // Note        :  None
@@ -345,7 +345,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 //
 // Return      :  None
 //-------------------------------------------------------------------------------------------------------
-void Init_TestProb_Hydro_NeutronStar_MigrationTest()
+void Init_TestProb_Hydro_GREP_MigrationTest()
 {
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
@@ -397,7 +397,7 @@ void Init_TestProb_Hydro_NeutronStar_MigrationTest()
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
 
-} // FUNCTION : Init_TestProb_Hydro_NeutronStar_MigrationTest
+} // FUNCTION : Init_TestProb_Hydro_GREP_MigrationTest
 
 
 
