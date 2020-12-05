@@ -42,6 +42,7 @@ TESTPROB_ID                   0           # test problem ID [0]
                                           #   14: HYDRO MHD Orszag-Tang vortex (+MHD)
                                           #   15: HYDRO MHD linear wave (+MHD)
                                           #   16: HYDRO Jeans instability (+GRAVITY) [+MHD]
+                                          #   20: HYDRO GREP Migration Test (+GRAVITY & GREP) [+MHD]
                                           # 1000: ELBDM external potential (+GRAVITY)
 
 
@@ -319,3 +320,16 @@ OPT__CK_MEMFREE               1.0         # check the free memory in GB (0=off, 
 OPT__CK_PARTICLE              0           # check the particle allocation [0]
 OPT__CK_INTERFACE_B           0           # check the consistency of patch interface B field [0] ##MHD ONLY##
 OPT__CK_DIVERGENCE_B          0           # check the divergence-free constraint on B field (0=off, 1=on, 2=on+verbose) [0] ##MHD ONLY##
+
+
+# GREP
+GREP_CENTER_METHOD            1              # center of radial profile                                    [1]
+                                             # (1=box center)
+GREP_MAXITER                  1000           # number of iteration for constructing mass_TOV and Gamma_TOV [1000]
+GREP_LOGBIN                   1              # log/linear bins                                             [true]
+                                             # (true=logarithmic, false=linear)
+GREP_LOGBINRATIO              1.0025         # ratio of adjacent log bins                                  [1.25]
+GREP_MAXRADIUS               -1.0            # maximum radius in the radial profile                        [-1.0]
+                                             # (<0=distance of the farthest vertex to the center)
+GREP_MINBINSIZE              -1.0            # minimum bin size                                            [-1.0]
+                                             # (<0=use amr->dh[MAX_LEVEL])
