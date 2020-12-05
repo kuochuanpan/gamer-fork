@@ -19,14 +19,14 @@ extern double GREP_Prof_MinBinSize;
 
 
 
-//--------    -----------------------------------------------------------------------------------------------
+//-------------------------------------------------------------------------------------------------------
 // Function    :  Init_GREP
 // Description :  Initialize the GREP Profiles_t objects and parameters
 //-------------------------------------------------------------------------------------------------------
 void Init_GREP()
 {
 
-// 1. intialize the GREP profiles
+// (1) intialize the GREP profiles
    for (int Sg=0; Sg<2; Sg++)
    for (int lv=0; lv<=NLEVEL; lv++)
    {
@@ -40,7 +40,7 @@ void Init_GREP()
    }
 
 
-// 2. initialize GREP Sg and SgTime
+// (2) initialize GREP Sg and SgTime
    for (int lv=0; lv<NLEVEL; lv++)
    {
       GREPSg[lv] = 0;
@@ -48,7 +48,7 @@ void Init_GREP()
    }
 
 
-// initialize the GREP parameters
+// (3) initialize the GREP parameters
    switch ( GREP_CENTER_METHOD )
    {
       case 1:
