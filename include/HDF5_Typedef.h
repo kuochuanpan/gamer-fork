@@ -637,7 +637,7 @@ struct InputPara_t
 #  endif
 
 // GREP
-#  if ( defined(GRAVITY)  && defined(GREP) )
+#  if ( defined GRAVITY  &&  defined GREP )
    int    GREP_Center_Method;
    int    GREP_MaxIter;
    int    GREP_LogBin;

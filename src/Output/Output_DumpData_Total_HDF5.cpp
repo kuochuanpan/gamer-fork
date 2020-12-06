@@ -2273,7 +2273,7 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
 
 // GREP
-#  if ( defined(GRAVITY)  && defined(GREP) )
+#  if ( defined GRAVITY  &&  defined GREP )
    InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
    InputPara.GREP_MaxIter            = GREP_MAXITER;
    InputPara.GREP_LogBin             = GREP_LOGBIN;
@@ -3043,7 +3043,7 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Opt__Ck_DivergenceB",     HOFFSET(InputPara_t,Opt__Ck_DivergenceB    ), H5T_NATIVE_INT     );
 #  endif
 // GREP
-#  if ( defined(GRAVITY)  && defined(GREP) )
+#  if ( defined GRAVITY  &&  defined GREP )
    H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );

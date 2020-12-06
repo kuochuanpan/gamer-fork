@@ -2025,7 +2025,7 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
 #  endif
 
 // GREP
-#  if ( defined(GRAVITY)  && defined(GREP) )
+#  if ( defined GRAVITY  &&  defined GREP )
    LoadField( "GREP_Center_Method",      &RS.GREP_Center_Method,      SID, TID, NonFatal, &RT.GREP_Center_Method,       1, NonFatal );
    LoadField( "GREP_MaxIter",            &RS.GREP_MaxIter,            SID, TID, NonFatal, &RT.GREP_MaxIter,             1, NonFatal );
    LoadField( "GREP_LogBin",             &RS.GREP_LogBin,             SID, TID, NonFatal, &RT.GREP_LogBin,              1, NonFatal );
