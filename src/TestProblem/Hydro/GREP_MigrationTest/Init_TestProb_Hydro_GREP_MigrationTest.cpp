@@ -3,26 +3,25 @@
 
 
 // problem-specific global variables
-// =======================================================================================
+// ===============================================================================================
 // Parameters for a toroidal B field
 #ifdef MHD
-static double  Bfield_Ab;                       // magnetic field strength                            [1e15]
-static double  Bfield_np;                       // dependence on the density                          [0.0]
+static double  Bfield_Ab;                       // magnetic field strength   [1e15]
+static double  Bfield_np;                       // dependence on the density [0.0]
 #endif
 
 // Parameters for initial condition
 static double *NeutronStar_Prof = NULL;         // radial progenitor model
 static int     NeutronStar_NBin;                // number of radial bins in the progenitor model
 static char    NeutronStar_ICFile[MAX_STRING];  // Filename of initial condition
-// =======================================================================================
+// ===============================================================================================
 
-static void   LoadICTable();
-static void   Record_MigrationTest();
-static void   Record_CentralDens();
+
+static void Record_CentralDens();
 
 #ifdef GREP
-extern void   Init_ExtPot_GREP();
-extern void   Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv );
+extern void Init_ExtPot_GREP();
+extern void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv );
 #endif
 
 
@@ -299,58 +298,6 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Init_TestProb_Hydro_GREP_MigrationTest
-// Description :  Test problem initializer
-//
-// Note        :  None
-//
-// Parameter   :  None
-//
-// Return      :  None
-//-------------------------------------------------------------------------------------------------------
-void Init_TestProb_Hydro_GREP_MigrationTest()
-{
-
-   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
-
-
-// validate the compilation flags and runtime parameters
-   Validate();
-
-
-#  if ( MODEL == HYDRO )
-// set the problem-specific runtime parameters
-   SetParameter();
-
-// Load IC Table
-   if ( OPT__INIT != INIT_BY_RESTART )   LoadICTable();
-
-// procedure to enable a problem-specific function:
-// 1. define a user-specified function (example functions are given below)
-// 2. declare its function prototype on the top of this file
-// 3. set the corresponding function pointer below to the new problem-specific function
-// 4. enable the corresponding runtime option in "Input__Parameter"
-//    --> for instance, enable OPT__OUTPUT_USER for Output_User_Ptr
-   Init_Function_User_Ptr         = SetGridIC;
-#  ifdef MHD
-   Init_Function_BField_User_Ptr  = SetBFieldIC;
-#  endif
-   Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
-   Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
-#  ifdef GREP
-   Init_ExtPot_Ptr                = Init_ExtPot_GREP;
-   Poi_UserWorkBeforePoisson_Ptr  = Poi_UserWorkBeforePoisson_GREP;
-#  endif
-#  endif // #if ( MODEL == HYDRO )
-
-
-   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
-
-} // FUNCTION : Init_TestProb_Hydro_GREP_MigrationTest
-
-
-
-//-------------------------------------------------------------------------------------------------------
 // Function    :  LoadICTable
 // Description :  Load data from the file assigned to 'NeutronStar_ICFile' in Input__TestProb
 //-------------------------------------------------------------------------------------------------------
@@ -381,6 +328,23 @@ void LoadICTable()
    }
 
 } // FUNCTION : LoadICTable()
+
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    :  End_GREP_MigrationTest
+// Description :  Free memory before terminating the program
+//
+// Note        :  1. Linked to the function pointer "End_User_Ptr" to replace "End_User()"
+//
+// Parameter   :  None
+//-------------------------------------------------------------------------------------------------------
+void End_GREP_MigrationTest()
+{
+
+   delete [] NeutronStar_Prof;
+
+} // FUNCTION : End_GREP_MigrationTest
 
 
 
@@ -530,3 +494,56 @@ void Record_CentralDens()
    } // if ( MPI_Rank == 0 )
 
 } // FUNCTION : Record_CentralDens()
+
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Init_TestProb_Hydro_GREP_MigrationTest
+// Description :  Test problem initializer
+//
+// Note        :  None
+//
+// Parameter   :  None
+//
+// Return      :  None
+//-------------------------------------------------------------------------------------------------------
+void Init_TestProb_Hydro_GREP_MigrationTest()
+{
+
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
+
+
+// validate the compilation flags and runtime parameters
+   Validate();
+
+
+#  if ( MODEL == HYDRO )
+// set the problem-specific runtime parameters
+   SetParameter();
+
+// Load IC Table
+   if ( OPT__INIT != INIT_BY_RESTART )   LoadICTable();
+
+// procedure to enable a problem-specific function:
+// 1. define a user-specified function (example functions are given below)
+// 2. declare its function prototype on the top of this file
+// 3. set the corresponding function pointer below to the new problem-specific function
+// 4. enable the corresponding runtime option in "Input__Parameter"
+//    --> for instance, enable OPT__OUTPUT_USER for Output_User_Ptr
+   Init_Function_User_Ptr         = SetGridIC;
+#  ifdef MHD
+   Init_Function_BField_User_Ptr  = SetBFieldIC;
+#  endif
+   Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
+   Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
+#  ifdef GREP
+   Init_ExtPot_Ptr                = Init_ExtPot_GREP;
+   Poi_UserWorkBeforePoisson_Ptr  = Poi_UserWorkBeforePoisson_GREP;
+#  endif
+   End_User_Ptr                   = End_GREP_MigrationTest;
+#  endif // #if ( MODEL == HYDRO )
+
+
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
+
+} // FUNCTION : Init_TestProb_Hydro_GREP_MigrationTest
