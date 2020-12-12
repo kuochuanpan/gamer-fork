@@ -230,7 +230,7 @@ char NUC_TABLE[MAX_STRING];
 #endif
 #endif // HYDRO
 
-// (2-11) GREP
+// (2-10) GREP
 #if ( defined GRAVITY  &&  defined GREP )
 int    GREP_CENTER_METHOD;
 int    GREP_MAXITER;
