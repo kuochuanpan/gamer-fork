@@ -375,7 +375,8 @@ void Poi_Prepare_Rho( const int lv, const double PrepTime, real h_Rho_Array_P[][
 void Poi_StorePotWithGhostZone( const int lv, const int PotSg, const bool AllPatch );
 #endif
 #ifdef GREP
-void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve, Profile_t *Phi_eff );
+void CPU_ComputeGREP( const Profile_t *DensAve, const Profile_t *EngyAve, const Profile_t *VrAve,
+                      const Profile_t *PresAve, Profile_t *Phi_eff );
 #endif // #ifdef GREP
 #endif // #ifdef GRAVITY
 

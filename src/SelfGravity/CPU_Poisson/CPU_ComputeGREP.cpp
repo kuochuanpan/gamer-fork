@@ -13,8 +13,8 @@
 //                2. Invoked by Poi_UserWorkBeforePoisson_GREP()
 //                3. The profile Phi_eff stores the value of -Phi_NW(r) + Phi_TOV(r) at the bin center
 //-------------------------------------------------------------------------------------------------------
-void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, Profile_t *PresAve,
-                      Profile_t *Phi_eff )
+void CPU_ComputeGREP( const Profile_t *DensAve, const Profile_t *EngyAve, const Profile_t *VrAve,
+                      const Profile_t *PresAve, Profile_t *Phi_eff )
 {
 
    const double c2          = SQR( Const_c/UNIT_V );
@@ -27,13 +27,15 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
    double *Radius    = DensAve->Radius;
    double  MaxRadius = DensAve->MaxRadius;
 
-   double  Mass_NW      [NBin];  // Newtonian mass for \bar_Phi(r)     in Eq. (7) in Marek+ (2006)
-   double  Mass_TOV     [NBin];  // TOV mass       for \bar_Phi(r)_TOV in Eq. (7) in Marek+ (2006)
-   double  Mass_TOV_USG [NBin];  // TOV mass before update
-   double  Dens_TOV     [NBin];  // empirical TOV density                 Eq. (4) in Marek+ (2006)
-   double  Gamma_TOV    [NBin];  // metric function                       Eq. (5) in Marek+ (2006)
-   double  dVol         [NBin];
-   double  EdgeL        [NBin];
+   double *Mass_NW, *Mass_TOV, *Mass_TOV_USG, *Dens_TOV, *Gamma_TOV, *dVol, *EdgeL;
+
+   Mass_NW      = new double [NBin];  // Newtonian mass for \bar_Phi(r)     in Eq. (7) in Marek+ (2006)
+   Mass_TOV     = new double [NBin];  // TOV mass       for \bar_Phi(r)_TOV in Eq. (7) in Marek+ (2006)
+   Mass_TOV_USG = new double [NBin];  // TOV mass before update
+   Dens_TOV     = new double [NBin];  // empirical TOV density                 Eq. (4) in Marek+ (2006)
+   Gamma_TOV    = new double [NBin];  // metric function                       Eq. (5) in Marek+ (2006)
+   dVol         = new double [NBin];
+   EdgeL        = new double [NBin];
 
    for (int i=0; i<NBin;   i++)   Mass_TOV_USG[i] = 0.0;
    for (int i=0; i<NBin;   i++)   Gamma_TOV   [i] = 1.0;
@@ -114,7 +116,6 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
             printf("MaxRadius          : %13.7e\n",               DensAve->MaxRadius);
             printf("LogBin             : %d\n",                   DensAve->LogBin);
             printf("LogBinRatio        : %13.7e\n",               DensAve->LogBinRatio);
-            printf("Num of Iterations  : %d\n",                   GREP_MAXITER - NIter);
             printf("NBin               : %d\n",                   NBin);
             printf("============================================================\n");
             printf("%5s %9s %10s %10s %10s %10s %10s %10s %10s %10s %10s %10s\n",
@@ -195,6 +196,16 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
                 Mass_NW[i], Mass_TOV[i], Gamma_TOV[i], Phi_eff->Data[i]);
    }
 #endif
+
+
+// free memory
+   delete [] Mass_NW;
+   delete [] Mass_TOV;
+   delete [] Mass_TOV_USG;
+   delete [] Dens_TOV;
+   delete [] Gamma_TOV;
+   delete [] dVol;
+   delete [] EdgeL;
 
 } // FUNCTION : CPU_ComputeGREP
 
