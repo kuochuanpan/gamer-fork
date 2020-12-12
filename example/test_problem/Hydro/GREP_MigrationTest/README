@@ -7,7 +7,7 @@ Default setup:
 ========================================
 1. Enable external potential
    --> OPT__EXT_POT = 1
-2. Maximum refinement level (MAX_LEVEL) = 3 or update the Input_Flag_Rho
+2. Maximum refinement level (MAX_LEVEL) = 3 or modify the Input_Flag_Rho
 
 Note:
 ========================================
@@ -21,7 +21,11 @@ Note:
       Init_ExtPot_Ptr                = Init_ExtPot_GREP;
       Poi_UserWorkBeforePoisson_Ptr  = Poi_UserWorkBeforePoisson_GREP;
 
-3. If `GREP_DEBUG` compilation flag is enabled, additional information will be output
+   --> free the Profile_t objects by calling End_MemFree_GREP(), e.g.,
+
+      End_User_Ptr                   = End_MemFree_GREP;
+
+3. If `GAMER_DEBUG` compilation flag is enabled, additional information will be output
    to standard output for debugging the constructed GREP
    --> see src/SelfGravity/CPU_Poisson/CPU_ComputeGREP.cpp for detail
 
