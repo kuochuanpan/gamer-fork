@@ -1231,7 +1231,7 @@ void Aux_TakeNote()
 
 
 //    record the parameters of GREP
-#     if ( MODEL == HYDRO  &&  defined GRAVITY  &&  defined GREP )
+#     if ( MODEL == HYDRO  &&  defined GREP )
       fprintf( Note, "Parameters of GREP\n" );
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "GREP_CENTER_METHOD              %d\n",      GREP_CENTER_METHOD );

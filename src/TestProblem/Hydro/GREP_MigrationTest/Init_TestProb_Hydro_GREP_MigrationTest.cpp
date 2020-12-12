@@ -20,7 +20,7 @@ static void   LoadICTable();
 static void   Record_MigrationTest();
 static void   Record_CentralDens();
 
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 extern void   Init_ExtPot_GREP();
 extern void   Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv );
 #endif
@@ -337,10 +337,10 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
 #  endif
    Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
    Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
-#if ( defined GRAVITY  &&  defined GREP )
+#  ifdef GREP
    Init_ExtPot_Ptr                = Init_ExtPot_GREP;
    Poi_UserWorkBeforePoisson_Ptr  = Poi_UserWorkBeforePoisson_GREP;
-#endif
+#  endif
 #  endif // #if ( MODEL == HYDRO )
 
 

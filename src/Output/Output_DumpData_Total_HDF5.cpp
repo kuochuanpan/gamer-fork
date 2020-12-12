@@ -2279,14 +2279,14 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
 
 // GREP
-#  if ( defined GRAVITY  &&  defined GREP )
+#  ifdef GREP
    InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
    InputPara.GREP_MaxIter            = GREP_MAXITER;
    InputPara.GREP_LogBin             = GREP_LOGBIN;
    InputPara.GREP_LogBinRatio        = GREP_LOGBINRATIO;
    InputPara.GREP_MaxRadius          = GREP_MAXRADIUS;
    InputPara.GREP_MinBinSize         = GREP_MINBINSIZE;
-#endif
+#  endif
 
 // flag tables
 #  if   ( MODEL == HYDRO )
@@ -3050,14 +3050,14 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Opt__Ck_DivergenceB",     HOFFSET(InputPara_t,Opt__Ck_DivergenceB    ), H5T_NATIVE_INT     );
 #  endif
 // GREP
-#  if ( defined GRAVITY  &&  defined GREP )
+#  ifdef GREP
    H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "GREP_LogBinRatio",        HOFFSET(InputPara_t,GREP_LogBinRatio       ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "GREP_MaxRadius",          HOFFSET(InputPara_t,GREP_MaxRadius         ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "GREP_MinBinSize",         HOFFSET(InputPara_t,GREP_MinBinSize        ), H5T_NATIVE_DOUBLE  );
-#endif
+#  endif
 
 // flag tables
 #  if ( NLEVEL > 1 )

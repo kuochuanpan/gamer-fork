@@ -679,8 +679,8 @@
 
 
 // size of GREP profile
-#if ( defined GRAVITY  &&  defined GREP )
-#define EXT_POT_GREP_NAUX_MAX    4000
+#ifdef GREP
+#  define EXT_POT_GREP_NAUX_MAX  4000
 #endif
 
 

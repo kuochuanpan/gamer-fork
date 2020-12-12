@@ -638,14 +638,14 @@ struct InputPara_t
 #  endif
 
 // GREP
-#  if ( defined GRAVITY  &&  defined GREP )
+#  ifdef GREP
    int    GREP_Center_Method;
    int    GREP_MaxIter;
    int    GREP_LogBin;
    double GREP_LogBinRatio;
    double GREP_MaxRadius;
    double GREP_MinBinSize;
-#endif
+#  endif
 
 // flag tables
    double FlagTable_Rho         [NLEVEL-1];

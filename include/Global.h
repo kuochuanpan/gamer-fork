@@ -250,7 +250,7 @@ extern char NUC_TABLE[MAX_STRING];
 
 // (2-10) GREP
 // =======================================================================================================
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 extern int    GREP_CENTER_METHOD;
 extern int    GREP_MAXITER;
 extern bool   GREP_LOGBIN;

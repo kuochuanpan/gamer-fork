@@ -28,10 +28,10 @@ SET_GLOBAL( __constant__ real c_Mp[3] );
 SET_GLOBAL( __constant__ real c_Mm[3] );
 #endif
 
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 SET_GLOBAL( __constant__ double c_GREP_Lv_Data_New  [EXT_POT_GREP_NAUX_MAX] );
 SET_GLOBAL( __constant__ double c_GREP_Lv_Radius_New[EXT_POT_GREP_NAUX_MAX] );
-SET_GLOBAL( __constant__ int    c_GREP_Lv_NBin_New );
+SET_GLOBAL( __constant__ int    c_GREP_Lv_NBin_New                          );
 #endif
 
 
