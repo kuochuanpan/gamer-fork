@@ -22,6 +22,7 @@ static void Record_CentralDens();
 #ifdef GREP
 extern void Init_ExtPot_GREP();
 extern void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv );
+extern void End_MemFree_GREP();
 #endif
 
 
@@ -343,6 +344,10 @@ void End_GREP_MigrationTest()
 {
 
    delete [] NeutronStar_Prof;
+
+#  ifdef GREP
+   End_MemFree_GREP();
+#  endif
 
 } // FUNCTION : End_GREP_MigrationTest
 
