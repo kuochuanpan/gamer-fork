@@ -13,11 +13,11 @@
 
 
 #ifndef __CUDACC__
-extern Profile_t *DensAve    [NLEVEL+1][2];
-extern Profile_t *EngyAve    [NLEVEL+1][2];
-extern Profile_t *VrAve      [NLEVEL+1][2];
-extern Profile_t *PresAve    [NLEVEL+1][2];
-extern Profile_t *Phi_eff    [NLEVEL  ][2];
+extern Profile_t *DensAve [NLEVEL+1][2];
+extern Profile_t *EngyAve [NLEVEL+1][2];
+extern Profile_t *VrAve   [NLEVEL+1][2];
+extern Profile_t *PresAve [NLEVEL+1][2];
+extern Profile_t *Phi_eff [NLEVEL  ][2];
 
 extern int    GREP_LvUpdate;
 extern int    GREPSg     [NLEVEL];
