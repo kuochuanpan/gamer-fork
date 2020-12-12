@@ -478,7 +478,7 @@ CPU_FILE    += CPU_EoS_Gamma.cpp  CPU_EoS_User_Template.cpp  CPU_EoS_Isothermal.
                findenergy.cpp  readtable.cpp
 
 CPU_FILE    += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
-               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp \
+               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp
 
 vpath %.cu                  Model_Hydro/GPU_Hydro  EoS  EoS/Gamma  EoS/User_Template  EoS/Isothermal  EoS/Nuclear
 vpath %.cpp    Model_Hydro  Model_Hydro/CPU_Hydro  EoS  EoS/Gamma  EoS/User_Template  EoS/Isothermal  EoS/Nuclear
@@ -552,8 +552,7 @@ CPU_FILE    += Init_FFTW.cpp  Gra_Close.cpp  Gra_Prepare_Flu.cpp  Gra_Prepare_Po
                Init_Set_Default_MG_Parameter.cpp  Poi_GetAverageDensity.cpp  Poi_AddExtraMassForGravity.cpp \
                Poi_BoundaryCondition_Extrapolation.cpp  Gra_Prepare_USG.cpp  Poi_StorePotWithGhostZone.cpp \
                Init_ExtAccPot.cpp  CPU_ExtAcc_PointMass.cpp  CPU_ExtPot_PointMass.cpp \
-               Poi_UserWorkBeforePoisson.cpp \
-               Init_GREP.cpp  Poi_Prepare_GREP.cpp  Poi_UserWorkBeforePoisson_GREP.cpp
+               Poi_UserWorkBeforePoisson.cpp  Poi_UserWorkBeforePoisson_GREP.cpp
 
 vpath %.cu     SelfGravity/GPU_Poisson  SelfGravity/GPU_Gravity
 vpath %.cpp    SelfGravity/CPU_Poisson  SelfGravity/CPU_Gravity  SelfGravity

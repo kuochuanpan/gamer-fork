@@ -2,6 +2,8 @@
 #ifdef __CUDACC__
 #include "CUAPI.h"
 #include "CUDA_ConstMemory.h"
+#else
+#include "GAMER.h"
 #endif
 
 #if ( defined GRAVITY  &&  defined GREP )
@@ -11,10 +13,18 @@
 
 
 #ifndef __CUDACC__
+extern Profile_t *DensAve    [NLEVEL+1][2];
+extern Profile_t *EngyAve    [NLEVEL+1][2];
+extern Profile_t *VrAve      [NLEVEL+1][2];
+extern Profile_t *PresAve    [NLEVEL+1][2];
+extern Profile_t *Phi_eff    [NLEVEL  ][2];
+
 extern int    GREP_LvUpdate;
 extern int    GREPSg     [NLEVEL];
 extern double GREPSgTime [NLEVEL][2];
 extern double GREP_Prof_Center   [3];
+extern double GREP_Prof_MaxRadius;
+extern double GREP_Prof_MinBinSize;
 
 double *h_GREP_Lv_Data_New;
 double *h_GREP_FaLv_Data_New;
@@ -29,12 +39,77 @@ int     h_GREP_FaLv_NBin_Old;
 
 
 
-
-// =================================
-// I. Set an auxiliary array
-// =================================
+// =========================================================
+// I. Initialize the GREP Profile_t objects and parameters
+// =========================================================
 
 #ifndef __CUDACC__
+//-------------------------------------------------------------------------------------------------------
+// Function    :  Init_GREP
+// Description :  Initialize the GREP Profile_t objects and parameters
+//
+// Note        :  1. DensAve, EngyAve, VrAve, and PresAve
+//                                        : Profile_t objects storing the spherical-averaged
+//                                          density, energy, radial velocity, and pressure.
+//                2. Phi_eff              : Profile_t objects storing the GR effective potential
+//                3. GREPSg               : Sandglass of the current profile data [0/1]
+//                4. GREPSgTime           : Physical time of FluSg
+//                3. GREP_Prof_MinBinSize : Minimum bin size used to initialize the Profile_t object
+//                3. GREP_Prof_MaxRadius  : Maximum radius   used to initialize the Profile_t object
+//-------------------------------------------------------------------------------------------------------
+void Init_GREP()
+{
+
+// (1) intialize the GREP profiles
+   for (int Sg=0; Sg<2; Sg++)
+   for (int lv=0; lv<=NLEVEL; lv++)
+   {
+      DensAve [lv][Sg] = new Profile_t();
+      EngyAve [lv][Sg] = new Profile_t();
+      VrAve   [lv][Sg] = new Profile_t();
+      PresAve [lv][Sg] = new Profile_t();
+
+      if ( lv < NLEVEL )
+      Phi_eff [lv][Sg] = new Profile_t();
+   }
+
+
+// (2) initialize GREP Sg and SgTime
+   for (int lv=0; lv<NLEVEL; lv++)
+   {
+//    GREPSg must be initialized to [0/1]. Otherwise, it will fail when determining Sg in Poi_Prepare_GREP()
+      GREPSg[lv] = 0;
+      for (int Sg=0; Sg<2; Sg++)   GREPSgTime[lv][Sg] = -__FLT_MAX__;
+   }
+
+
+// (3) initialize the GREP parameters
+   switch ( GREP_CENTER_METHOD )
+   {
+      case 1:
+         for (int i=0; i<3; i++)   GREP_Prof_Center[i] = amr->BoxCenter[i];
+      break;
+
+      default:
+         Aux_Error( ERROR_INFO, "incorrect parameter %s = %d !!\n", "GREP_CENTER_METHOD", GREP_CENTER_METHOD );
+   }
+
+   GREP_Prof_MinBinSize = ( GREP_MINBINSIZE > 0.0 ) ? GREP_MINBINSIZE : amr->dh[MAX_LEVEL];
+
+   GREP_Prof_MaxRadius  = ( GREP_MAXRADIUS > 0.0 )
+                        ? GREP_MAXRADIUS
+                        : SQRT( SQR( MAX( amr->BoxSize[0] - GREP_Prof_Center[0], GREP_Prof_Center[0] ) )
+                        +       SQR( MAX( amr->BoxSize[1] - GREP_Prof_Center[1], GREP_Prof_Center[1] ) )
+                        +       SQR( MAX( amr->BoxSize[2] - GREP_Prof_Center[2], GREP_Prof_Center[2] ) ) );
+
+} // FUNCTION : Init_GREP
+
+
+
+// =================================
+// II. Set an auxiliary array
+// =================================
+
 //-------------------------------------------------------------------------------------------------------
 // Function    :  SetExtPotAuxArray_GREP
 // Description :  Set the auxiliary array ExtPot_AuxArray[] used by ExtPot_GREP()
@@ -70,7 +145,7 @@ void SetExtPotAuxArray_GREP( double AuxArray[] )
 
 
 // =================================
-// II. Specify external potential
+// III. Specify external potential
 // =================================
 
 //-----------------------------------------------------------------------------------------
@@ -174,7 +249,7 @@ static real ExtPot_GREP( const double x, const double y, const double z, const d
 
 
 // =================================
-// III. Set initialization functions
+// IV. Set initialization functions
 // =================================
 
 #ifdef __CUDACC__
@@ -221,6 +296,7 @@ void SetCPUExtPot_GREP( ExtPot_t &CPUExtPot_Ptr )
 #ifndef __CUDACC__
 
 // local function prototypes
+void Init_GREP();
 void SetExtPotAuxArray_GREP( double [] );
 void SetCPUExtPot_GREP( ExtPot_t & );
 #ifdef GPU
