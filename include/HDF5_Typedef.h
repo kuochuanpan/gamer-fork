@@ -118,6 +118,7 @@ struct Makefile_t
    int PotScheme;
    int StorePotGhost;
    int UnsplitGravity;
+   int Grep;
 #  endif
 
 #  if   ( MODEL == HYDRO )

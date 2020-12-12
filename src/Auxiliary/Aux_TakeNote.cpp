@@ -88,6 +88,12 @@ void Aux_TakeNote()
 #     else
       fprintf( Note, "UNSPLIT_GRAVITY                 OFF\n" );
 #     endif
+
+#     ifdef GREP
+      fprintf( Note, "GREP                            ON\n" );
+#     else
+      fprintf( Note, "GREP                            OFF\n" );
+#     endif
 #     endif // #ifdef GRAVITY
 
 #     ifdef COMOVING

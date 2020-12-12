@@ -1608,6 +1608,12 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.UnsplitGravity         = 0;
 #  endif
 
+#  ifdef GREP
+   Makefile.Grep                   = 1;
+#  else
+   Makefile.Grep                   = 0;
+#  endif
+
 #  endif // #ifdef GRAVITY
 
 #  if   ( MODEL == HYDRO )
@@ -2455,6 +2461,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "PotScheme",              HOFFSET(Makefile_t,PotScheme              ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "StorePotGhost",          HOFFSET(Makefile_t,StorePotGhost          ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "UnsplitGravity",         HOFFSET(Makefile_t,UnsplitGravity         ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "Grep",                   HOFFSET(Makefile_t,Grep                   ), H5T_NATIVE_INT );
 #  endif
 
 #  if   ( MODEL == HYDRO )
