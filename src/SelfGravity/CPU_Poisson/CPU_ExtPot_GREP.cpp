@@ -131,13 +131,11 @@ void SetExtPotAuxArray_GREP( double AuxArray[] )
    const int Sg_Lv   = GREPSg[Lv];
    const int Sg_FaLv = GREPSg[FaLv];
 
-   AuxArray[0] = GREP_Prof_Center[0];               // x coordinate of the GREP profile center
-   AuxArray[1] = GREP_Prof_Center[1];               // y coordinate of the GREP profile center
-   AuxArray[2] = GREP_Prof_Center[2];               // z coordinate of the GREP profile center
-   AuxArray[3] = GREPSgTime[   Lv ][     Sg_Lv   ]; // new physical time of GREP on current level
-   AuxArray[4] = GREPSgTime[   Lv ][ 1 - Sg_Lv   ]; // old physical time of GREP on current level
-   AuxArray[5] = GREPSgTime[ FaLv ][     Sg_FaLv ]; // new physical time of GREP on father  level
-   AuxArray[6] = GREPSgTime[ FaLv ][ 1 - Sg_FaLv ]; // old physical time of GREP on father  level
+   AuxArray[0] = GREP_Prof_Center[0];                // x coordinate of the GREP profile center
+   AuxArray[1] = GREP_Prof_Center[1];                // y coordinate of the GREP profile center
+   AuxArray[2] = GREP_Prof_Center[2];                // z coordinate of the GREP profile center
+   AuxArray[3] = GREPSgTime[ FaLv ][     Sg_FaLv ];  // new physical time of GREP on father level
+   AuxArray[4] = GREPSgTime[ FaLv ][ 1 - Sg_FaLv ];  // old physical time of GREP on father level
 
 } // FUNCTION : SetExtPotAuxArray_GREP
 #endif // #ifndef __CUDACC__
@@ -201,15 +199,26 @@ static real ExtPot_GREP( const double x, const double y, const double z, const d
       break;
 
       case EXT_POT_USAGE_SUB:
-         effpot = h_GREP_FaLv_Data_New;
-         radius = h_GREP_FaLv_Radius_New;
-         NBin   = h_GREP_FaLv_NBin_New;
-      break;
-
       case EXT_POT_USAGE_SUB_TINT:
-         effpot = h_GREP_FaLv_Data_Old;
-         radius = h_GREP_FaLv_Radius_Old;
-         NBin   = h_GREP_FaLv_NBin_Old;
+         if      (  Mis_CompareRealValue( Time, UserArray[3], NULL, false )  )
+         {
+            effpot = h_GREP_FaLv_Data_New;
+            radius = h_GREP_FaLv_Radius_New;
+            NBin   = h_GREP_FaLv_NBin_New;
+         }
+
+         else if (  Mis_CompareRealValue( Time, UserArray[4], NULL, false )  )
+         {
+            effpot = h_GREP_FaLv_Data_Old;
+            radius = h_GREP_FaLv_Radius_Old;
+            NBin   = h_GREP_FaLv_NBin_Old;
+         }
+
+         else
+         {
+            Aux_Error( ERROR_INFO, "No GREP Profile matches the specified time: %.15e !!\n", Time );
+         }
+
       break;
    }
 #endif // #ifdef __CUDACC__ ... else ...
