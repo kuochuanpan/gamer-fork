@@ -6,7 +6,7 @@
 #include "GAMER.h"
 #endif
 
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 
 
 #define LinearInterp( x, xa, xb, ya, yb )   (  ( ((x) - (xa)) * (yb) + ((xb) - (x)) * (ya) ) / ((xb) - (xa))  )
@@ -334,4 +334,5 @@ void Init_ExtPot_GREP()
 
 
 
-#endif // #if ( defined GRAVITY  &&  defined GREP )
+#endif // #ifdef GREP
+

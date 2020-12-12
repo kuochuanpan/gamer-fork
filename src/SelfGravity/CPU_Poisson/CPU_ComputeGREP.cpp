@@ -1,6 +1,6 @@
 #include "GAMER.h"
 
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 
 
 
@@ -200,4 +200,4 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
 
 
 
-#endif // #if ( defined GRAVITY  &&  defined GREP )
+#endif // #ifdef GREP

@@ -1,6 +1,6 @@
 #include "GAMER.h"
 
-#if ( defined GRAVITY  &&  defined GREP )
+#ifdef GREP
 
 
 static void Poi_Prepare_GREP( const double Time, const int lv );
@@ -330,4 +330,4 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
 
 
 
-#endif // #if ( defined GRAVITY  &&  defined GREP )
+#endif // #ifdef GREP
