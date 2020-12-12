@@ -82,9 +82,13 @@ void Poi_Prepare_GREP( const double Time, const int lv )
 // Function    :  Update_GREP_Profile
 // Description :  Update the spherical-averaged profiles
 //
-// Note        :  1. The contribution from     leaf patches on level = lv is stored QUANT[    lv]
-//                                         non-leaf patches on level = lv is stored QUANT[NLEVEL]
-//                2. Apply temporal interpolation in Aux_ComputeProfile if PrepTime < 0
+// Note        :  1. The contribution from     leaf patches on level = lv (<= lv) is stored QUANT[    lv]
+//                                         non-leaf patches on level = lv         is stored QUANT[NLEVEL]
+//                2. Apply temporal interpolation in Aux_ComputeProfile if PrepTime >= 0
+//                3. To avoid inconsistent leaf- and non-leaf profiles during combining,
+//                   we retain the empty bins in the profiles obtained here because
+//                   they could have different empty bins.
+//
 //-------------------------------------------------------------------------------------------------------
 static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTime )
 {
@@ -108,7 +112,7 @@ static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTi
 
 //###CHECK: does the refinment correction affect leaf patch? If no, this part is not necesary.
 //    update the USG profile from leaf patches on level = lv to account the correction from finer level
-      if ( ( lv < TOP_LEVEL )  &&  ( GREPSgTime[lv][1 - Sg] >= 0 ) )
+      if ( ( lv < TOP_LEVEL )  &&  ( GREPSgTime[lv][1 - Sg] >= 0.0 ) )
       {
          int               Sg_USG    = 1 - Sg;
          double          Time_USG    = GREPSgTime[lv][Sg_USG];
@@ -131,10 +135,11 @@ static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTi
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Combine_GREP_Profile
 // Description :  Combine the separated spherical-averaged profiles
+//                and handling the empty bins in the combined profile
 //
 // Note        :  1. The total averaged profile is stored at QUANT[NLEVEL]
 //
-// Parameter   :  Prof        : Profiles_t object array to be combined
+// Parameter   :  Prof        : Profile_t object array to be combined
 //                RemoveEmpty : true  --> remove empty bins from the data
 //                              false --> these empty bins will still be in the profile arrays with
 //                                        Data[empty_bin]=Weight[empty_bin]=NCell[empty_bin]=0
@@ -146,9 +151,10 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
    Profile_t *Prof_NonLeaf = Prof[NLEVEL][Sg];
 
 
+// combine the contributions from leaf patches on level <= lv and non-leaf patches on level = lv,
+// and store the sum in 'Prof_NonLeaf'
    if ( Do_TEMPINT_in_ComputeProfile )
    {
-//    combine contributions from leaf patches on level = lv and non-leaf patches on level = lv
 //    temporal interpolation is done in Aux_ComputeProfile()
       Profile_t *Prof_Leaf = Prof[lv][Sg];
 
@@ -167,8 +173,7 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
 
    else
    {
-//    combine contributions from leaf patches on level <= lv with temporal interpolation,
-//    and non-leaf patches on level = lv
+//    apply temporal interpolation to leaf patches on level <= lv
       for (int level=0; level<=lv; level++)
       {
 //       temporal interpolation parameters
@@ -208,7 +213,7 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
    } // if ( Do_TEMPINT_in_ComputeProfile )
 
 
-// remove the empty bins in Prof_NonLeaf
+// remove the empty bins in the combined profile stored in 'Prof_NonLeaf'
    if ( RemoveEmpty )
    {
       for (int b=0; b<Prof_NonLeaf->NBin; b++)

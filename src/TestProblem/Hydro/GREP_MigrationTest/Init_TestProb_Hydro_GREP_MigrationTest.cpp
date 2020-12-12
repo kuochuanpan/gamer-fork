@@ -357,10 +357,10 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
 void LoadICTable()
 {
 
-   const bool RowMajor_No  = false;           // load data into the column major OPT__RECORD_USER
-   const bool AllocMem_Yes = true;            // allocate memort for NeutronStar_Prof
-   const int  NCol         = 4;               // total number of columns to load
-   const int  TargetCols[NCol] = { 0,1,2,3 }; // target columns: {radius, vr, density, pressure}
+   const bool RowMajor_No  = false;              // load data into the column-major order
+   const bool AllocMem_Yes = true;               // allocate memort for NeutronStar_Prof
+   const int  NCol         = 4;                  // total number of columns to load
+   const int  TargetCols[NCol] = { 0, 1, 2, 3 }; // target columns: {radius, vr, density, pressure}
 
    double *Table_R, *Table_Dens, *Table_Pres, *Table_Velr;
 
@@ -486,7 +486,7 @@ void Record_CentralDens()
    {
       double DataCoord_All[4 * MPI_NRank];
 
-      MPI_Allgather( &DataCoord, 4, MPI_DOUBLE, &DataCoord_All, 4, MPI_DOUBLE, MPI_COMM_WORLD );
+      MPI_Allgather( DataCoord, 4, MPI_DOUBLE, DataCoord_All, 4, MPI_DOUBLE, MPI_COMM_WORLD );
 
       for (int i=0; i<MPI_NRank; i++)
       {

@@ -141,10 +141,10 @@ static real ExtPot_GREP( const double x, const double y, const double z, const d
 
 
 // compute the potential
-   if ( r < radius[0] )
+   if ( r < (real)radius[0] )
       pot = effpot[0];
 
-   else if ( r < radius[NBin-1] )
+   else if ( r < (real)radius[NBin-1] )
    {
       int Idx;
       int Min = 0;
@@ -152,11 +152,16 @@ static real ExtPot_GREP( const double x, const double y, const double z, const d
 
       while (  ( Idx=(Min+Max)/2 ) != Min  )
       {
-         if   ( radius[Idx] > r )   Max = Idx;
-         else                       Min = Idx;
+         if   ( (real)radius[Idx] > r )   Max = Idx;
+         else                             Min = Idx;
       }
 
-      pot = LinearInterp( r, radius[Idx], radius[Idx+1], effpot[Idx], effpot[Idx+1] );
+      const real rL      = (real)radius[Idx  ];
+      const real rR      = (real)radius[Idx+1];
+      const real effpotL = (real)effpot[Idx  ];
+      const real effpotR = (real)effpot[Idx+1];
+
+      pot = LinearInterp( r, rL, rR, effpotL, effpotR );
    }
 
    else
