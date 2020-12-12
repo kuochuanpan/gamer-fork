@@ -254,7 +254,7 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
    const double Ab     = Bfield_Ab / UNIT_B;
 
    // Use finite difference to compute the B field
-   double delta = amr->dh[TOP_LEVEL];
+   double delta = amr->dh[MAX_LEVEL];
    double r,    dens,    pres;
    double r_xp, dens_xp, pres_xp;
    double r_yp, dens_yp, pres_yp;
@@ -376,8 +376,6 @@ void Record_CentralDens()
 
    const char   filename_central_dens[] = "Record__CentralDens";
    const double BoxCenter[3]            = { 0.5*amr->BoxSize[0], 0.5*amr->BoxSize[1], 0.5*amr->BoxSize[2] };
-// the distance from the box center to the farthest cells considered
-   const double r_max2                  = SQR( amr->dh[TOP_LEVEL] );
 
 // allocate memory for per-thread arrays
 #  ifdef OPENMP
@@ -420,19 +418,16 @@ void Record_CentralDens()
                const double dz = z - BoxCenter[2];
                const double r2 = SQR(dx) + SQR(dy) + SQR(dz);
 
-               if ( r2 < r_max2 )
+               const double dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+
+               if ( dens > OMP_DataCoord[TID][0] )
                {
-                  const double dens = amr->patch[ amr->FluSg[lv] ][lv][PID]->fluid[DENS][k][j][i];
+                  OMP_DataCoord[TID][0] = dens;
+                  OMP_DataCoord[TID][1] = x;
+                  OMP_DataCoord[TID][2] = y;
+                  OMP_DataCoord[TID][3] = z;
+               }
 
-                  if ( dens > OMP_DataCoord[TID][0] )
-                  {
-                     OMP_DataCoord[TID][0] = dens;
-                     OMP_DataCoord[TID][1] = x;
-                     OMP_DataCoord[TID][2] = y;
-                     OMP_DataCoord[TID][3] = z;
-                  }
-
-               } // if ( r2 < r_max2 )
             }}} // i,j,k
          } // for (int PID=0; PID<amr->NPatchComma[lv][1]; PID++)
       } // for (int lv=0; lv<NLEVEL; lv++)
