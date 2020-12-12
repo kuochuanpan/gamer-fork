@@ -62,6 +62,17 @@ Bfield_Ab = float(Bfield_Ab[0]) / UNIT_A
 Bfield_np = float(Bfield_np[0])
 
 
+### print parameters loaded from Input__Parameter and Input__TestProb
+print("=" * 12 + " Parameters adopted " + "=" * 12)
+print("UNIT_L    in Input__Parameter: {:13.7e}".format(UNIT_L))
+print("UNIT_M    in Input__Parameter: {:13.7e}".format(UNIT_M))
+print("UNIT_T    in Input__Parameter: {:13.7e}".format(UNIT_T))
+print("BOX_SIZE  in Input__Parameter: {:13.7e}".format(BOX_SIZE))
+print("NX0_TOT   in Input__Parameter: {:13d}".format(NX0_TOT) + " (assume NX0_TOT_[XYZ] are all the same)")
+print("Bfield_Ab in Input__TestProb : {:13.7e}".format(Bfield_Ab * UNIT_A))
+print("Bfield_np in Input__TestProb : {:13.7e}".format(Bfield_np))
+
+
 ### Read initial condition of denisty and pressure
 radius, dens, pres = np.genfromtxt("tovstar_short", usecols = [0, 2, 3], unpack = 1)
 radius /= UNIT_L
