@@ -173,7 +173,7 @@ void CPU_ComputeGREP( Profile_t *DensAve, Profile_t *EngyAve, Profile_t *VrAve, 
    Phi_eff->Data[0] = Phi_eff->Data[1] - dr * NEWTON_G * ( Mass_NW_rad - Mass_TOV_rad ) / SQR( Radius[0] ) ;
 
 
-#ifdef GREP_DEBUG
+#ifdef GAMER_DEBUG
    if ( MPI_Rank == 0 )
    {
       printf("\n============================================================\n");

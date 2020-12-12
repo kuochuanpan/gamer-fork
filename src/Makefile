@@ -136,7 +136,6 @@ SIMU_OPTION += -DUNSPLIT_GRAVITY
 
 # effective GR potential
 #SIMU_OPTION += -DGREP
-#SIMU_OPTION += -DGREP_DEBUG
 endif # GRAVITY
 
 
