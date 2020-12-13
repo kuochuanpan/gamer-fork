@@ -54,8 +54,8 @@ int     h_GREP_FaLv_NBin_Old;
 //                2. Phi_eff              : Profile_t objects storing the GR effective potential
 //                3. GREPSg               : Sandglass of the current profile data [0/1]
 //                4. GREPSgTime           : Physical time of FluSg
-//                3. GREP_Prof_MinBinSize : Minimum bin size used to initialize the Profile_t object
-//                3. GREP_Prof_MaxRadius  : Maximum radius   used to initialize the Profile_t object
+//                5. GREP_Prof_MinBinSize : Minimum bin size used to initialize the Profile_t object
+//                6. GREP_Prof_MaxRadius  : Maximum radius   used to initialize the Profile_t object
 //-------------------------------------------------------------------------------------------------------
 void Init_GREP()
 {
