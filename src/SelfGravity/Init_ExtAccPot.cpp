@@ -3,6 +3,11 @@
 #ifdef GRAVITY
 
 
+// prototypes of built-in ExtPot
+#ifdef GREP
+extern void Init_ExtPot_GREP();
+#endif
+
 // these function pointers must be set by a test problem initializer
 void (*Init_ExtAcc_Ptr)() = NULL;
 void (*Init_ExtPot_Ptr)() = NULL;
@@ -38,6 +43,11 @@ void Init_ExtAccPot()
 // external potential
    if ( OPT__EXT_POT )
    {
+//    set the initialization function pointer for the built-in GREP
+#     ifdef GREP
+      Init_ExtPot_Ptr = Init_ExtPot_GREP;
+#     endif
+
       if ( Init_ExtPot_Ptr != NULL )   Init_ExtPot_Ptr();
       else                             Aux_Error( ERROR_INFO, "Init_ExtPot_Ptr == NULL !!\n" );
    }

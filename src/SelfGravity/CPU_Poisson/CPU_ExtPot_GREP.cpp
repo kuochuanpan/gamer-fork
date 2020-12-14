@@ -35,6 +35,10 @@ double *h_GREP_FaLv_Radius_Old;
 int     h_GREP_Lv_NBin_New;
 int     h_GREP_FaLv_NBin_New;
 int     h_GREP_FaLv_NBin_Old;
+
+
+extern void (*Poi_UserWorkBeforePoisson_Ptr)( const double Time, const int lv );
+extern void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv );
 #endif // #ifndef __CUDACC__
 
 
@@ -329,6 +333,9 @@ void SetGPUExtPot_GREP( ExtPot_t & );
 //-----------------------------------------------------------------------------------------
 void Init_ExtPot_GREP()
 {
+
+// set the function pointer for the built-in GREP
+   Poi_UserWorkBeforePoisson_Ptr = Poi_UserWorkBeforePoisson_GREP;
 
    Init_GREP();
    SetExtPotAuxArray_GREP( ExtPot_AuxArray );

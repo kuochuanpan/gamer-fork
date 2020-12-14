@@ -13,12 +13,12 @@ extern Profile_t *Phi_eff [NLEVEL  ][2];
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  End_MemFree_GREP
+// Function    :  End_GREP
 // Description :  Free memory previously allocated by Init_GREP()
 //
 // Parameter   :  None
 //-------------------------------------------------------------------------------------------------------
-void End_MemFree_GREP()
+void End_GREP()
 {
 
    for (int Sg=0; Sg<2; Sg++)
@@ -33,7 +33,7 @@ void End_MemFree_GREP()
       Phi_eff [lv][Sg]->FreeMemory();
    }
 
-} // FUNCTION : End_MemFree_GREP
+} // FUNCTION : End_GREP
 
 
 
