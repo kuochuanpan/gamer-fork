@@ -94,7 +94,6 @@ void Poi_UserWorkBeforePoisson_GREP( const double Time, const int lv )
 // update the auxiliary GPU arrays
 #  ifdef GPU
    CUAPI_SetConstMemory_ExtAccPot();
-   CUAPI_SetConstMemory_ExtPot_GREP();
 #  endif
 
 } // FUNCTION : Poi_UserWorkBeforePoisson_GREP

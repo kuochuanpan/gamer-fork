@@ -33,9 +33,12 @@ void CUAPI_SetConstMemory_ExtPot_GREP()
       Aux_Error( ERROR_INFO, "Too many bins in GREP profiles %d !!\n", Phi_Lv_New->NBin );
 
 
-   CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_Data_New,    Phi_Lv_New->Data,   EXT_POT_GREP_NAUX_MAX*sizeof(double) )  );
-   CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_Radius_New,  Phi_Lv_New->Radius, EXT_POT_GREP_NAUX_MAX*sizeof(double) )  );
-   CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_NBin_New,   &Phi_Lv_New->NBin,                         sizeof(int   ) )  );
+// transfer data only if the Profile_t object is defined
+   if ( Phi_Lv_New->NBin > 0 ) {
+      CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_Data_New,    Phi_Lv_New->Data,   EXT_POT_GREP_NAUX_MAX*sizeof(double) )  );
+      CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_Radius_New,  Phi_Lv_New->Radius, EXT_POT_GREP_NAUX_MAX*sizeof(double) )  );
+      CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_GREP_Lv_NBin_New,   &Phi_Lv_New->NBin,                         sizeof(int   ) )  );
+   }
 
 } // FUNCTION : CUAPI_SetConstMemory_ExtPot_GREP
 
