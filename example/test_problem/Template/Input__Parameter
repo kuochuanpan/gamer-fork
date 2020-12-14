@@ -330,6 +330,6 @@ GREP_LOGBIN                   1              # log/linear bins                  
                                              # (true=logarithmic, false=linear)
 GREP_LOGBINRATIO              1.0025         # ratio of adjacent log bins                                   [1.25]
 GREP_MAXRADIUS               -1.0            # maximum radius in the radial profile                         [-1.0]
-                                             # (<0=distance of the farthest vertex to the center)
+                                             # (<=0=distance of the farthest vertex to the center)
 GREP_MINBINSIZE              -1.0            # minimum bin size                                             [-1.0]
                                              # (<=0=use amr->dh[MAX_LEVEL])
