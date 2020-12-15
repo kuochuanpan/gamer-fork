@@ -133,6 +133,9 @@ SIMU_OPTION += -DUNSPLIT_GRAVITY
 # comoving frame for cosmological simulations
 # --> not supported for PARTICLE
 #SIMU_OPTION += -DCOMOVING
+
+# effective GR potential
+#SIMU_OPTION += -DGREP
 endif # GRAVITY
 
 
@@ -475,7 +478,7 @@ CPU_FILE    += CPU_EoS_Gamma.cpp  CPU_EoS_User_Template.cpp  CPU_EoS_Isothermal.
                findenergy.cpp  readtable.cpp
 
 CPU_FILE    += Hydro_Init_ByFunction_AssignData.cpp  Hydro_Aux_Check_Negative.cpp \
-               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp \
+               Hydro_BoundaryCondition_Reflecting.cpp  Hydro_BoundaryCondition_Outflow.cpp
 
 vpath %.cu                  Model_Hydro/GPU_Hydro  EoS  EoS/Gamma  EoS/User_Template  EoS/Isothermal  EoS/Nuclear
 vpath %.cpp    Model_Hydro  Model_Hydro/CPU_Hydro  EoS  EoS/Gamma  EoS/User_Template  EoS/Isothermal  EoS/Nuclear
@@ -532,14 +535,15 @@ endif # MODEL
 # ------------------------------------------------------------------------------------
 ifeq "$(filter -DGRAVITY, $(SIMU_OPTION))" "-DGRAVITY"
 GPU_FILE    += CUAPI_MemAllocate_PoissonGravity.cu  CUAPI_MemFree_PoissonGravity.cu \
-               CUAPI_Asyn_PoissonGravitySolver.cu  CUAPI_SetConstMemory_ExtAccPot.cu
+               CUAPI_Asyn_PoissonGravitySolver.cu  CUAPI_SetConstMemory_ExtAccPot.cu  CUAPI_SetConstMemory_ExtPot_GREP.cu
 
 GPU_FILE    += CUPOT_PoissonSolver_SOR_10to14cube.cu  CUPOT_PoissonSolver_SOR_16to18cube.cu \
                CUPOT_PoissonSolver_MG.cu  CUPOT_ExtAcc_PointMass.cu  CUPOT_ExtPot_PointMass.cu \
-               CUPOT_ExtPotSolver.cu
+               CUPOT_ExtPotSolver.cu  CUPOT_ExtPot_GREP.cu
 
 CPU_FILE    += CPU_PoissonGravitySolver.cpp  CPU_PoissonSolver_SOR.cpp  CPU_PoissonSolver_FFT.cpp \
-               CPU_PoissonSolver_MG.cpp  CPU_ExtPotSolver.cpp  CPU_ExtPotSolver_BaseLevel.cpp
+               CPU_PoissonSolver_MG.cpp  CPU_ExtPotSolver.cpp  CPU_ExtPotSolver_BaseLevel.cpp \
+               CPU_ComputeGREP.cpp  CPU_ExtPot_GREP.cpp
 
 CPU_FILE    += Init_FFTW.cpp  Gra_Close.cpp  Gra_Prepare_Flu.cpp  Gra_Prepare_Pot.cpp  Gra_Prepare_Corner.cpp \
                Gra_AdvanceDt.cpp  Poi_Close.cpp  Poi_Prepare_Pot.cpp  Poi_Prepare_Rho.cpp \
@@ -548,7 +552,7 @@ CPU_FILE    += Init_FFTW.cpp  Gra_Close.cpp  Gra_Prepare_Flu.cpp  Gra_Prepare_Po
                Init_Set_Default_MG_Parameter.cpp  Poi_GetAverageDensity.cpp  Poi_AddExtraMassForGravity.cpp \
                Poi_BoundaryCondition_Extrapolation.cpp  Gra_Prepare_USG.cpp  Poi_StorePotWithGhostZone.cpp \
                Init_ExtAccPot.cpp  CPU_ExtAcc_PointMass.cpp  CPU_ExtPot_PointMass.cpp \
-               Poi_UserWorkBeforePoisson.cpp
+               Poi_UserWorkBeforePoisson.cpp  Poi_UserWorkBeforePoisson_GREP.cpp  End_GREP.cpp
 
 vpath %.cu     SelfGravity/GPU_Poisson  SelfGravity/GPU_Gravity
 vpath %.cpp    SelfGravity/CPU_Poisson  SelfGravity/CPU_Gravity  SelfGravity

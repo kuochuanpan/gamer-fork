@@ -118,6 +118,7 @@ struct Makefile_t
    int PotScheme;
    int StorePotGhost;
    int UnsplitGravity;
+   int Grep;
 #  endif
 
 #  if   ( MODEL == HYDRO )
@@ -205,6 +206,10 @@ struct SymConst_t
    int    Gra_BlockSize;
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
+
+#  ifdef GREP
+   int    ExtPotGREPNAuxMax;
+#  endif
 
 #  if   ( POT_SCHEME == SOR )
    int    Pot_BlockSize_z;
@@ -630,6 +635,16 @@ struct InputPara_t
 #  ifdef MHD
    int    Opt__Ck_InterfaceB;
    int    Opt__Ck_DivergenceB;
+#  endif
+
+// GREP
+#  ifdef GREP
+   int    GREP_Center_Method;
+   int    GREP_MaxIter;
+   int    GREP_LogBin;
+   double GREP_LogBinRatio;
+   double GREP_MaxRadius;
+   double GREP_MinBinSize;
 #  endif
 
 // flag tables

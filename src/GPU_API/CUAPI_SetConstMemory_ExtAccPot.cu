@@ -4,6 +4,11 @@
 #if ( defined GPU  &&  defined GRAVITY )
 
 
+#ifdef GREP
+extern void CUAPI_SetConstMemory_ExtPot_GREP();
+#endif
+
+
 
 
 //-------------------------------------------------------------------------------------------------------
@@ -27,6 +32,10 @@ void CUAPI_SetConstMemory_ExtAccPot()
 
    if ( OPT__EXT_POT )
       CUDA_CHECK_ERROR(  cudaMemcpyToSymbol( c_ExtPot_AuxArray, ExtPot_AuxArray, EXT_POT_NAUX_MAX*sizeof(double) )  );
+
+#  ifdef GREP
+   CUAPI_SetConstMemory_ExtPot_GREP();
+#  endif
 
 } // FUNCTION : CUAPI_SetConstMemory_ExtAccPot
 

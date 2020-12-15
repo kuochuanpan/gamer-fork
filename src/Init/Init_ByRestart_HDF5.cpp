@@ -1554,6 +1554,9 @@ void Check_SymConst( const char *FileName, const int FormatVersion )
    LoadField( "Gra_BlockSize",        &RS.Gra_BlockSize,        SID, TID, NonFatal, &RT.Gra_BlockSize,         1, NonFatal );
    LoadField( "ExtPotNAuxMax",        &RS.ExtPotNAuxMax,        SID, TID, NonFatal, &RT.ExtPotNAuxMax,         1, NonFatal );
    LoadField( "ExtAccNAuxMax",        &RS.ExtAccNAuxMax,        SID, TID, NonFatal, &RT.ExtAccNAuxMax,         1, NonFatal );
+#  ifdef GREP
+   LoadField( "ExtPotGREPNAuxMax",    &RS.ExtPotGREPNAuxMax,    SID, TID, NonFatal, &RT.ExtPotGREPNAuxMax,     1, NonFatal );
+#  endif
 #  if   ( POT_SCHEME == SOR )
    LoadField( "Pot_BlockSize_z",      &RS.Pot_BlockSize_z,      SID, TID, NonFatal, &RT.Pot_BlockSize_z,       1, NonFatal );
    LoadField( "UsePSolver_10to14",    &RS.UsePSolver_10to14,    SID, TID, NonFatal, &RT.UsePSolver_10to14,     1, NonFatal );
@@ -2019,6 +2022,16 @@ void Check_InputPara( const char *FileName, const int FormatVersion )
 #  ifdef MHD
    LoadField( "Opt__Ck_InterfaceB",      &RS.Opt__Ck_InterfaceB,      SID, TID, NonFatal, &RT.Opt__Ck_InterfaceB,       1, NonFatal );
    LoadField( "Opt__Ck_DivergenceB",     &RS.Opt__Ck_DivergenceB,     SID, TID, NonFatal, &RT.Opt__Ck_DivergenceB,      1, NonFatal );
+#  endif
+
+// GREP
+#  ifdef GREP
+   LoadField( "GREP_Center_Method",      &RS.GREP_Center_Method,      SID, TID, NonFatal, &RT.GREP_Center_Method,       1, NonFatal );
+   LoadField( "GREP_MaxIter",            &RS.GREP_MaxIter,            SID, TID, NonFatal, &RT.GREP_MaxIter,             1, NonFatal );
+   LoadField( "GREP_LogBin",             &RS.GREP_LogBin,             SID, TID, NonFatal, &RT.GREP_LogBin,              1, NonFatal );
+   LoadField( "GREP_LogBinRatio",        &RS.GREP_LogBinRatio,        SID, TID, NonFatal, &RT.GREP_LogBinRatio,         1, NonFatal );
+   LoadField( "GREP_MaxRadius",          &RS.GREP_MaxRadius,          SID, TID, NonFatal, &RT.GREP_MaxRadius,           1, NonFatal );
+   LoadField( "GREP_MinBinSize",         &RS.GREP_MinBinSize,         SID, TID, NonFatal, &RT.GREP_MinBinSize,          1, NonFatal );
 #  endif
 
 

@@ -88,6 +88,12 @@ void Aux_TakeNote()
 #     else
       fprintf( Note, "UNSPLIT_GRAVITY                 OFF\n" );
 #     endif
+
+#     ifdef GREP
+      fprintf( Note, "GREP                            ON\n" );
+#     else
+      fprintf( Note, "GREP                            OFF\n" );
+#     endif
 #     endif // #ifdef GRAVITY
 
 #     ifdef COMOVING
@@ -507,6 +513,9 @@ void Aux_TakeNote()
 #     ifdef GRAVITY
       fprintf( Note, "EXT_POT_NAUX_MAX                %d\n",      EXT_POT_NAUX_MAX );
       fprintf( Note, "EXT_ACC_NAUX_MAX                %d\n",      EXT_ACC_NAUX_MAX );
+#     ifdef GREP
+      fprintf( Note, "EXT_POT_GREP_NAUX_MAX           %d\n",      EXT_POT_GREP_NAUX_MAX );
+#     endif
 #     endif
 
       fprintf( Note, "***********************************************************************************\n" );
@@ -1219,6 +1228,21 @@ void Aux_TakeNote()
 #     endif
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
+
+
+//    record the parameters of GREP
+#     if ( MODEL == HYDRO  &&  defined GREP )
+      fprintf( Note, "Parameters of GREP\n" );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "GREP_CENTER_METHOD              %d\n",      GREP_CENTER_METHOD );
+      fprintf( Note, "GREP_MAXITER                    %d\n",      GREP_MAXITER       );
+      fprintf( Note, "GREP_LOGBIN                     %d\n",      GREP_LOGBIN        );
+      fprintf( Note, "GREP_LOGBINRATIO                %13.7e\n",  GREP_LOGBINRATIO   );
+      fprintf( Note, "GREP_MAXRADIUS                  %13.7e\n",  GREP_MAXRADIUS     );
+      fprintf( Note, "GREP_MINBINSIZE                 %13.7e\n",  GREP_MINBINSIZE    );
+      fprintf( Note, "***********************************************************************************\n" );
+      fprintf( Note, "\n\n");
+#     endif
 
 
 //    record the flag criterion (density/density gradient/pressure gradient/user-defined)

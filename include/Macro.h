@@ -678,6 +678,12 @@
 #endif
 
 
+// size of GREP profile
+#ifdef GREP
+#  define EXT_POT_GREP_NAUX_MAX  4000
+#endif
+
+
 // bitwise reproducibility in flux and electric field fix-up operations
 #if ( MODEL == HYDRO )
 # ifdef BITWISE_REPRODUCIBILITY
