@@ -291,7 +291,8 @@ typedef int OptExtPot_t;
 const OptExtPot_t
    EXT_POT_NONE  = 0,
    EXT_POT_FUNC  = 1,
-   EXT_POT_TABLE = 2;
+   EXT_POT_TABLE = 2,
+   EXT_POT_GREP  = 3;
 
 
 // different usages of external potential when computing total potential on level Lv
@@ -390,9 +391,11 @@ typedef real (*EoS_DP2E_t)( const real Dens, const real Pres, const real Passive
                             const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] );
 typedef real (*EoS_DP2C_t)( const real Dens, const real Pres, const real Passive[], const double AuxArray_Flt[],
                             const int AuxArray_Int[], const real *const Table[EOS_NTABLE_MAX] );
-typedef void (*ExtAcc_t)( real Acc[], const double x, const double y, const double z, const double Time, const double UserArray[] );
-typedef real (*ExtPot_t)( const double x, const double y, const double z, const double Time, const double UserArray[],
-                          const ExtPotUsage_t Usage );
+typedef void (*ExtAcc_t)( real Acc[], const double x, const double y, const double z, const double Time,
+                          const double UserArray[] );
+typedef real (*ExtPot_t)( const double x, const double y, const double z, const double Time,
+                          const double UserArray_Flt[], const int UserArray_Int[],
+                          const ExtPotUsage_t Usage, const real PotTable[] );
 
 
 // options in Aux_ComputeProfile()

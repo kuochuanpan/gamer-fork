@@ -4,8 +4,9 @@
 
 
 // prototypes of built-in ExtPot
+void Init_ExtPot_Tabular();
 #ifdef GREP
-extern void Init_ExtPot_GREP();
+void Init_ExtPot_GREP();
 #endif
 
 // these function pointers must be set by a test problem initializer
@@ -33,6 +34,9 @@ void (*Init_ExtPot_Ptr)() = NULL;
 void Init_ExtAccPot()
 {
 
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ...\n", __FUNCTION__ );
+
+
 // external acceleration
    if ( OPT__EXT_ACC )
    {
@@ -43,14 +47,22 @@ void Init_ExtAccPot()
 // external potential
    if ( OPT__EXT_POT )
    {
-//    set the initialization function pointer for the built-in GREP
+//    set the default function pointer of the built-in external potential
+//    --> necessary only if it has not been overwritten by a test problem initializer
+//    (1) tabular
+      if ( OPT__EXT_POT == EXT_POT_TABLE  &&  Init_ExtPot_Ptr == NULL )    Init_ExtPot_Ptr = Init_ExtPot_Tabular;
+
+//    (2) GREP
 #     ifdef GREP
-      Init_ExtPot_Ptr = Init_ExtPot_GREP;
+      if ( OPT__EXT_POT == EXT_POT_GREP  &&  Init_ExtPot_Ptr == NULL )     Init_ExtPot_Ptr = Init_ExtPot_GREP;
 #     endif
 
       if ( Init_ExtPot_Ptr != NULL )   Init_ExtPot_Ptr();
       else                             Aux_Error( ERROR_INFO, "Init_ExtPot_Ptr == NULL !!\n" );
    }
+
+
+   if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
 
 } // FUNCTION : Init_ExtAccPot
 
