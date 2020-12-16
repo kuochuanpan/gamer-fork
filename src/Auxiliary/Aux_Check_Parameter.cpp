@@ -1126,6 +1126,14 @@ void Aux_Check_Parameter()
 
    if ( NEWTON_G <= 0.0 )     Aux_Error( ERROR_INFO, "NEWTON_G (%14.7e) <= 0.0 !!\n", NEWTON_G );
 
+#  ifdef GREP
+   if ( OPT__EXT_POT != EXT_POT_GREP )
+      Aux_Error( ERROR_INFO, "OPT__EXT_POT != EXT_POT_GREP even though GREP is enabled in the Makefile !!\n" );
+#  else
+   if ( OPT__EXT_POT == EXT_POT_GREP )
+      Aux_Error( ERROR_INFO, "must enable GREP in the Makefile for OPT__EXT_POT == EXT_POT_GREP !!\n" );
+#  endif
+
 
 // warnings
 // ------------------------------
