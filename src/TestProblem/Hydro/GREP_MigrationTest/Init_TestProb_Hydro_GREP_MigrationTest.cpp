@@ -19,10 +19,6 @@ static char    NeutronStar_ICFile[MAX_STRING];  // Filename of initial condition
 
 static void Record_CentralDens();
 
-#ifdef GREP
-extern void End_GREP();
-#endif
-
 
 
 
@@ -342,10 +338,7 @@ void End_GREP_MigrationTest()
 {
 
    delete [] NeutronStar_Prof;
-
-#  ifdef GREP
-   End_GREP();
-#  endif
+   NeutronStar_Prof = NULL;
 
 } // FUNCTION : End_GREP_MigrationTest
 
@@ -532,8 +525,8 @@ void Init_TestProb_Hydro_GREP_MigrationTest()
 #  ifdef MHD
    Init_Function_BField_User_Ptr  = SetBFieldIC;
 #  endif
-   Flag_User_Ptr                  = NULL; // option: OPT__FLAG_USER;          example: Refine/Flag_User.cpp
-   Aux_Record_User_Ptr            = Record_MigrationTest; // option: OPT__RECORD_USER;        example: Auxiliary/Aux_Record_User.cpp
+   Flag_User_Ptr                  = NULL;
+   Aux_Record_User_Ptr            = Record_MigrationTest;
    End_User_Ptr                   = End_GREP_MigrationTest;
 #  endif // #if ( MODEL == HYDRO )
 

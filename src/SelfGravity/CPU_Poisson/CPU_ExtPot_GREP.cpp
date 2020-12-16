@@ -348,6 +348,31 @@ void Init_ExtPot_GREP()
 
 } // FUNCTION : Init_ExtPot_GREP
 
+
+
+//-------------------------------------------------------------------------------------------------------
+// Function    :  End_ExtPot_GREP
+// Description :  Free memory previously allocated by Init_GREP()
+//
+// Parameter   :  None
+//-------------------------------------------------------------------------------------------------------
+void End_ExtPot_GREP()
+{
+
+   for (int Sg=0; Sg<2; Sg++)
+   for (int lv=0; lv<=NLEVEL; lv++)
+   {
+      DensAve [lv][Sg]->FreeMemory();
+      EngyAve [lv][Sg]->FreeMemory();
+      VrAve   [lv][Sg]->FreeMemory();
+      PresAve [lv][Sg]->FreeMemory();
+
+      if ( lv < NLEVEL )
+      Phi_eff [lv][Sg]->FreeMemory();
+   }
+
+} // FUNCTION : End_ExtPot_GREP
+
 #endif // #ifndef __CUDACC__
 
 

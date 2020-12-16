@@ -554,7 +554,7 @@ CPU_FILE    += Init_FFTW.cpp  Gra_Close.cpp  Gra_Prepare_Flu.cpp  Gra_Prepare_Po
                Poi_BoundaryCondition_Extrapolation.cpp  Gra_Prepare_USG.cpp  Poi_StorePotWithGhostZone.cpp \
                Init_ExtAccPot.cpp  End_ExtAccPot.cpp  CPU_ExtAcc_PointMass.cpp  CPU_ExtPot_PointMass.cpp \
                Poi_UserWorkBeforePoisson.cpp  Init_LoadExtPotTable.cpp  CPU_ExtPot_Tabular.cpp \
-               Poi_UserWorkBeforePoisson_GREP.cpp  End_GREP.cpp
+               Poi_UserWorkBeforePoisson_GREP.cpp
 
 vpath %.cu     SelfGravity/GPU_Poisson  SelfGravity/GPU_Gravity
 vpath %.cpp    SelfGravity/CPU_Poisson  SelfGravity/CPU_Gravity  SelfGravity
