@@ -6,8 +6,6 @@
 #include "GAMER.h"
 #endif
 
-#ifdef GREP
-
 
 #define LinearInterp( x, xa, xb, ya, yb )   (  ( ((x) - (xa)) * (yb) + ((xb) - (x)) * (ya) ) / ((xb) - (xa))  )
 
@@ -374,8 +372,3 @@ void End_ExtPot_GREP()
 } // FUNCTION : End_ExtPot_GREP
 
 #endif // #ifndef __CUDACC__
-
-
-
-#endif // #ifdef GREP
-

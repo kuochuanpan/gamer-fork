@@ -681,6 +681,9 @@
 // size of GREP profile
 #ifdef GREP
 #  define EXT_POT_GREP_NAUX_MAX  4000
+#else
+// zero-sized variables are not allowed in device code
+#  define EXT_POT_GREP_NAUX_MAX  1
 #endif
 
 

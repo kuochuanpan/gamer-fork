@@ -235,14 +235,12 @@ char NUC_TABLE[MAX_STRING];
 #endif // HYDRO
 
 // (2-10) GREP
-#ifdef GREP
 int    GREP_CENTER_METHOD;
 int    GREP_MAXITER;
 bool   GREP_LOGBIN;
 double GREP_LOGBINRATIO;
 double GREP_MAXRADIUS;
 double GREP_MINBINSIZE;
-#endif
 
 
 // 3. CPU (host) arrays for transferring data between CPU and GPU

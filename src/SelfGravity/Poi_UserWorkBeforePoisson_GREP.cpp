@@ -1,7 +1,5 @@
 #include "GAMER.h"
 
-#ifdef GREP
-
 
 static void Poi_Prepare_GREP( const double Time, const int lv );
 static void Update_GREP_Profile( const int lv, const int Sg, const double PrepTime );
@@ -326,7 +324,3 @@ void Combine_GREP_Profile( Profile_t *Prof[][2], const int lv, const int Sg, con
    } // if ( RemoveEmpty )
 
 } // FUNCTION : Combine_GREP_Profile
-
-
-
-#endif // #ifdef GREP

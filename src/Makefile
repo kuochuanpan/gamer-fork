@@ -135,6 +135,7 @@ SIMU_OPTION += -DUNSPLIT_GRAVITY
 #SIMU_OPTION += -DCOMOVING
 
 # effective GR potential
+# --> must also set "OPT__EXT_POT=3" in Input__Parameter
 #SIMU_OPTION += -DGREP
 endif # GRAVITY
 

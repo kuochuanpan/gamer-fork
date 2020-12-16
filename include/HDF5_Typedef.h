@@ -206,10 +206,7 @@ struct SymConst_t
    int    Gra_BlockSize;
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
-
-#  ifdef GREP
    int    ExtPotGREPNAuxMax;
-#  endif
 
 #  if   ( POT_SCHEME == SOR )
    int    Pot_BlockSize_z;
@@ -503,6 +500,7 @@ struct InputPara_t
 #  endif
    int    Pot_GPU_NPGroup;
    int    Opt__GraP5Gradient;
+   int    Opt__GravityExtraMass;
    int    Opt__SelfGravity;
    int    Opt__ExtAcc;
    int    Opt__ExtPot;
@@ -511,7 +509,12 @@ struct InputPara_t
    double ExtPotTable_dh;
    double ExtPotTable_EdgeL[3];
    int    ExtPotTable_Float8;
-   int    Opt__GravityExtraMass;
+   int    GREP_Center_Method;
+   int    GREP_MaxIter;
+   int    GREP_LogBin;
+   double GREP_LogBinRatio;
+   double GREP_MaxRadius;
+   double GREP_MinBinSize;
 #  endif // #ifdef GRAVITY
 
 // Grackle
@@ -640,16 +643,6 @@ struct InputPara_t
 #  ifdef MHD
    int    Opt__Ck_InterfaceB;
    int    Opt__Ck_DivergenceB;
-#  endif
-
-// GREP
-#  ifdef GREP
-   int    GREP_Center_Method;
-   int    GREP_MaxIter;
-   int    GREP_LogBin;
-   double GREP_LogBinRatio;
-   double GREP_MaxRadius;
-   double GREP_MinBinSize;
 #  endif
 
 // flag tables

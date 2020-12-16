@@ -46,8 +46,9 @@ void Validate()
    Aux_Error( ERROR_INFO, "GRAVITY must be enabled !!\n" );
 #  endif
 
-#  ifndef GREP
-   Aux_Error( ERROR_INFO, "GREP must be enabled !!\n" );
+#  ifdef GRAVITY
+   if ( OPT__EXT_POT != EXT_POT_GREP )
+      Aux_Error( ERROR_INFO, "must set OPT__EXT_POT = EXT_POT_GREP !!\n" );
 #  endif
 
    if ( !OPT__UNIT )

@@ -252,14 +252,12 @@ extern char NUC_TABLE[MAX_STRING];
 
 // (2-10) GREP
 // =======================================================================================================
-#ifdef GREP
 extern int    GREP_CENTER_METHOD;
 extern int    GREP_MAXITER;
 extern bool   GREP_LOGBIN;
 extern double GREP_LOGBINRATIO;
 extern double GREP_MAXRADIUS;
 extern double GREP_MINBINSIZE;
-#endif
 
 
 

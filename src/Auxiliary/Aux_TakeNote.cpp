@@ -513,9 +513,7 @@ void Aux_TakeNote()
 #     ifdef GRAVITY
       fprintf( Note, "EXT_POT_NAUX_MAX                %d\n",      EXT_POT_NAUX_MAX );
       fprintf( Note, "EXT_ACC_NAUX_MAX                %d\n",      EXT_ACC_NAUX_MAX );
-#     ifdef GREP
       fprintf( Note, "EXT_POT_GREP_NAUX_MAX           %d\n",      EXT_POT_GREP_NAUX_MAX );
-#     endif
 #     endif
 
       fprintf( Note, "***********************************************************************************\n" );
@@ -1026,6 +1024,7 @@ void Aux_TakeNote()
 #     endif
       fprintf( Note, "POT_GPU_NPGROUP                 %d\n",      POT_GPU_NPGROUP         );
       fprintf( Note, "OPT__GRA_P5_GRADIENT            %d\n",      OPT__GRA_P5_GRADIENT    );
+      fprintf( Note, "OPT__GRAVITY_EXTRA_MASS         %d\n",      OPT__GRAVITY_EXTRA_MASS );
       fprintf( Note, "OPT__SELF_GRAVITY               %d\n",      OPT__SELF_GRAVITY       );
       fprintf( Note, "OPT__EXT_ACC                    %d\n",      OPT__EXT_ACC            );
       fprintf( Note, "OPT__EXT_POT                    %d\n",      OPT__EXT_POT            );
@@ -1039,7 +1038,13 @@ void Aux_TakeNote()
       fprintf( Note, "EXT_POT_TABLE_EDGEL_Y          %14.7e\n",   EXT_POT_TABLE_EDGEL[1]  );
       fprintf( Note, "EXT_POT_TABLE_EDGEL_Z          %14.7e\n",   EXT_POT_TABLE_EDGEL[2]  );
       fprintf( Note, "EXT_POT_TABLE_FLOAT8            %d\n",      EXT_POT_TABLE_FLOAT8    ); }
-      fprintf( Note, "OPT__GRAVITY_EXTRA_MASS         %d\n",      OPT__GRAVITY_EXTRA_MASS );
+      if ( OPT__EXT_POT == EXT_POT_GREP ) {
+      fprintf( Note, "GREP_CENTER_METHOD              %d\n",      GREP_CENTER_METHOD      );
+      fprintf( Note, "GREP_MAXITER                    %d\n",      GREP_MAXITER            );
+      fprintf( Note, "GREP_LOGBIN                     %d\n",      GREP_LOGBIN             );
+      fprintf( Note, "GREP_LOGBINRATIO                %13.7e\n",  GREP_LOGBINRATIO        );
+      fprintf( Note, "GREP_MAXRADIUS                  %13.7e\n",  GREP_MAXRADIUS          );
+      fprintf( Note, "GREP_MINBINSIZE                 %13.7e\n",  GREP_MINBINSIZE         ); }
       fprintf( Note, "AveDensity_Init                 %13.7e\n",  AveDensity_Init         );
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
@@ -1238,21 +1243,6 @@ void Aux_TakeNote()
 #     endif
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");
-
-
-//    record the parameters of GREP
-#     if ( MODEL == HYDRO  &&  defined GREP )
-      fprintf( Note, "Parameters of GREP\n" );
-      fprintf( Note, "***********************************************************************************\n" );
-      fprintf( Note, "GREP_CENTER_METHOD              %d\n",      GREP_CENTER_METHOD );
-      fprintf( Note, "GREP_MAXITER                    %d\n",      GREP_MAXITER       );
-      fprintf( Note, "GREP_LOGBIN                     %d\n",      GREP_LOGBIN        );
-      fprintf( Note, "GREP_LOGBINRATIO                %13.7e\n",  GREP_LOGBINRATIO   );
-      fprintf( Note, "GREP_MAXRADIUS                  %13.7e\n",  GREP_MAXRADIUS     );
-      fprintf( Note, "GREP_MINBINSIZE                 %13.7e\n",  GREP_MINBINSIZE    );
-      fprintf( Note, "***********************************************************************************\n" );
-      fprintf( Note, "\n\n");
-#     endif
 
 
 //    record the flag criterion (density/density gradient/pressure gradient/user-defined)

@@ -1,7 +1,5 @@
 #include "GAMER.h"
 
-#ifdef GREP
-
 
 
 
@@ -208,7 +206,3 @@ void CPU_ComputeGREP( const Profile_t *DensAve, const Profile_t *EngyAve, const 
    delete [] EdgeL;
 
 } // FUNCTION : CPU_ComputeGREP
-
-
-
-#endif // #ifdef GREP

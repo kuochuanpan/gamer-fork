@@ -1765,10 +1765,7 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.Gra_BlockSize        = GRA_BLOCK_SIZE;
    SymConst.ExtPotNAuxMax        = EXT_POT_NAUX_MAX;
    SymConst.ExtAccNAuxMax        = EXT_ACC_NAUX_MAX;
-
-#  ifdef GREP
    SymConst.ExtPotGREPNAuxMax    = EXT_POT_GREP_NAUX_MAX;
-#  endif
 
 
 #  if   ( POT_SCHEME == SOR )
@@ -2146,9 +2143,11 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
    InputPara.Pot_GPU_NPGroup         = POT_GPU_NPGROUP;
    InputPara.Opt__GraP5Gradient      = OPT__GRA_P5_GRADIENT;
+   InputPara.Opt__GravityExtraMass   = OPT__GRAVITY_EXTRA_MASS;
    InputPara.Opt__SelfGravity        = OPT__SELF_GRAVITY;
    InputPara.Opt__ExtAcc             = OPT__EXT_ACC;
    InputPara.Opt__ExtPot             = OPT__EXT_POT;
+
    InputPara.ExtPotTable_Name        = EXT_POT_TABLE_NAME;
    for (int d=0; d<3; d++)
    InputPara.ExtPotTable_NPoint[d]   = EXT_POT_TABLE_NPOINT[d];
@@ -2156,8 +2155,14 @@ void FillIn_InputPara( InputPara_t &InputPara )
    for (int d=0; d<3; d++)
    InputPara.ExtPotTable_EdgeL[d]    = EXT_POT_TABLE_EDGEL[d];
    InputPara.ExtPotTable_Float8      = EXT_POT_TABLE_FLOAT8;
-   InputPara.Opt__GravityExtraMass   = OPT__GRAVITY_EXTRA_MASS;
-#  endif
+
+   InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
+   InputPara.GREP_MaxIter            = GREP_MAXITER;
+   InputPara.GREP_LogBin             = GREP_LOGBIN;
+   InputPara.GREP_LogBinRatio        = GREP_LOGBINRATIO;
+   InputPara.GREP_MaxRadius          = GREP_MAXRADIUS;
+   InputPara.GREP_MinBinSize         = GREP_MINBINSIZE;
+#  endif // #ifdef GRAVITY
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
@@ -2285,16 +2290,6 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  ifdef MHD
    InputPara.Opt__Ck_InterfaceB      = OPT__CK_INTERFACE_B;
    InputPara.Opt__Ck_DivergenceB     = OPT__CK_DIVERGENCE_B;
-#  endif
-
-// GREP
-#  ifdef GREP
-   InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
-   InputPara.GREP_MaxIter            = GREP_MAXITER;
-   InputPara.GREP_LogBin             = GREP_LOGBIN;
-   InputPara.GREP_LogBinRatio        = GREP_LOGBINRATIO;
-   InputPara.GREP_MaxRadius          = GREP_MAXRADIUS;
-   InputPara.GREP_MinBinSize         = GREP_MINBINSIZE;
 #  endif
 
 // flag tables
@@ -2559,9 +2554,7 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Gra_BlockSize",        HOFFSET(SymConst_t,Gra_BlockSize       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtPotNAuxMax",        HOFFSET(SymConst_t,ExtPotNAuxMax       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtAccNAuxMax",        HOFFSET(SymConst_t,ExtAccNAuxMax       ), H5T_NATIVE_INT    );
-#  ifdef GREP
    H5Tinsert( H5_TypeID, "ExtPotGREPNAuxMax",    HOFFSET(SymConst_t,ExtPotGREPNAuxMax   ), H5T_NATIVE_INT    );
-#  endif
 #  if   ( POT_SCHEME == SOR )
    H5Tinsert( H5_TypeID, "Pot_BlockSize_z",      HOFFSET(SymConst_t,Pot_BlockSize_z     ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "UsePSolver_10to14",    HOFFSET(SymConst_t,UsePSolver_10to14   ), H5T_NATIVE_INT    );
@@ -2926,15 +2919,23 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
 #  endif
    H5Tinsert( H5_TypeID, "Pot_GPU_NPGroup",         HOFFSET(InputPara_t,Pot_GPU_NPGroup        ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__GraP5Gradient",      HOFFSET(InputPara_t,Opt__GraP5Gradient     ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__GravityExtraMass",   HOFFSET(InputPara_t,Opt__GravityExtraMass  ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__SelfGravity",        HOFFSET(InputPara_t,Opt__SelfGravity       ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__ExtAcc",             HOFFSET(InputPara_t,Opt__ExtAcc            ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__ExtPot",             HOFFSET(InputPara_t,Opt__ExtPot            ), H5T_NATIVE_INT              );
+
    H5Tinsert( H5_TypeID, "ExtPotTable_Name",        HOFFSET(InputPara_t,ExtPotTable_Name       ), H5_TypeID_VarStr            );
    H5Tinsert( H5_TypeID, "ExtPotTable_NPoint",      HOFFSET(InputPara_t,ExtPotTable_NPoint     ), H5_TypeID_Arr_3Int          );
    H5Tinsert( H5_TypeID, "ExtPotTable_dh",          HOFFSET(InputPara_t,ExtPotTable_dh         ), H5T_NATIVE_DOUBLE           );
    H5Tinsert( H5_TypeID, "ExtPotTable_EdgeL",       HOFFSET(InputPara_t,ExtPotTable_EdgeL      ), H5_TypeID_Arr_3Double       );
    H5Tinsert( H5_TypeID, "ExtPotTable_Float8",      HOFFSET(InputPara_t,ExtPotTable_Float8     ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__GravityExtraMass",   HOFFSET(InputPara_t,Opt__GravityExtraMass  ), H5T_NATIVE_INT              );
+
+   H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBinRatio",        HOFFSET(InputPara_t,GREP_LogBinRatio       ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MaxRadius",          HOFFSET(InputPara_t,GREP_MaxRadius         ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MinBinSize",         HOFFSET(InputPara_t,GREP_MinBinSize        ), H5T_NATIVE_DOUBLE  );
 #  endif // #ifdef GRAVITY
 
 // Grackle
@@ -3063,15 +3064,6 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
 #  ifdef MHD
    H5Tinsert( H5_TypeID, "Opt__Ck_InterfaceB",      HOFFSET(InputPara_t,Opt__Ck_InterfaceB     ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__Ck_DivergenceB",     HOFFSET(InputPara_t,Opt__Ck_DivergenceB    ), H5T_NATIVE_INT              );
-#  endif
-// GREP
-#  ifdef GREP
-   H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
-   H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
-   H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );
-   H5Tinsert( H5_TypeID, "GREP_LogBinRatio",        HOFFSET(InputPara_t,GREP_LogBinRatio       ), H5T_NATIVE_DOUBLE  );
-   H5Tinsert( H5_TypeID, "GREP_MaxRadius",          HOFFSET(InputPara_t,GREP_MaxRadius         ), H5T_NATIVE_DOUBLE  );
-   H5Tinsert( H5_TypeID, "GREP_MinBinSize",         HOFFSET(InputPara_t,GREP_MinBinSize        ), H5T_NATIVE_DOUBLE  );
 #  endif
 
 // flag tables

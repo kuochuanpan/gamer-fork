@@ -3,7 +3,7 @@
 #include "CUAPI.h"
 #include "CUDA_ConstMemory.h"
 
-#if ( defined GPU  &&  defined GREP )
+#ifdef GPU
 
 
 extern int        GREP_LvUpdate;
@@ -44,4 +44,4 @@ void CUAPI_SetConstMemory_ExtPot_GREP()
 
 
 
-#endif // #if ( defined GPU  &&  defined GREP )
+#endif // #ifdef GPU
