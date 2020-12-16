@@ -56,7 +56,6 @@ void Init_MemAllocate_PoissonGravity( const int Pot_NPG )
       h_ExtPotTable = new real [TableSize];
    }
 
-
 } // FUNCTION : Init_MemAllocate_PoissonGravity
 
 
