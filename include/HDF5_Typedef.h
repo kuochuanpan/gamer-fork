@@ -118,6 +118,7 @@ struct Makefile_t
    int PotScheme;
    int StorePotGhost;
    int UnsplitGravity;
+   int Grep;
 #  endif
 
 #  if   ( MODEL == HYDRO )
@@ -133,6 +134,7 @@ struct Makefile_t
    int CosmicRay;
    int EoS;
    int BarotropicEoS;
+   int NeutrinoScheme;
 
 #  elif ( MODEL == ELBDM )
    int ConserveMass;
@@ -204,6 +206,7 @@ struct SymConst_t
    int    Gra_BlockSize;
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
+   int    ExtPotGREPNAuxMax;
 
 #  if   ( POT_SCHEME == SOR )
    int    Pot_BlockSize_z;
@@ -429,6 +432,9 @@ struct InputPara_t
    double Gamma;
    double MolecularWeight;
    double IsoTemp;
+#  if ( EOS == EOS_NUCLEAR )
+   char  *NucTable;
+#  endif
    double MinMod_Coeff;
    int    Opt__LR_Limiter;
    int    Opt__1stFluxCorr;
@@ -494,6 +500,7 @@ struct InputPara_t
 #  endif
    int    Pot_GPU_NPGroup;
    int    Opt__GraP5Gradient;
+   int    Opt__GravityExtraMass;
    int    Opt__SelfGravity;
    int    Opt__ExtAcc;
    int    Opt__ExtPot;
@@ -502,7 +509,12 @@ struct InputPara_t
    double ExtPotTable_dh;
    double ExtPotTable_EdgeL[3];
    int    ExtPotTable_Float8;
-   int    Opt__GravityExtraMass;
+   int    GREP_Center_Method;
+   int    GREP_MaxIter;
+   int    GREP_LogBin;
+   double GREP_LogBinRatio;
+   double GREP_MaxRadius;
+   double GREP_MinBinSize;
 #  endif // #ifdef GRAVITY
 
 // Grackle

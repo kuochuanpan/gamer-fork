@@ -69,7 +69,7 @@ Procedure for outputting new variables:
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2423)
+// Function    :  Output_DumpData_Total_HDF5 (FormatVersion = 2427)
 // Description :  Output all simulation data in the HDF5 format, which can be used as a restart file
 //                or loaded by YT
 //
@@ -192,8 +192,12 @@ Procedure for outputting new variables:
 //                2419 : 2020/09/25 --> output EXTPOT_BLOCK_SIZE
 //                2420 : 2020/10/12 --> output OPT__FLAG_USER_NUM and use variable-length datatype for FlagTable_User
 //                2421 : 2020/10/26 --> output COSMIC_RAY
-//                2422 : 2020/10/29 --> output the parameters of external potential table
+//                2422 : 2020/10/26 --> output NEUTRINO_SCHEME
 //                2423 : 2020/11/01 --> output EOS_NTABLE_MAX
+//                2424 : 2020/11/02 --> output NUC_TABLE
+//                2425 : 2020/12/06 --> output GREP runtime parameters and EXT_POT_GREP_NAUX_MAX
+//                2426 : 2020/10/29 --> output the parameters of external potential table
+//                2427 : 2020/11/01 --> output EOS_NTABLE_MAX
 //-------------------------------------------------------------------------------------------------------
 void Output_DumpData_Total_HDF5( const char *FileName )
 {
@@ -1394,7 +1398,7 @@ void FillIn_KeyInfo( KeyInfo_t &KeyInfo )
 
    const time_t CalTime = time( NULL );   // calendar time
 
-   KeyInfo.FormatVersion        = 2423;
+   KeyInfo.FormatVersion        = 2427;
    KeyInfo.Model                = MODEL;
    KeyInfo.NLevel               = NLEVEL;
    KeyInfo.NCompFluid           = NCOMP_FLUID;
@@ -1606,6 +1610,12 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.UnsplitGravity         = 0;
 #  endif
 
+#  ifdef GREP
+   Makefile.Grep                   = 1;
+#  else
+   Makefile.Grep                   = 0;
+#  endif
+
 #  endif // #ifdef GRAVITY
 
 #  if   ( MODEL == HYDRO )
@@ -1643,6 +1653,12 @@ void FillIn_Makefile( Makefile_t &Makefile )
    Makefile.BarotropicEoS          = 1;
 #  else
    Makefile.BarotropicEoS          = 0;
+#  endif
+
+#  ifdef NEUTRINO_SCHEME
+   Makefile.NeutrinoScheme         = NEUTRINO_SCHEME;
+#  else
+   Makefile.NeutrinoScheme         = 0;
 #  endif
 
 
@@ -1749,6 +1765,8 @@ void FillIn_SymConst( SymConst_t &SymConst )
    SymConst.Gra_BlockSize        = GRA_BLOCK_SIZE;
    SymConst.ExtPotNAuxMax        = EXT_POT_NAUX_MAX;
    SymConst.ExtAccNAuxMax        = EXT_ACC_NAUX_MAX;
+   SymConst.ExtPotGREPNAuxMax    = EXT_POT_GREP_NAUX_MAX;
+
 
 #  if   ( POT_SCHEME == SOR )
    SymConst.Pot_BlockSize_z      = POT_BLOCK_SIZE_Z;
@@ -2049,6 +2067,9 @@ void FillIn_InputPara( InputPara_t &InputPara )
    InputPara.Gamma                   = GAMMA;
    InputPara.MolecularWeight         = MOLECULAR_WEIGHT;
    InputPara.IsoTemp                 = ISO_TEMP;
+#  if ( EOS == EOS_NUCLEAR )
+   InputPara.NucTable                = NUC_TABLE;
+#  endif
    InputPara.MinMod_Coeff            = MINMOD_COEFF;
    InputPara.Opt__LR_Limiter         = OPT__LR_LIMITER;
    InputPara.Opt__1stFluxCorr        = OPT__1ST_FLUX_CORR;
@@ -2122,9 +2143,11 @@ void FillIn_InputPara( InputPara_t &InputPara )
 #  endif
    InputPara.Pot_GPU_NPGroup         = POT_GPU_NPGROUP;
    InputPara.Opt__GraP5Gradient      = OPT__GRA_P5_GRADIENT;
+   InputPara.Opt__GravityExtraMass   = OPT__GRAVITY_EXTRA_MASS;
    InputPara.Opt__SelfGravity        = OPT__SELF_GRAVITY;
    InputPara.Opt__ExtAcc             = OPT__EXT_ACC;
    InputPara.Opt__ExtPot             = OPT__EXT_POT;
+
    InputPara.ExtPotTable_Name        = EXT_POT_TABLE_NAME;
    for (int d=0; d<3; d++)
    InputPara.ExtPotTable_NPoint[d]   = EXT_POT_TABLE_NPOINT[d];
@@ -2132,8 +2155,14 @@ void FillIn_InputPara( InputPara_t &InputPara )
    for (int d=0; d<3; d++)
    InputPara.ExtPotTable_EdgeL[d]    = EXT_POT_TABLE_EDGEL[d];
    InputPara.ExtPotTable_Float8      = EXT_POT_TABLE_FLOAT8;
-   InputPara.Opt__GravityExtraMass   = OPT__GRAVITY_EXTRA_MASS;
-#  endif
+
+   InputPara.GREP_Center_Method      = GREP_CENTER_METHOD;
+   InputPara.GREP_MaxIter            = GREP_MAXITER;
+   InputPara.GREP_LogBin             = GREP_LOGBIN;
+   InputPara.GREP_LogBinRatio        = GREP_LOGBINRATIO;
+   InputPara.GREP_MaxRadius          = GREP_MAXRADIUS;
+   InputPara.GREP_MinBinSize         = GREP_MINBINSIZE;
+#  endif // #ifdef GRAVITY
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
@@ -2436,6 +2465,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "PotScheme",              HOFFSET(Makefile_t,PotScheme              ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "StorePotGhost",          HOFFSET(Makefile_t,StorePotGhost          ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "UnsplitGravity",         HOFFSET(Makefile_t,UnsplitGravity         ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "Grep",                   HOFFSET(Makefile_t,Grep                   ), H5T_NATIVE_INT );
 #  endif
 
 #  if   ( MODEL == HYDRO )
@@ -2451,6 +2481,7 @@ void GetCompound_Makefile( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "CosmicRay",              HOFFSET(Makefile_t,CosmicRay              ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "EoS",                    HOFFSET(Makefile_t,EoS                    ), H5T_NATIVE_INT );
    H5Tinsert( H5_TypeID, "BarotropicEoS",          HOFFSET(Makefile_t,BarotropicEoS          ), H5T_NATIVE_INT );
+   H5Tinsert( H5_TypeID, "NeutrinoScheme",         HOFFSET(Makefile_t,NeutrinoScheme         ), H5T_NATIVE_INT );
 
 #  elif ( MODEL == ELBDM )
    H5Tinsert( H5_TypeID, "ConserveMass",           HOFFSET(Makefile_t,ConserveMass           ), H5T_NATIVE_INT );
@@ -2523,6 +2554,7 @@ void GetCompound_SymConst( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Gra_BlockSize",        HOFFSET(SymConst_t,Gra_BlockSize       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtPotNAuxMax",        HOFFSET(SymConst_t,ExtPotNAuxMax       ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "ExtAccNAuxMax",        HOFFSET(SymConst_t,ExtAccNAuxMax       ), H5T_NATIVE_INT    );
+   H5Tinsert( H5_TypeID, "ExtPotGREPNAuxMax",    HOFFSET(SymConst_t,ExtPotGREPNAuxMax   ), H5T_NATIVE_INT    );
 #  if   ( POT_SCHEME == SOR )
    H5Tinsert( H5_TypeID, "Pot_BlockSize_z",      HOFFSET(SymConst_t,Pot_BlockSize_z     ), H5T_NATIVE_INT    );
    H5Tinsert( H5_TypeID, "UsePSolver_10to14",    HOFFSET(SymConst_t,UsePSolver_10to14   ), H5T_NATIVE_INT    );
@@ -2799,6 +2831,9 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
    H5Tinsert( H5_TypeID, "Gamma",                   HOFFSET(InputPara_t,Gamma                  ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "MolecularWeight",         HOFFSET(InputPara_t,MolecularWeight        ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "IsoTemp",                 HOFFSET(InputPara_t,IsoTemp                ), H5T_NATIVE_DOUBLE  );
+#  if ( EOS == EOS_NUCLEAR )
+   H5Tinsert( H5_TypeID, "NucTable",                HOFFSET(InputPara_t,NucTable               ), H5_TypeID_VarStr   );
+#  endif
    H5Tinsert( H5_TypeID, "MinMod_Coeff",            HOFFSET(InputPara_t,MinMod_Coeff           ), H5T_NATIVE_DOUBLE  );
    H5Tinsert( H5_TypeID, "Opt__LR_Limiter",         HOFFSET(InputPara_t,Opt__LR_Limiter        ), H5T_NATIVE_INT     );
    H5Tinsert( H5_TypeID, "Opt__1stFluxCorr",        HOFFSET(InputPara_t,Opt__1stFluxCorr       ), H5T_NATIVE_INT     );
@@ -2884,15 +2919,23 @@ void GetCompound_InputPara( hid_t &H5_TypeID )
 #  endif
    H5Tinsert( H5_TypeID, "Pot_GPU_NPGroup",         HOFFSET(InputPara_t,Pot_GPU_NPGroup        ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__GraP5Gradient",      HOFFSET(InputPara_t,Opt__GraP5Gradient     ), H5T_NATIVE_INT              );
+   H5Tinsert( H5_TypeID, "Opt__GravityExtraMass",   HOFFSET(InputPara_t,Opt__GravityExtraMass  ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__SelfGravity",        HOFFSET(InputPara_t,Opt__SelfGravity       ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__ExtAcc",             HOFFSET(InputPara_t,Opt__ExtAcc            ), H5T_NATIVE_INT              );
    H5Tinsert( H5_TypeID, "Opt__ExtPot",             HOFFSET(InputPara_t,Opt__ExtPot            ), H5T_NATIVE_INT              );
+
    H5Tinsert( H5_TypeID, "ExtPotTable_Name",        HOFFSET(InputPara_t,ExtPotTable_Name       ), H5_TypeID_VarStr            );
    H5Tinsert( H5_TypeID, "ExtPotTable_NPoint",      HOFFSET(InputPara_t,ExtPotTable_NPoint     ), H5_TypeID_Arr_3Int          );
    H5Tinsert( H5_TypeID, "ExtPotTable_dh",          HOFFSET(InputPara_t,ExtPotTable_dh         ), H5T_NATIVE_DOUBLE           );
    H5Tinsert( H5_TypeID, "ExtPotTable_EdgeL",       HOFFSET(InputPara_t,ExtPotTable_EdgeL      ), H5_TypeID_Arr_3Double       );
    H5Tinsert( H5_TypeID, "ExtPotTable_Float8",      HOFFSET(InputPara_t,ExtPotTable_Float8     ), H5T_NATIVE_INT              );
-   H5Tinsert( H5_TypeID, "Opt__GravityExtraMass",   HOFFSET(InputPara_t,Opt__GravityExtraMass  ), H5T_NATIVE_INT              );
+
+   H5Tinsert( H5_TypeID, "GREP_Center_Method",      HOFFSET(InputPara_t,GREP_Center_Method     ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_MaxIter",            HOFFSET(InputPara_t,GREP_MaxIter           ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBin",             HOFFSET(InputPara_t,GREP_LogBin            ), H5T_NATIVE_INT     );
+   H5Tinsert( H5_TypeID, "GREP_LogBinRatio",        HOFFSET(InputPara_t,GREP_LogBinRatio       ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MaxRadius",          HOFFSET(InputPara_t,GREP_MaxRadius         ), H5T_NATIVE_DOUBLE  );
+   H5Tinsert( H5_TypeID, "GREP_MinBinSize",         HOFFSET(InputPara_t,GREP_MinBinSize        ), H5T_NATIVE_DOUBLE  );
 #  endif // #ifdef GRAVITY
 
 // Grackle

@@ -88,6 +88,12 @@ void Aux_TakeNote()
 #     else
       fprintf( Note, "UNSPLIT_GRAVITY                 OFF\n" );
 #     endif
+
+#     ifdef GREP
+      fprintf( Note, "GREP                            ON\n" );
+#     else
+      fprintf( Note, "GREP                            OFF\n" );
+#     endif
 #     endif // #ifdef GRAVITY
 
 #     ifdef COMOVING
@@ -192,6 +198,20 @@ void Aux_TakeNote()
 #     else
       fprintf( Note, "BAROTROPIC_EOS                  OFF\n" );
 #     endif
+
+#     ifdef NEUTRINO_SCHEME
+#     if   ( NEUTRINO_SCHEME == LIGHTBULB )
+      fprintf( Note, "NEUTRINO_SCHEME                 LIGHTBULB\n" );
+#     elif ( NEUTRINO_SCHEME == IDSA )
+      fprintf( Note, "NEUTRINO_SCHEME                 IDSA\n" );
+#     elif ( NEUTRINO_SCHEME == M1 )
+      fprintf( Note, "NEUTRINO_SCHEME                 M1\n" );
+#     else
+      fprintf( Note, "NEUTRINO_SCHEME                 UNKNOWN\n" );
+#     endif
+#     else // #ifdef NEUTRINO_SCHEME
+      fprintf( Note, "NEUTRINO_SCHEME                 OFF\n" );
+#     endif // #ifdef NEUTRINO_SCHEME ... else ...
 
 //    c. options in ELBDM
 #     elif ( MODEL == ELBDM )
@@ -493,6 +513,7 @@ void Aux_TakeNote()
 #     ifdef GRAVITY
       fprintf( Note, "EXT_POT_NAUX_MAX                %d\n",      EXT_POT_NAUX_MAX );
       fprintf( Note, "EXT_ACC_NAUX_MAX                %d\n",      EXT_ACC_NAUX_MAX );
+      fprintf( Note, "EXT_POT_GREP_NAUX_MAX           %d\n",      EXT_POT_GREP_NAUX_MAX );
 #     endif
 
       fprintf( Note, "***********************************************************************************\n" );
@@ -868,6 +889,9 @@ void Aux_TakeNote()
       fprintf( Note, "GAMMA                           %13.7e\n",  GAMMA                   );
       fprintf( Note, "MOLECULAR_WEIGHT                %13.7e\n",  MOLECULAR_WEIGHT        );
       fprintf( Note, "ISO_TEMP                        %13.7e\n",  ISO_TEMP                );
+#     if ( EOS == EOS_NUCLEAR )
+      fprintf( Note, "NUC_TABLE                       %s\n",      NUC_TABLE               );
+#     endif
       fprintf( Note, "MINMOD_COEFF                    %13.7e\n",  MINMOD_COEFF            );
       fprintf( Note, "OPT__LR_LIMITER                 %s\n",      ( OPT__LR_LIMITER == VANLEER           ) ? "VANLEER"    :
                                                                   ( OPT__LR_LIMITER == GMINMOD           ) ? "GMINMOD"    :
@@ -1000,6 +1024,7 @@ void Aux_TakeNote()
 #     endif
       fprintf( Note, "POT_GPU_NPGROUP                 %d\n",      POT_GPU_NPGROUP         );
       fprintf( Note, "OPT__GRA_P5_GRADIENT            %d\n",      OPT__GRA_P5_GRADIENT    );
+      fprintf( Note, "OPT__GRAVITY_EXTRA_MASS         %d\n",      OPT__GRAVITY_EXTRA_MASS );
       fprintf( Note, "OPT__SELF_GRAVITY               %d\n",      OPT__SELF_GRAVITY       );
       fprintf( Note, "OPT__EXT_ACC                    %d\n",      OPT__EXT_ACC            );
       fprintf( Note, "OPT__EXT_POT                    %d\n",      OPT__EXT_POT            );
@@ -1013,7 +1038,13 @@ void Aux_TakeNote()
       fprintf( Note, "EXT_POT_TABLE_EDGEL_Y          %14.7e\n",   EXT_POT_TABLE_EDGEL[1]  );
       fprintf( Note, "EXT_POT_TABLE_EDGEL_Z          %14.7e\n",   EXT_POT_TABLE_EDGEL[2]  );
       fprintf( Note, "EXT_POT_TABLE_FLOAT8            %d\n",      EXT_POT_TABLE_FLOAT8    ); }
-      fprintf( Note, "OPT__GRAVITY_EXTRA_MASS         %d\n",      OPT__GRAVITY_EXTRA_MASS );
+      if ( OPT__EXT_POT == EXT_POT_GREP ) {
+      fprintf( Note, "GREP_CENTER_METHOD              %d\n",      GREP_CENTER_METHOD      );
+      fprintf( Note, "GREP_MAXITER                    %d\n",      GREP_MAXITER            );
+      fprintf( Note, "GREP_LOGBIN                     %d\n",      GREP_LOGBIN             );
+      fprintf( Note, "GREP_LOGBINRATIO                %13.7e\n",  GREP_LOGBINRATIO        );
+      fprintf( Note, "GREP_MAXRADIUS                  %13.7e\n",  GREP_MAXRADIUS          );
+      fprintf( Note, "GREP_MINBINSIZE                 %13.7e\n",  GREP_MINBINSIZE         ); }
       fprintf( Note, "AveDensity_Init                 %13.7e\n",  AveDensity_Init         );
       fprintf( Note, "***********************************************************************************\n" );
       fprintf( Note, "\n\n");

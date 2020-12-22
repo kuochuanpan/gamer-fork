@@ -244,7 +244,20 @@ extern EoS_DE2P_t EoS_DensEint2Pres_GPUPtr;
 extern EoS_DP2E_t EoS_DensPres2Eint_GPUPtr;
 extern EoS_DP2C_t EoS_DensPres2CSqr_GPUPtr;
 #endif
+#if ( EOS == EOS_NUCLEAR )
+extern char NUC_TABLE[MAX_STRING];
+#endif
 #endif // HYDRO
+
+
+// (2-10) GREP
+// =======================================================================================================
+extern int    GREP_CENTER_METHOD;
+extern int    GREP_MAXITER;
+extern bool   GREP_LOGBIN;
+extern double GREP_LOGBINRATIO;
+extern double GREP_MAXRADIUS;
+extern double GREP_MINBINSIZE;
 
 
 
