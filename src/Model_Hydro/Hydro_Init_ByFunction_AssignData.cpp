@@ -3,36 +3,35 @@
 
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
-static void Init_Function_User( real fluid[], const double x, const double y, const double z, const double Time,
-                                const int lv, double AuxArray[] );
+static void Init_Function_User_Template( real fluid[], const double x, const double y, const double z, const double Time,
+                                         const int lv, double AuxArray[] );
 
-// this function pointer may be overwritten by various test problem initializers
+// this function pointer must be set by a test problem initializer
 void (*Init_Function_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
-                                const int lv, double AuxArray[] ) = Init_Function_User;
+                                const int lv, double AuxArray[] ) = NULL;
 
 extern bool (*Flu_ResetByUser_Func_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
                                          const int lv, double AuxArray[] );
 
 #ifdef MHD
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
-static void Init_Function_BField_User( real magnetic[], const double x, const double y, const double z, const double Time,
-                                       const int lv, double AuxArray[] );
+static void Init_Function_BField_User_Template( real magnetic[], const double x, const double y, const double z, const double Time,
+                                                const int lv, double AuxArray[] );
 
-// this function pointer may be overwritten by various test problem initializers
+// this function pointer must be set by a test problem initializer
 void (*Init_Function_BField_User_Ptr)( real magnetic[], const double x, const double y, const double z, const double Time,
-                                       const int lv, double AuxArray[] ) = Init_Function_BField_User;
+                                       const int lv, double AuxArray[] ) = NULL;
 #endif
 
 
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Init_Function_User
-// Description :  Function to initialize the fluid field
+// Function    :  Init_Function_User_Template
+// Description :  Function template to initialize the fluid field
 //
-// Note        :  1. Invoked by Hydro_Init_ByFunction_AssignData() using the function pointer "Init_Function_User_Ptr"
-//                   --> The function pointer may be reset by various test problem initializers, in which case
-//                       this funtion will become useless
+// Note        :  1. Invoked by Hydro_Init_ByFunction_AssignData() using the function pointer
+//                   "Init_Function_User_Ptr", which must be set by a test problem initializer
 //                2. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
 //                   (unless OPT__INIT_GRID_WITH_OMP is disabled)
 //                   --> Please ensure that everything here is thread-safe
@@ -49,37 +48,67 @@ void (*Init_Function_BField_User_Ptr)( real magnetic[], const double x, const do
 //
 // Return      :  fluid
 //-------------------------------------------------------------------------------------------------------
-void Init_Function_User( real fluid[], const double x, const double y, const double z, const double Time,
-                         const int lv, double AuxArray[] )
+void Init_Function_User_Template( real fluid[], const double x, const double y, const double z, const double Time,
+                                  const int lv, double AuxArray[] )
 {
 
-   const real P0   = 1.0;
-   const real Rho0 = 1.0;
-   const real Vx   = 1.25e-1;
-   const real Vy   = 2.30e-1;
-   const real Vz   = 3.70e-1;
+   const real Dens0 = 1.0;
+   const real Vx0   = 1.25e-1;
+   const real Vy0   = 2.30e-1;
+   const real Vz0   = 3.70e-1;
+   const real Pres0 = 1.0;
+   const real Emag0 = 0.0;    // must be zero here even for MHD
 
-   fluid[DENS] = Rho0 + 0.2*exp( -( SQR(1.1*x-0.5*amr->BoxSize[0])+SQR(2.2*y-0.5*amr->BoxSize[1])+SQR(3.3*z-0.5*amr->BoxSize[2]) ) / SQR(1.8*amr->BoxSize[2]) );
-   fluid[MOMX] = fluid[DENS]*Vx + 0.1;
-   fluid[MOMY] = fluid[DENS]*Vy + 0.2;
-   fluid[MOMZ] = fluid[DENS]*Vz + 0.3;
-   fluid[ENGY] = (P0)/(GAMMA-1.0)*(2.0+sin(2.0*M_PI*(4.5*x+5.5*y*6.5*z)/amr->BoxSize[2]))
-                 + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   real Dens, Vx, Vy, Vz, Pres;
+   real MomX, MomY, MomZ, Eint, Etot;
+#  if ( NCOMP_PASSIVE > 0 )
+   real Passive[NCOMP_PASSIVE];
+#  else
+   real *Passive = NULL;
+#  endif
+
+// set the primitive variables
+   Dens = Dens0 + 0.2*exp(  -(  SQR(1.1*x-0.5*amr->BoxSize[0])
+                               +SQR(2.2*y-0.5*amr->BoxSize[1])
+                               +SQR(3.3*z-0.5*amr->BoxSize[2]) ) / SQR( 1.8*amr->BoxSize[2] )  );
+   Vx   = Vx0*sin( 2.0*M_PI/amr->BoxSize[0] );
+   Vy   = Vy0*cos( 2.0*M_PI/amr->BoxSize[1] );
+   Vz   = Vz0*sin( 2.0*M_PI/amr->BoxSize[2] );
+   Pres = Pres0*(  2.0 + sin( 2.0*M_PI*(4.5*x+5.5*y*6.5*z)/amr->BoxSize[2] )  );
 
 // set passive scalars
+#  if ( NCOMP_PASSIVE > 0 )
+// Passive[X] = ...;
+#  endif
 
-} // FUNCTION : Init_Function_User
+// convert primitive variables to conservative variables
+   MomX = Dens*Vx;
+   MomY = Dens*Vy;
+   MomZ = Dens*Vz;
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+   Etot = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, Emag0 );
+
+// store the results
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
+#  if ( NCOMP_PASSIVE > 0 )
+// fluid[XXXX] = ...;
+#  endif
+
+} // FUNCTION : Init_Function_User_Template
 
 
 
 #ifdef MHD
 //-------------------------------------------------------------------------------------------------------
-// Function    :  Init_Function_BField_User
-// Description :  Function to initialize the magnetic field
+// Function    :  Init_Function_BField_User_Template
+// Description :  Function template to initialize the magnetic field
 //
-// Note        :  1. Invoked by Hydro_Init_ByFunction_AssignData() using the function pointer "Init_Function_BField_User_Ptr"
-//                   --> The function pointer may be reset by various test problem initializers, in which case
-//                       this funtion will become useless
+// Note        :  1. Invoked by Hydro_Init_ByFunction_AssignData() using the function pointer
+//                   "Init_Function_BField_User_Ptr", which must be set by a test problem initializer
 //                2. This function will be invoked by multiple OpenMP threads when OPENMP is enabled
 //                   (uless OPT__INIT_GRID_WITH_OMP is disabled)
 //                   --> Please ensure that everything here is thread-safe
@@ -92,15 +121,15 @@ void Init_Function_User( real fluid[], const double x, const double y, const dou
 //
 // Return      :  magnetic
 //-------------------------------------------------------------------------------------------------------
-void Init_Function_BField_User( real magnetic[], const double x, const double y, const double z, const double Time,
-                                const int lv, double AuxArray[] )
+void Init_Function_BField_User_Template( real magnetic[], const double x, const double y, const double z, const double Time,
+                                         const int lv, double AuxArray[] )
 {
 
    magnetic[MAGX] = 1.0;
    magnetic[MAGY] = 2.0;
    magnetic[MAGZ] = 3.0;
 
-} // FUNCTION : Init_Function_BField_User
+} // FUNCTION : Init_Function_BField_User_Template
 #endif // #ifdef MHD
 
 
@@ -110,9 +139,8 @@ void Init_Function_BField_User( real magnetic[], const double x, const double y,
 // Description :  Construct the initial condition in HYDRO
 //
 // Note        :  1. Work for the option "OPT__INIT == INIT_BY_FUNCTION"
-//                2. The function pointers "Init_Function_User_Ptr/Flu_ResetByUser_Func_Ptr/Init_Function_BField_User_Ptr"
-//                   point to "Init_Function_User()/Flu_ResetByUser_Func()/Init_Function_BField_User()" by default
-//                   but may be overwritten by various test problem initializers
+//                2. Function pointers "Init_Function_User_Ptr/Flu_ResetByUser_Func_Ptr/Init_Function_BField_User_Ptr"
+//                   must be set by a test problem initializer
 //                3. One can disable OpenMP in this routine by setting OPT__INIT_GRID_WITH_OMP = 0
 //                   --> Useful if "Init_Function_User_Ptr/Flu_ResetByUser_Func_Ptr/Init_Function_BField_User_Ptr"
 //                       do not support OpenMP
@@ -128,9 +156,12 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
    if ( Init_Function_User_Ptr == NULL )  Aux_Error( ERROR_INFO, "Init_Function_User_Ptr == NULL !!\n" );
 
 #  ifdef MHD
-   if ( Init_Function_BField_User_Ptr == NULL && !OPT__INIT_BFIELD_BYFILE )  
+   if ( Init_Function_BField_User_Ptr == NULL  &&  !OPT__INIT_BFIELD_BYFILE )
       Aux_Error( ERROR_INFO, "Init_Function_BField_User_Ptr == NULL !!\n" );
 #  endif
+
+   if ( OPT__RESET_FLUID  &&  Flu_ResetByUser_Func_Ptr == NULL )
+      Aux_Error( ERROR_INFO, "Flu_ResetByUser_Func_Ptr == NULL for OPT__RESET_FLUID !!\n" );
 
 
 // set the number of OpenMP threads
@@ -142,8 +173,6 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
    const double dh       = amr->dh[lv];
    const double dh_sub   = dh / NSub;
    const double _NSub3   = 1.0/CUBE(NSub);
-   const real   Gamma_m1 = GAMMA - (real)1.0;
-   const real  _Gamma_m1 = (real)1.0 / Gamma_m1;
 #  ifdef MHD
    const double _NSub2   = 1.0/SQR(NSub);
 #  endif
@@ -221,7 +250,7 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
             Init_Function_User_Ptr( fluid_sub, x, y, z, Time[lv], lv, NULL );
 
 //          modify the initial condition if required
-            if ( OPT__RESET_FLUID  &&  Flu_ResetByUser_Func_Ptr != NULL)
+            if ( OPT__RESET_FLUID )
                Flu_ResetByUser_Func_Ptr( fluid_sub, x, y, z, Time[lv], lv, NULL );
 
             for (int v=0; v<NCOMP_TOTAL; v++)   fluid[v] += fluid_sub[v];
@@ -233,21 +262,22 @@ void Hydro_Init_ByFunction_AssignData( const int lv )
 
 //       add the magnetic energy
 #        ifdef MHD
-         const real EngyB = MHD_GetCellCenteredBEnergyInPatch( lv, PID, i, j, k, amr->MagSg[lv] );
-         fluid[ENGY] += EngyB;
+         const real Emag = MHD_GetCellCenteredBEnergyInPatch( lv, PID, i, j, k, amr->MagSg[lv] );
+         fluid[ENGY] += Emag;
 #        else
-         const real EngyB = NULL_REAL;
+         const real Emag = NULL_REAL;
 #        endif
 
 
-//       check minimum density and pressure
+//       apply density and internal energy floors
          fluid[DENS] = FMAX( fluid[DENS], (real)MIN_DENS );
-         fluid[ENGY] = Hydro_CheckMinPresInEngy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
-                                                 Gamma_m1, _Gamma_m1, MIN_PRES, EngyB );
+         fluid[ENGY] = Hydro_CheckMinEintInEngy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY],
+                                                 MIN_EINT, Emag );
 
 //       calculate the dual-energy variable (entropy or internal energy)
 #        if   ( DUAL_ENERGY == DE_ENPY )
-         fluid[ENPY] = Hydro_Fluid2Entropy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], Gamma_m1, EngyB );
+         fluid[ENPY] = Hydro_Con2Entropy( fluid[DENS], fluid[MOMX], fluid[MOMY], fluid[MOMZ], fluid[ENGY], Emag,
+                                          EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
 #        elif ( DUAL_ENERGY == DE_EINT )
 #        error : DE_EINT is NOT supported yet !!
 #        endif

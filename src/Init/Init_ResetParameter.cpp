@@ -10,7 +10,7 @@
 // Note        :  1. Parameters are reset here usually because they are either non-deterministic when
 //                   calling Init_Load_Parameter() (because they depend on compilation options and/or other
 //                   runtime parameters) or are useless/unsupported in the adopted compilation options
-//                2. This function must be invoked AFTER both Init_Load_Parameter and Init_Unit
+//                2. This function must be invoked AFTER both Init_Load_Parameter() and Init_Unit()
 //                   --> The latter may reset several physical constants (e.g., ELBDM_MASS) which are
 //                       required here
 //                3. This function also sets the default values for the derived runtime parameters
@@ -61,7 +61,7 @@ void Init_ResetParameter()
 #     if   ( FLU_SCHEME == RTVD )
       DT__FLUID = 0.50;
 #     elif ( FLU_SCHEME == MHM )
-      DT__FLUID = 1.00;
+      DT__FLUID = 0.80;
 #     elif ( FLU_SCHEME == MHM_RP )
       DT__FLUID = 0.80;
 #     elif ( FLU_SCHEME == CTU )
@@ -132,6 +132,22 @@ void Init_ResetParameter()
    Init_Set_Default_MG_Parameter( MG_MAX_ITER, MG_NPRE_SMOOTH, MG_NPOST_SMOOTH, MG_TOLERATED_ERROR );
 #  endif
 #  endif // GRAVITY
+
+
+// external potential table
+#  ifdef GRAVITY
+   if ( OPT__EXT_POT == EXT_POT_TABLE  &&  EXT_POT_TABLE_FLOAT8 < 0 )
+   {
+//    set EXT_POT_TABLE_FLOAT8 = FLOAT8 by default
+#     ifdef FLOAT8
+      EXT_POT_TABLE_FLOAT8 = 1;
+#     else
+      EXT_POT_TABLE_FLOAT8 = 0;
+#     endif
+
+      PRINT_WARNING( EXT_POT_TABLE_FLOAT8, FORMAT_INT, "to be consistent with FLOAT8" );
+   }
+#  endif
 
 
 // GPU parameters when using CPU only (must set OMP_NTHREAD in advance)
@@ -380,19 +396,35 @@ void Init_ResetParameter()
       PRINT_WARNING( OPT__1ST_FLUX_CORR, FORMAT_INT, "for MHD" );
 
 #     else
+
+#     if ( FLU_SCHEME == RTVD )
+      OPT__1ST_FLUX_CORR = FIRST_FLUX_CORR_NONE;
+#     else
       OPT__1ST_FLUX_CORR = FIRST_FLUX_CORR_3D1D;
+#     endif
 
       PRINT_WARNING( OPT__1ST_FLUX_CORR, FORMAT_INT, "for HYDRO" );
-#     endif
+#     endif // #ifdef MHD ... else ...
    }
 
-   if ( OPT__1ST_FLUX_CORR == FIRST_FLUX_CORR_NONE  &&  OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_NONE )
+   if      ( OPT__1ST_FLUX_CORR == FIRST_FLUX_CORR_NONE  &&  OPT__1ST_FLUX_CORR_SCHEME != RSOLVER_1ST_NONE )
    {
       OPT__1ST_FLUX_CORR_SCHEME = RSOLVER_1ST_NONE;
 
       PRINT_WARNING( OPT__1ST_FLUX_CORR_SCHEME, FORMAT_INT, "since OPT__1ST_FLUX_CORR is disabled" );
    }
-#  endif
+
+   else if ( OPT__1ST_FLUX_CORR != FIRST_FLUX_CORR_NONE  &&  OPT__1ST_FLUX_CORR_SCHEME == RSOLVER_1ST_DEFAULT )
+   {
+#     ifdef MHD
+      OPT__1ST_FLUX_CORR_SCHEME = RSOLVER_1ST_HLLE;
+#     else
+      OPT__1ST_FLUX_CORR_SCHEME = RSOLVER_1ST_HLLE;
+#     endif
+
+      PRINT_WARNING( OPT__1ST_FLUX_CORR_SCHEME, FORMAT_INT, "" );
+   }
+#  endif // if ( MODEL == HYDRO )
 
 
 // timing options
@@ -746,7 +778,7 @@ void Init_ResetParameter()
    {
       JEANS_MIN_PRES = false;
 
-      PRINT_WARNING( JEANS_MIN_PRES, FORMAT_INT, "since either SUPPORT_GRACKLE or GRAVITY is disabled" );
+      PRINT_WARNING( JEANS_MIN_PRES, FORMAT_INT, "since GRAVITY is disabled" );
    }
 #  endif
 
@@ -755,6 +787,24 @@ void Init_ResetParameter()
       JEANS_MIN_PRES_LEVEL = MAX_LEVEL;
 
       PRINT_WARNING( JEANS_MIN_PRES_LEVEL, FORMAT_INT, "" );
+   }
+#  endif
+
+
+// MIN_PRES and MIN_EINT
+#  if ( MODEL == HYDRO )
+   if      ( MIN_PRES > 0.0  &&  MIN_EINT == 0.0 )
+   {
+      MIN_EINT = MIN_PRES*1.5;
+
+      PRINT_WARNING( MIN_EINT, FORMAT_FLT, "" );
+   }
+
+   else if ( MIN_EINT > 0.0  &&  MIN_PRES == 0.0 )
+   {
+      MIN_PRES = MIN_EINT/1.5;
+
+      PRINT_WARNING( MIN_PRES, FORMAT_FLT, "" );
    }
 #  endif
 

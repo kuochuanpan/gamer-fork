@@ -12,7 +12,7 @@
 ##PBS -W depend=afterok:JOB_ID
 ##PBS -W depend=afterany:JOB_ID
 
-if [ "$PBS_ENVIRONMENT" != "PBS_INTERACTIVE" ]; then
+if [ "$PBS_ENVIRONMENT" == "PBS_BATCH" ]; then
    cd $PBS_O_WORKDIR
 fi
 
@@ -21,4 +21,4 @@ START_ID=??
 END_ID=??
 DELTA_ID=1
 
-source MultiFiles__GAMER_ExtractUniform.sh $FILE_IN $START_ID $END_ID $DELTA_ID 1>>stdout 2>>stderr
+sh MultiFiles__GAMER_ExtractUniform.sh $FILE_IN $START_ID $END_ID $DELTA_ID 1>>stdout 2>>stderr

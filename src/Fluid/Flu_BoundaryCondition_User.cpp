@@ -1,12 +1,12 @@
 #include "GAMER.h"
 
 // declare as static so that other functions cannot invoke it directly and must use the function pointer
-static void BC_User( real fluid[], const double x, const double y, const double z, const double Time,
-                     const int lv, double AuxArray[] );
+static void BC_User_Template( real fluid[], const double x, const double y, const double z, const double Time,
+                              const int lv, double AuxArray[] );
 
-// this function pointer may be overwritten by various test problem initializers
+// this function pointer must be set by a test problem initializer
 void (*BC_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
-                     const int lv, double AuxArray[] ) = BC_User;
+                     const int lv, double AuxArray[] ) = NULL;
 
 #ifdef MHD
 extern void (*BC_BField_User_Ptr)( real magnetic[], const double x, const double y, const double z, const double Time,
@@ -17,12 +17,11 @@ extern void (*BC_BField_User_Ptr)( real magnetic[], const double x, const double
 
 
 //-------------------------------------------------------------------------------------------------------
-// Function    :  BC_User
-// Description :  User-specified boundary condition
+// Function    :  BC_User_Template
+// Description :  User-specified boundary condition template
 //
-// Note        :  1. Invoked by Flu_BoundaryCondition_User() using the function pointer "BC_User_Ptr"
-//                   --> The function pointer may be reset by various test problem initializers, in which case
-//                       this funtion will become useless
+// Note        :  1. Invoked by Flu_BoundaryCondition_User() using the function pointer
+//                   "BC_User_Ptr", which must be set by a test problem initializer
 //                2. Always return NCOMP_TOTAL variables
 //                3. Enabled by the runtime options "OPT__BC_FLU_* == 4"
 //                4. For MHD, do NOT add magnetic energy (i.e., 0.5*B^2) to fluid[ENGY] here
@@ -37,31 +36,49 @@ extern void (*BC_BField_User_Ptr)( real magnetic[], const double x, const double
 //
 // Return      :  fluid
 //-------------------------------------------------------------------------------------------------------
-void BC_User( real fluid[], const double x, const double y, const double z, const double Time,
-              const int lv, double AuxArray[] )
+void BC_User_Template( real fluid[], const double x, const double y, const double z, const double Time,
+                       const int lv, double AuxArray[] )
 {
 
 // put your B.C. here
 // ##########################################################################################################
 // Example 1 : set to time-independent values for HYDRO
    /*
-   const double C[3] = { 0.5*amr->BoxSize[0],
-                         0.5*amr->BoxSize[1],
-                         0.5*amr->BoxSize[2] };
-   const real Height = 100.0;
-   const real Width  =  64.0;
-   const real Gamma2 = real( 1.0/GAMMA/(GAMMA-1.0) );
-   const real Cs     = 1.0;
-   const real Rho0   = 1.0;
+   const real Dens0 = 1.0;
+   const real Vx    = 1.25e-1;
+   const real Vy    = 2.30e-1;
+   const real Vz    = 3.70e-1;
+   const real Pres0 = 1.0;
+   const real Emag0 = 0.0;    // must be zero here even for MHD
 
-   fluid[DENS] = Rho0 + Height*EXP(  -( SQR(x-C[0]) + SQR(y-C[1]) + SQR(z-C[2]) ) / SQR(Width)  );
-   fluid[MOMX] = 0.0;
-   fluid[MOMY] = 0.0;
-   fluid[MOMZ] = 0.0;
-   fluid[ENGY] = Cs*Cs*fluid[DENS]*Gamma2 + (real)0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   real Dens, MomX, MomY, MomZ, Pres, Eint, Etot;
+#  if ( NCOMP_PASSIVE > 0 )
+   real Passive[NCOMP_PASSIVE];
+#  else
+   real *Passive = NULL;
+#  endif
 
-// remember to set passive scalars as well
-   fluid[EINT] = XXX;
+   Dens       = Dens0 + 0.2*exp(  -(  SQR(1.1*x-0.5*amr->BoxSize[0])
+                                     +SQR(2.2*y-0.5*amr->BoxSize[1])
+                                     +SQR(3.3*z-0.5*amr->BoxSize[2]) ) / SQR( 1.8*amr->BoxSize[2] )  );
+   MomX       = Dens*Vx;
+   MomY       = Dens*Vy;
+   MomZ       = Dens*Vz;
+   Pres       = Pres0*(  2.0 + sin( 2.0*M_PI*(4.5*x+5.5*y*6.5*z)/amr->BoxSize[2] )  );
+#  if ( NCOMP_PASSIVE > 0 )
+// Passive[X] = ...;
+#  endif
+   Eint       = EoS_DensPres2Eint_CPUPtr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, h_EoS_Table );
+   Etot       = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, Emag0 );
+
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
+#  if ( NCOMP_PASSIVE > 0 )
+   fluid[XXXX] = ...;
+#  endif
    */
 
 
@@ -69,7 +86,7 @@ void BC_User( real fluid[], const double x, const double y, const double z, cons
 
 // ##########################################################################################################
 
-} // FUNCTION : BC_User
+} // FUNCTION : BC_User_Template
 
 
 
@@ -78,8 +95,7 @@ void BC_User( real fluid[], const double x, const double y, const double z, cons
 // Description :  Fill up the ghost-zone values by the user-specified boundary condition
 //
 // Note        :  1. Work for Prepare_PatchData(), InterpolateGhostZone(), Refine(), and LB_Refine_GetNewRealPatchList()
-//                2. The function pointer "BC_User_Ptr" points to BC_User() by default but may be overwritten
-//                   by various test problem initializers
+//                2. Function pointers "BC_User_Ptr" and "BC_BField_User_Ptr" must be set by a test problem initializer
 //                3. User-defined boundary conditions for the magnetic field are set in MHD_BoundaryCondition_User()
 //
 // Parameter   :  Array          : Array to store the prepared data including ghost zones
@@ -103,7 +119,13 @@ void Flu_BoundaryCondition_User( real *Array, const int NVar_Flu, const int Arra
 {
 
 // check
-   if ( BC_User_Ptr == NULL )    Aux_Error( ERROR_INFO, "BC_User_Ptr == NULL !!\n" );
+   if ( BC_User_Ptr == NULL )
+      Aux_Error( ERROR_INFO, "BC_User_Ptr == NULL for user-specified boundary conditions !!\n" );
+
+#  ifdef MHD
+   if ( BC_BField_User_Ptr == NULL )
+      Aux_Error( ERROR_INFO, "BC_BField_User_Ptr == NULL for user-specified boundary conditions !!\n" );
+#  endif
 
 
    const double x0 = Corner[0] + (double)Idx_Start[0]*dh;   // starting x,y,z coordinates
@@ -115,7 +137,6 @@ void Flu_BoundaryCondition_User( real *Array, const int NVar_Flu, const int Arra
    const double dh_2             = 0.5*dh;
 #  endif
    const bool   CheckMinPres_Yes = true;
-   const real   Gamma_m1         = GAMMA - (real)1.0;
    const bool   PrepVx           = ( TVar & _VELX ) ? true : false;
    const bool   PrepVy           = ( TVar & _VELY ) ? true : false;
    const bool   PrepVz           = ( TVar & _VELZ ) ? true : false;
@@ -150,7 +171,7 @@ void Flu_BoundaryCondition_User( real *Array, const int NVar_Flu, const int Arra
 //    add the magnetic energy for MHD
 #     if ( MODEL == HYDRO )
 #     ifdef MHD
-      real EngyB, BxL, BxR, Bx, ByL, ByR, By, BzL, BzR, Bz, B3v[NCOMP_MAG];
+      real Emag, BxL, BxR, Bx, ByL, ByR, By, BzL, BzR, Bz, B3v[NCOMP_MAG];
 
       BC_BField_User_Ptr( B3v, x-dh_2, y,      z,      Time, lv, NULL );   BxL = B3v[MAGX];
       BC_BField_User_Ptr( B3v, x+dh_2, y,      z,      Time, lv, NULL );   BxR = B3v[MAGX];
@@ -159,15 +180,15 @@ void Flu_BoundaryCondition_User( real *Array, const int NVar_Flu, const int Arra
       BC_BField_User_Ptr( B3v, x,      y,      z-dh_2, Time, lv, NULL );   BzL = B3v[MAGZ];
       BC_BField_User_Ptr( B3v, x,      y,      z+dh_2, Time, lv, NULL );   BzR = B3v[MAGZ];
 
-      Bx    = (real)0.5*( BxL + BxR );
-      By    = (real)0.5*( ByL + ByR );
-      Bz    = (real)0.5*( BzL + BzR );
-      EngyB = (real)0.5*( SQR(Bx) + SQR(By) + SQR(Bz) );
+      Bx   = (real)0.5*( BxL + BxR );
+      By   = (real)0.5*( ByL + ByR );
+      Bz   = (real)0.5*( BzL + BzR );
+      Emag = (real)0.5*( SQR(Bx) + SQR(By) + SQR(Bz) );
 
-      BVal[ENGY] += EngyB;
+      BVal[ENGY] += Emag;
 
 #     else
-      const real EngyB = NULL_REAL;
+      const real Emag = NULL_REAL;
 #     endif
 #     endif // #ifdef ( MODEL == HYDRO )
 
@@ -182,10 +203,16 @@ void Flu_BoundaryCondition_User( real *Array, const int NVar_Flu, const int Arra
       if ( PrepVx   )   Array3D[ v2 ++ ][k][j][i] = BVal[MOMX] / BVal[DENS];
       if ( PrepVy   )   Array3D[ v2 ++ ][k][j][i] = BVal[MOMY] / BVal[DENS];
       if ( PrepVz   )   Array3D[ v2 ++ ][k][j][i] = BVal[MOMZ] / BVal[DENS];
-      if ( PrepPres )   Array3D[ v2 ++ ][k][j][i] = Hydro_GetPressure( BVal[DENS], BVal[MOMX], BVal[MOMY], BVal[MOMZ], BVal[ENGY],
-                                                                       Gamma_m1, CheckMinPres_Yes, MIN_PRES, EngyB );
-      if ( PrepTemp )   Array3D[ v2 ++ ][k][j][i] = Hydro_GetTemperature( BVal[DENS], BVal[MOMX], BVal[MOMY], BVal[MOMZ], BVal[ENGY],
-                                                                          Gamma_m1, CheckMinPres_Yes, MIN_PRES, EngyB );
+      if ( PrepPres )   Array3D[ v2 ++ ][k][j][i] = Hydro_Con2Pres( BVal[DENS], BVal[MOMX], BVal[MOMY],
+                                                                    BVal[MOMZ], BVal[ENGY], BVal+NCOMP_FLUID,
+                                                                    CheckMinPres_Yes, MIN_PRES, Emag,
+                                                                    EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt,
+                                                                    EoS_AuxArray_Int, h_EoS_Table, NULL );
+      if ( PrepTemp )   Array3D[ v2 ++ ][k][j][i] = Hydro_Con2Temp( BVal[DENS], BVal[MOMX], BVal[MOMY],
+                                                                    BVal[MOMZ], BVal[ENGY], BVal+NCOMP_FLUID,
+                                                                    CheckMinPres_Yes, MIN_PRES, Emag,
+                                                                    EoS_DensEint2Pres_CPUPtr, EoS_AuxArray_Flt,
+                                                                    EoS_AuxArray_Int, h_EoS_Table );
 
 #     elif ( MODEL == ELBDM )
 //    no derived variables yet

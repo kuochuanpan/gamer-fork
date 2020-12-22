@@ -31,7 +31,7 @@ extern void (*Init_ByFile_User_Ptr)( real fluid_out[], const real fluid_in[], co
 extern void (*Init_Field_User_Ptr)();
 extern void (*Init_User_Ptr)();
 extern void (*Output_User_Ptr)();
-extern bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double Threshold );
+extern bool (*Flag_User_Ptr)( const int i, const int j, const int k, const int lv, const int PID, const double *Threshold );
 extern void (*Mis_GetTimeStep_User_Ptr)( const int lv, const double dTime_dt );
 extern void (*Aux_Record_User_Ptr)();
 extern void (*BC_User_Ptr)( real fluid[], const double x, const double y, const double z, const double Time,
@@ -44,10 +44,13 @@ extern bool (*Flu_ResetByUser_Func_Ptr)( real fluid[], const double x, const dou
                                          const int lv, double AuxArray[] );
 extern void (*End_User_Ptr)();
 #ifdef GRAVITY
-extern void (*Init_ExternalAcc_Ptr)();
-extern void (*Init_ExternalPot_Ptr)();
 extern real (*Poi_AddExtraMassForGravity_Ptr)( const double x, const double y, const double z, const double Time,
                                                const int lv, double AuxArray[] );
+extern void (*Poi_UserWorkBeforePoisson_Ptr)( const double Time, const int lv );
+extern void (*Init_ExtAcc_Ptr)();
+extern void (*Init_ExtPot_Ptr)();
+extern void (*End_ExtAcc_Ptr)();
+extern void (*End_ExtPot_Ptr)();
 #endif
 #ifdef PARTICLE
 extern void (*Par_Init_ByFunction_Ptr)( const long NPar_ThisRank, const long NPar_AllRank,
@@ -56,13 +59,9 @@ extern void (*Par_Init_ByFunction_Ptr)( const long NPar_ThisRank, const long NPa
                                         real *AllAttribute[PAR_NATT_TOTAL] );
 extern void (*Par_Init_Attribute_User_Ptr)();
 #endif
-
-
-// common global variables
-#ifdef GRAVITY
-#include "CUPOT.h"
-extern double ExtPot_AuxArray[EXT_POT_NAUX_MAX];
-extern double ExtAcc_AuxArray[EXT_ACC_NAUX_MAX];
+#if ( MODEL == HYDRO )
+extern void (*EoS_Init_Ptr)();
+extern void (*EoS_End_Ptr)();
 #endif
 
 

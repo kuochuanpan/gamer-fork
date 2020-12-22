@@ -176,12 +176,23 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    const double kx = 2.0*M_PI/amr->BoxSize[0];
    const double ky = 2.0*M_PI/amr->BoxSize[1];
+   double Dens, MomX, MomY, MomZ, Pres, Eint, Etot;
 
-   fluid[DENS] = OrszagTang_Rho0;
-   fluid[MOMX] = OrszagTang_Rho0*OrszagTang_Vx0*sin(kx*y);
-   fluid[MOMY] = OrszagTang_Rho0*OrszagTang_Vy0*sin(ky*x);
-   fluid[MOMZ] = 0.0;
-   fluid[ENGY] = OrszagTang_P0/(GAMMA-1.0) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   Dens = OrszagTang_Rho0;
+   MomX = OrszagTang_Rho0*OrszagTang_Vx0*sin(kx*y);
+   MomY = OrszagTang_Rho0*OrszagTang_Vy0*sin(ky*x);
+   MomZ = 0.0;
+   Pres = OrszagTang_P0;
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt,
+                                    EoS_AuxArray_Int, h_EoS_Table );    // assuming EoS requires no passive scalars
+   Etot = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, 0.0 );      // do NOT include magnetic energy here
+
+// set the output array
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
 
 } // FUNCTION : SetGridIC
 
@@ -246,22 +257,10 @@ void Init_TestProb_Hydro_MHD_OrszagTangVortex()
    SetParameter();
 
 
-   Init_Function_User_Ptr         = SetGridIC;
+   Init_Function_User_Ptr        = SetGridIC;
 #  ifdef MHD
-   Init_Function_BField_User_Ptr  = SetBFieldIC;
+   Init_Function_BField_User_Ptr = SetBFieldIC;
 #  endif
-   Init_Field_User_Ptr            = NULL;
-   Flag_User_Ptr                  = NULL;
-   Mis_GetTimeStep_User_Ptr       = NULL;
-   BC_User_Ptr                    = NULL;
-#  ifdef MHD
-   BC_BField_User_Ptr             = NULL;
-#  endif
-   Flu_ResetByUser_Func_Ptr       = NULL;
-   Output_User_Ptr                = NULL;
-   Aux_Record_User_Ptr            = NULL;
-   Init_User_Ptr                  = NULL;
-   End_User_Ptr                   = NULL;
 #  endif // #if ( MODEL == HYDRO )
 
 

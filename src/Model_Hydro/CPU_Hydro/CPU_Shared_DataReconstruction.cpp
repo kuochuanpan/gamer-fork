@@ -17,14 +17,19 @@
 #else
 
 void Hydro_Rotate3D( real InOut[], const int XYZ, const bool Forward, const int Mag_Offset );
-real Hydro_CheckMinPres( const real InPres, const real MinPres );
-void Hydro_Con2Pri( const real In[], real Out[], const real Gamma_m1, const real MinPres,
+void Hydro_Con2Pri( const real In[], real Out[], const real MinPres,
                     const bool NormPassive, const int NNorm, const int NormIdx[],
-                    const bool JeansMinPres, const real JeansMinPres_Coeff );
-void Hydro_Pri2Con( const real In[], real Out[], const real _Gamma_m1,
-                    const bool NormPassive, const int NNorm, const int NormIdx[] );
+                    const bool JeansMinPres, const real JeansMinPres_Coeff,
+                    const EoS_DE2P_t EoS_DensEint2Pres, const EoS_DP2E_t EoS_DensPres2Eint,
+                    const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
+                    const real *const EoS_Table[EOS_NTABLE_MAX], real* const EintOut );
+void Hydro_Pri2Con( const real In[], real Out[], const bool NormPassive, const int NNorm, const int NormIdx[],
+                    const EoS_DP2E_t EoS_DensPres2Eint, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
+                    const real *const EoS_Table[EOS_NTABLE_MAX], const real* const EintIn );
 #if ( FLU_SCHEME == MHM )
-void Hydro_Con2Flux( const int XYZ, real Flux[], const real In[], const real Gamma_m1, const real MinPres );
+void Hydro_Con2Flux( const int XYZ, real Flux[], const real In[], const real MinPres,
+                     const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[], const int EoS_AuxArray_Int[],
+                     const real *const EoS_Table[EOS_NTABLE_MAX], const real* const PresIn );
 #endif
 
 #endif // #ifdef __CUDACC__ ... else ...
@@ -33,36 +38,43 @@ void Hydro_Con2Flux( const int XYZ, real Flux[], const real In[], const real Gam
 // internal functions (GPU_DEVICE is defined in CUFLU.h)
 GPU_DEVICE
 static void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_Limiter_t LR_Limiter,
-                              const real MinMod_Coeff, const real Gamma, const int XYZ,
-                              const real LEigenVec[][NWAVE], const real REigenVec[][NWAVE],
-                              real Slope_Limiter[] );
+                              const real MinMod_Coeff, const int XYZ,
+                              const real LEigenVec[][NWAVE], const real REigenVec[][NWAVE], real Slope_Limiter[],
+                              const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                              const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] );
 #if (  FLU_SCHEME == CTU  ||  ( defined MHD && defined CHAR_RECONSTRUCTION )  )
 #ifdef MHD
 GPU_DEVICE
 static void   MHD_GetEigenSystem( const real CC_Var[], real EigenVal[],
                                   real LEigenVec[][NWAVE], real REigenVec[][NWAVE],
-                                  const real Gamma, const int XYZ );
+                                  const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                                  const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX],
+                                  const int XYZ );
 #else
 GPU_DEVICE
 static void Hydro_GetEigenSystem( const real CC_Var[], real EigenVal[][NWAVE],
                                   real LEigenVec[][NWAVE], real REigenVec[][NWAVE],
-                                  const real Gamma );
+                                  const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                                  const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] );
 #endif
 #endif
 #if ( FLU_SCHEME == MHM )
 GPU_DEVICE
-static void Hydro_HancockPredict( real fc[][NCOMP_TOTAL], const real dt, const real dh,
-                                  const real Gamma_m1, const real _Gamma_m1,
+static void Hydro_HancockPredict( real fc[][NCOMP_LR], const real dt, const real dh,
                                   const real g_cc_array[][ CUBE(FLU_NXT) ], const int cc_idx,
-                                  const real MinDens, const real MinPres );
+                                  const real MinDens, const real MinPres, const real MinEint,
+                                  const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[],
+                                  const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] );
 #endif
 #ifdef CHAR_RECONSTRUCTION
 GPU_DEVICE
-static void Hydro_Pri2Char( real InOut[], const real Gamma, const real Rho, const real Pres,
-                            const real LEigenVec[][NWAVE], const int XYZ );
+static void Hydro_Pri2Char( real InOut[], const real Dens, const real Pres, const real LEigenVec[][NWAVE], const int XYZ,
+                            const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                            const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] );
 GPU_DEVICE
-static void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, const real Pres,
-                            const real REigenVec[][NWAVE], const int XYZ );
+static void Hydro_Char2Pri( real InOut[], const real Dens, const real Pres, const real REigenVec[][NWAVE], const int XYZ,
+                            const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                            const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] );
 #endif
 
 
@@ -87,8 +99,6 @@ static void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, cons
 //                       --> Adopted by MHM and CTU
 //                   --> If the input data are primitive variables, one must provide g_PriVar[] and disable "Con2Pri"
 //                       --> g_ConVar[] is useless here
-//                           --> Although Hydro_HancockPredict() still needs g_ConVar(), MHM provides conserved instead
-//                               of primitive variables. So it's fine.
 //                       --> Adopted by MHM_RP, where Hydro_RiemannPredict() already returns primitive variables
 //                3. Output data are always conserved variables
 //                   --> Because Hydro_HancockPredict() only works with conserved variables
@@ -99,20 +109,26 @@ static void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, cons
 //                7. This function is shared by MHM, MHM_RP, and CTU schemes
 //                8. g_FC_B[] has the size of SQR(FLU_NXT)*FLU_NXT_P1 but is accessed with the strides
 //                   NIn/NIn+1 along the transverse/longitudinal directions
+//                9. Support applying data reconstruction to internal energy and using that instead of pressure
+//                   for converting primitive variables to conserved variables
+//                   --> Controlled by the option "LR_EINT" in CUFLU.h; see the description thereof for details
 //
 // Parameter   :  g_ConVar           : Array storing the input cell-centered conserved variables
 //                                     --> Should contain NCOMP_TOTAL variables
 //                g_FC_B             : Array storing the input face-centered magnetic field (for MHD only)
 //                                     --> Should contain NCOMP_MAG variables
 //                g_PriVar           : Array storing/to store the cell-centered primitive variables
-//                                     --> Should contain NCOMP_TOTAL_PLUS_MAG variables
-//                                         --> For MHD, this array currently stores the normal B field as well
+//                                     --> Should contain NCOMP_LR variables
+//                                         --> Store internal energy as the last variable when LR_EINT is on
+//                                     --> For MHD, this array currently stores the normal B field as well
 //                                     --> For MHM, g_ConVar[] and g_PriVar[] must point to different arrays since
 //                                         Hydro_HancockPredict() requires the original g_ConVar[]
-//                g_FC_Var           : Array to store the output face-centered primitive variables
+//                g_FC_Var           : Array to store the output face-centered conserved variables
 //                                     --> Should contain NCOMP_TOTAL_PLUS_MAG variables
 //                g_Slope_PPM        : Array to store the x/y/z slopes for the PPM reconstruction
-//                                     --> Should contain NCOMP_TOTAL_PLUS_MAG variables
+//                                     --> Should contain NCOMP_LR variables
+//                                         --> Store internal energy as the last variable when LR_EINT is on
+//                                     --> Useless for PLM
 //                Con2Pri            : Convert conserved variables in g_ConVar[] to primitive variables and
 //                                     store the results in g_PriVar[]
 //                NIn                : Size of g_PriVar[] along each direction
@@ -122,13 +138,12 @@ static void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, cons
 //                                      --> Size of g_FC_Var[] is assumed to be "(NIn-2*NGhost)^3"
 //                                      --> The reconstructed data at cell (i,j,k) will be stored in g_FC_Var[]
 //                                          with the index "(i-NGhost,j-NGhost,k-NGhost)"
-//                Gamma              : Ratio of specific heats
 //                LR_Limiter         : Slope limiter for the data reconstruction in the MHM/MHM_RP/CTU schemes
 //                                     (0/1/2/3) = (vanLeer/generalized MinMod/vanAlbada/vanLeer+generalized MinMod) limiter
 //                MinMod_Coeff       : Coefficient of the generalized MinMod limiter
 //                dt                 : Time interval to advance solution (for the CTU scheme)
 //                dh                 : Cell size
-//                MinDens/Pres       : Minimum allowed density and pressure
+//                MinDens/Pres/Eint  : Density, pressure, and internal energy floors
 //                NormPassive        : true --> convert passive scalars to mass fraction
 //                NNorm              : Number of passive scalars for the option "NormPassive"
 //                                     --> Should be set to the global variable "PassiveNorm_NVar"
@@ -136,36 +151,62 @@ static void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, cons
 //                                     --> Should be set to the global variable "PassiveNorm_VarIdx"
 //                JeansMinPres       : Apply minimum pressure estimated from the Jeans length
 //                JeansMinPres_Coeff : Coefficient used by JeansMinPres = G*(Jeans_NCell*Jeans_dh)^2/(Gamma*pi);
+//                EoS_DensEint2Pres  : EoS routine to compute the gas pressure
+//                EoS_DensPres2Eint  : EoS routine to compute the gas internal energy
+//                EoS_DensPres2CSqr  : EoS routine to compute the sound speed square
+//                EoS_AuxArray_*     : Auxiliary arrays for the EoS routines
+//                EoS_Table          : EoS tables
 //------------------------------------------------------------------------------------------------------
 GPU_DEVICE
 void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
                                const real g_FC_B     [][ SQR(FLU_NXT)*FLU_NXT_P1 ],
                                      real g_PriVar   [][ CUBE(FLU_NXT) ],
                                      real g_FC_Var   [][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR) ],
-                                     real g_Slope_PPM[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_SLOPE_PPM) ],
-                               const bool Con2Pri, const int NIn, const int NGhost, const real Gamma,
-                               const LR_Limiter_t LR_Limiter, const real MinMod_Coeff,
-                               const real dt, const real dh, const real MinDens, const real MinPres,
+                                     real g_Slope_PPM[][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ],
+                               const bool Con2Pri, const LR_Limiter_t LR_Limiter, const real MinMod_Coeff,
+                               const real dt, const real dh,
+                               const real MinDens, const real MinPres, const real MinEint,
                                const bool NormPassive, const int NNorm, const int NormIdx[],
-                               const bool JeansMinPres, const real JeansMinPres_Coeff )
+                               const bool JeansMinPres, const real JeansMinPres_Coeff,
+                               const EoS_DE2P_t EoS_DensEint2Pres,
+                               const EoS_DP2E_t EoS_DensPres2Eint,
+                               const EoS_DP2C_t EoS_DensPres2CSqr,
+                               const double EoS_AuxArray_Flt[],
+                               const int    EoS_AuxArray_Int[],
+                               const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
+
+//### NOTE: temporary solution to the bug in cuda 10.1 and 10.2 that incorrectly overwrites didx_cc[]
+#  if   ( FLU_SCHEME == MHM )
+   const int NIn    = FLU_NXT;
+#  elif ( FLU_SCHEME == MHM_RP )
+   const int NIn    = N_HF_VAR;
+#  elif ( FLU_SCHEME == CTU )
+   const int NIn    = FLU_NXT;
+#  else
+#  error : ERROR : unsupported FLU_SCHEME !!
+#  endif
+   const int NGhost = LR_GHOST_SIZE;
+
 
 // check
 #  ifdef GAMER_DEBUG
    if ( NIn - 2*NGhost != N_FC_VAR )
       printf( "ERROR : NIn - 2*NGhost != N_FC_VAR (NIn %d, NGhost %d, N_FC_VAR %d) !!\n",
               NIn, NGhost, N_FC_VAR );
+
+#  if ( defined LR_EINT  &&  FLU_SCHEME == CTU )
+#     error : CTU does NOT support LR_EINT !!
 #  endif
+#  endif // GAMER_DEBUG
 
 
-   const int  didx_cc[3] = { 1, NIn, SQR(NIn) };
-   const real  Gamma_m1  = Gamma - (real)1.0;
-   const real _Gamma_m1  = (real)1.0 / Gamma_m1;
+   const int  didx_cc[3]     = { 1, NIn, SQR(NIn) };
 
 #  if ( FLU_SCHEME == CTU )
-   const real dt_dh2 = (real)0.5*dt/dh;
+   const real dt_dh2         = (real)0.5*dt/dh;
 
-// index mapping between arrays with size NWAVE and NCOMP_TOTAL_PLUS_MAG;
+// index mapping between arrays with size NWAVE and NCOMP_TOTAL_PLUS_MAG/NCOMP_LR
 #  ifdef MHD
    const int idx_wave[NWAVE] = { 0, 1, 2, 3, 4, MAG_OFFSET+1, MAG_OFFSET+2 };
 #  else
@@ -234,6 +275,12 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
    if ( Con2Pri )
    {
       real ConVar_1Cell[NCOMP_TOTAL_PLUS_MAG], PriVar_1Cell[NCOMP_TOTAL_PLUS_MAG];
+#     ifdef LR_EINT
+      real Eint;
+      real* const EintPtr = &Eint;
+#     else
+      real* const EintPtr = NULL;
+#     endif
 
       CGPU_LOOP( idx, CUBE(NIn) )
       {
@@ -249,11 +296,16 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          MHD_GetCellCenteredBField( ConVar_1Cell+NCOMP_TOTAL, g_FC_B[0], g_FC_B[1], g_FC_B[2], NIn, NIn, NIn, i, j, k );
 #        endif
 
-         Hydro_Con2Pri( ConVar_1Cell, PriVar_1Cell, Gamma_m1, MinPres, NormPassive, NNorm, NormIdx,
-                        JeansMinPres, JeansMinPres_Coeff );
+         Hydro_Con2Pri( ConVar_1Cell, PriVar_1Cell, MinPres, NormPassive, NNorm, NormIdx,
+                        JeansMinPres, JeansMinPres_Coeff, EoS_DensEint2Pres, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
          for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   g_PriVar[v][idx] = PriVar_1Cell[v];
-      }
+
+#        ifdef LR_EINT
+         g_PriVar[NCOMP_TOTAL_PLUS_MAG][idx] = Hydro_CheckMinEint( Eint, MinEint ); // store Eint in the last variable
+#        endif
+      } // CGPU_LOOP( idx, CUBE(NIn) )
 
 #     ifdef __CUDACC__
       __syncthreads();
@@ -284,15 +336,16 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 
 //    cc_C/L/R: cell-centered variables of the Central/Left/Right cells
 //    fc: face-centered variables of the central cell
-      real cc_C[NCOMP_TOTAL_PLUS_MAG], cc_L[NCOMP_TOTAL_PLUS_MAG], cc_R[NCOMP_TOTAL_PLUS_MAG];
-      real fc[6][NCOMP_TOTAL_PLUS_MAG], Slope_Limiter[NCOMP_TOTAL_PLUS_MAG];
+      real cc_C[NCOMP_LR], cc_L[NCOMP_LR], cc_R[NCOMP_LR];
+      real fc[6][NCOMP_LR], Slope_Limiter[NCOMP_LR];
 
-      for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   cc_C[v] = g_PriVar[v][idx_cc];
+      for (int v=0; v<NCOMP_LR; v++)   cc_C[v] = g_PriVar[v][idx_cc];
 
 
 //    1-a. evaluate the eigenvalues and eigenvectors along all three directions for the pure-hydro CTU integrator
 #     if ( !defined MHD  &&  FLU_SCHEME == CTU )
-      Hydro_GetEigenSystem( cc_C, EigenVal, LEigenVec, REigenVec, Gamma );
+      Hydro_GetEigenSystem( cc_C, EigenVal, LEigenVec, REigenVec, EoS_DensPres2CSqr,
+                            EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #     endif
 
 
@@ -301,7 +354,8 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
       {
 //       1-b. evaluate the eigenvalues and eigenvectors along the target direction for the MHD CTU integrator
 #        if (  defined MHD  &&  ( FLU_SCHEME == CTU || defined CHAR_RECONSTRUCTION )  )
-         MHD_GetEigenSystem( cc_C, EigenVal[d], LEigenVec, REigenVec, Gamma, d );
+         MHD_GetEigenSystem( cc_C, EigenVal[d], LEigenVec, REigenVec, EoS_DensPres2CSqr,
+                             EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, d );
 #        endif
 
 
@@ -311,25 +365,26 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          const int idx_ccL = idx_cc - didx_cc[d];
          const int idx_ccR = idx_cc + didx_cc[d];
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             cc_L[v] = g_PriVar[v][idx_ccL];
             cc_R[v] = g_PriVar[v][idx_ccR];
          }
 
-         Hydro_LimitSlope( cc_L, cc_C, cc_R, LR_Limiter, MinMod_Coeff, Gamma, d,
-                           LEigenVec, REigenVec, Slope_Limiter );
+         Hydro_LimitSlope( cc_L, cc_C, cc_R, LR_Limiter, MinMod_Coeff, d,
+                           LEigenVec, REigenVec, Slope_Limiter,
+                           EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 
 
 //       3. get the face-centered primitive variables
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             fc[faceL][v] = cc_C[v] - (real)0.5*Slope_Limiter[v];
             fc[faceR][v] = cc_C[v] + (real)0.5*Slope_Limiter[v];
          }
 
 //       ensure the face-centered variables lie between neighboring cell-centered values
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             real Min, Max;
 
@@ -349,11 +404,16 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 
 //       4. advance the face-centered variables by half time-step for the CTU integrator
 #        if ( FLU_SCHEME == CTU )
+
+#        ifdef LR_EINT
+#           error : CTU does NOT support LR_EINT !!
+#        endif
+
          real Coeff_L, Coeff_R;
-         real Correct_L[NCOMP_TOTAL_PLUS_MAG], Correct_R[NCOMP_TOTAL_PLUS_MAG], dfc[NCOMP_TOTAL_PLUS_MAG];
+         real Correct_L[NCOMP_LR], Correct_R[NCOMP_LR], dfc[NCOMP_LR];
 
 //       4-1. evaluate the slope (for passive scalars as well)
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   dfc[v] = fc[faceR][v] - fc[faceL][v];
+         for (int v=0; v<NCOMP_LR; v++)   dfc[v] = fc[faceR][v] - fc[faceL][v];
 
 
 //       4-2. re-order variables for the y/z directions
@@ -510,14 +570,14 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          Hydro_Rotate3D( Correct_L, d, false, MAG_OFFSET );
          Hydro_Rotate3D( Correct_R, d, false, MAG_OFFSET );
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             fc[faceL][v] += Correct_L[v];
             fc[faceR][v] += Correct_R[v];
          }
 
 
-//       4-6. ensure positive density and pressure
+//       4-6. apply density and pressure floors
          fc[faceL][0] = FMAX( fc[faceL][0], MinDens );
          fc[faceR][0] = FMAX( fc[faceR][0], MinDens );
 
@@ -543,28 +603,39 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 #        endif
          fc[faceL][ MAG_OFFSET + d ] = B_nL;
          fc[faceR][ MAG_OFFSET + d ] = B_nR;
-#        endif
+#        endif // #ifdef MHD
 
 
 //       6. primitive variables --> conserved variables
-         real tmp[NCOMP_TOTAL_PLUS_MAG];  // input and output arrays must not overlap for Pri2Con()
+//          --> When LR_EINT is on, use the reconstructed internal energy instead of pressure in Hydro_Pri2Con()
+//              to skip expensive EoS conversion
+         real tmp[NCOMP_LR];  // input and output arrays must not overlap for Pri2Con()
+#        ifdef LR_EINT
+         real* const EintPtr = tmp + NCOMP_TOTAL_PLUS_MAG;
+#        else
+         real* const EintPtr = NULL;
+#        endif
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   tmp[v] = fc[faceL][v];
-         Hydro_Pri2Con( tmp, fc[faceL], _Gamma_m1, NormPassive, NNorm, NormIdx );
+         for (int v=0; v<NCOMP_LR; v++)   tmp[v] = fc[faceL][v];
+         Hydro_Pri2Con( tmp, fc[faceL], NormPassive, NNorm, NormIdx, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   tmp[v] = fc[faceR][v];
-         Hydro_Pri2Con( tmp, fc[faceR], _Gamma_m1, NormPassive, NNorm, NormIdx );
+         for (int v=0; v<NCOMP_LR; v++)   tmp[v] = fc[faceR][v];
+         Hydro_Pri2Con( tmp, fc[faceR], NormPassive, NNorm, NormIdx, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
       } // for (int d=0; d<3; d++)
 
 
 #     if ( FLU_SCHEME == MHM )
 //    7. advance the face-centered variables by half time-step for the MHM integrator
-      Hydro_HancockPredict( fc, dt, dh, Gamma_m1, _Gamma_m1, g_ConVar, idx_cc, MinDens, MinPres );
+      Hydro_HancockPredict( fc, dt, dh, g_ConVar, idx_cc, MinDens, MinPres, MinEint,
+                            EoS_DensEint2Pres, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #     endif
 
 
 //    8. store the face-centered values to the output array
+//       --> use NCOMP_TOTAL_PLUS_MAG instead of LR_EINT since we don't need to store internal energy in g_FC_Var[]
       for (int f=0; f<6; f++)
       for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
          g_FC_Var[f][v][idx_fc] = fc[f][v];
@@ -595,13 +666,32 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
                                const real g_FC_B     [][ SQR(FLU_NXT)*FLU_NXT_P1 ],
                                      real g_PriVar   [][ CUBE(FLU_NXT) ],
                                      real g_FC_Var   [][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_FC_VAR) ],
-                                     real g_Slope_PPM[][NCOMP_TOTAL_PLUS_MAG][ CUBE(N_SLOPE_PPM) ],
-                               const bool Con2Pri, const int NIn, const int NGhost, const real Gamma,
-                               const LR_Limiter_t LR_Limiter, const real MinMod_Coeff,
-                               const real dt, const real dh, const real MinDens, const real MinPres,
+                                     real g_Slope_PPM[][NCOMP_LR            ][ CUBE(N_SLOPE_PPM) ],
+                               const bool Con2Pri, const LR_Limiter_t LR_Limiter, const real MinMod_Coeff,
+                               const real dt, const real dh,
+                               const real MinDens, const real MinPres, const real MinEint,
                                const bool NormPassive, const int NNorm, const int NormIdx[],
-                               const bool JeansMinPres, const real JeansMinPres_Coeff )
+                               const bool JeansMinPres, const real JeansMinPres_Coeff,
+                               const EoS_DE2P_t EoS_DensEint2Pres,
+                               const EoS_DP2E_t EoS_DensPres2Eint,
+                               const EoS_DP2C_t EoS_DensPres2CSqr,
+                               const double EoS_AuxArray_Flt[],
+                               const int    EoS_AuxArray_Int[],
+                               const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
+
+//### NOTE: temporary solution to the bug in cuda 10.1 and 10.2 that incorrectly overwrites didx_cc[]
+#  if   ( FLU_SCHEME == MHM )
+   const int NIn    = FLU_NXT;
+#  elif ( FLU_SCHEME == MHM_RP )
+   const int NIn    = N_HF_VAR;
+#  elif ( FLU_SCHEME == CTU )
+   const int NIn    = FLU_NXT;
+#  else
+#  error : ERROR : unsupported FLU_SCHEME !!
+#  endif
+   const int NGhost = LR_GHOST_SIZE;
+
 
 // check
 #  ifdef GAMER_DEBUG
@@ -612,18 +702,20 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 #  if ( N_SLOPE_PPM != N_FC_VAR + 2 )
 #     error : ERROR : N_SLOPE_PPM != N_FC_VAR + 2 !!
 #  endif
+
+#  if ( defined LR_EINT  &&  FLU_SCHEME == CTU )
+#     error : CTU does NOT support LR_EINT !!
 #  endif
+#  endif // GAMER_DEBUG
 
 
-   const int  didx_cc   [3] = { 1, NIn, SQR(NIn) };
-   const int  didx_slope[3] = { 1, N_SLOPE_PPM, SQR(N_SLOPE_PPM) };
-   const real  Gamma_m1  = Gamma - (real)1.0;
-   const real _Gamma_m1  = (real)1.0 / Gamma_m1;
+   const int  didx_cc   [3]  = { 1, NIn, SQR(NIn) };
+   const int  didx_slope[3]  = { 1, N_SLOPE_PPM, SQR(N_SLOPE_PPM) };
 
 #  if ( FLU_SCHEME == CTU )
-   const real dt_dh2 = (real)0.5*dt/dh;
+   const real dt_dh2         = (real)0.5*dt/dh;
 
-// index mapping between arrays with size NWAVE and NCOMP_TOTAL_PLUS_MAG;
+// index mapping between arrays with size NWAVE and NCOMP_TOTAL_PLUS_MAG/NCOMP_LR
 #  ifdef MHD
    const int idx_wave[NWAVE] = { 0, 1, 2, 3, 4, MAG_OFFSET+1, MAG_OFFSET+2 };
 #  else
@@ -701,6 +793,12 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
    if ( Con2Pri )
    {
       real ConVar_1Cell[NCOMP_TOTAL_PLUS_MAG], PriVar_1Cell[NCOMP_TOTAL_PLUS_MAG];
+#     ifdef LR_EINT
+      real Eint;
+      real* const EintPtr = &Eint;
+#     else
+      real* const EintPtr = NULL;
+#     endif
 
       CGPU_LOOP( idx, CUBE(NIn) )
       {
@@ -716,11 +814,16 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          MHD_GetCellCenteredBField( ConVar_1Cell+NCOMP_TOTAL, g_FC_B[0], g_FC_B[1], g_FC_B[2], NIn, NIn, NIn, i, j, k );
 #        endif
 
-         Hydro_Con2Pri( ConVar_1Cell, PriVar_1Cell, Gamma_m1, MinPres, NormPassive, NNorm, NormIdx,
-                        JeansMinPres, JeansMinPres_Coeff );
+         Hydro_Con2Pri( ConVar_1Cell, PriVar_1Cell, MinPres, NormPassive, NNorm, NormIdx,
+                        JeansMinPres, JeansMinPres_Coeff, EoS_DensEint2Pres, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
          for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   g_PriVar[v][idx] = PriVar_1Cell[v];
-      }
+
+#        ifdef LR_EINT
+         g_PriVar[NCOMP_TOTAL_PLUS_MAG][idx] = Hydro_CheckMinEint( Eint, MinEint ); // store Eint in the last variable
+#        endif
+      } // CGPU_LOOP( idx, CUBE(NIn) )
 
 #     ifdef __CUDACC__
       __syncthreads();
@@ -738,10 +841,9 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
       const int idx_cc = IDX321( i_cc, j_cc, k_cc, NIn, NIn );
 
 //    cc_C/L/R: cell-centered variables of the Central/Left/Right cells
-      real cc_C[NCOMP_TOTAL_PLUS_MAG], cc_L[NCOMP_TOTAL_PLUS_MAG], cc_R[NCOMP_TOTAL_PLUS_MAG];
-      real Slope_Limiter[NCOMP_TOTAL_PLUS_MAG];
+      real cc_C[NCOMP_LR], cc_L[NCOMP_LR], cc_R[NCOMP_LR], Slope_Limiter[NCOMP_LR];
 
-      for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   cc_C[v] = g_PriVar[v][idx_cc];
+      for (int v=0; v<NCOMP_LR; v++)   cc_C[v] = g_PriVar[v][idx_cc];
 
 //    loop over different spatial directions
       for (int d=0; d<3; d++)
@@ -750,20 +852,22 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          const int idx_ccR = idx_cc + didx_cc[d];
 
 #        if ( defined MHD  &&  defined CHAR_RECONSTRUCTION )
-         MHD_GetEigenSystem( cc_C, EigenVal[d], LEigenVec, REigenVec, Gamma, d );
+         MHD_GetEigenSystem( cc_C, EigenVal[d], LEigenVec, REigenVec, EoS_DensPres2CSqr,
+                             EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, d );
 #        endif
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             cc_L[v] = g_PriVar[v][idx_ccL];
             cc_R[v] = g_PriVar[v][idx_ccR];
          }
 
-         Hydro_LimitSlope( cc_L, cc_C, cc_R, LR_Limiter, MinMod_Coeff, Gamma, d,
-                           LEigenVec, REigenVec, Slope_Limiter );
+         Hydro_LimitSlope( cc_L, cc_C, cc_R, LR_Limiter, MinMod_Coeff, d,
+                           LEigenVec, REigenVec, Slope_Limiter,
+                           EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 
 //       store the results to g_Slope_PPM[]
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   g_Slope_PPM[d][v][idx_slope] = Slope_Limiter[v];
+         for (int v=0; v<NCOMP_LR; v++)   g_Slope_PPM[d][v][idx_slope] = Slope_Limiter[v];
 
       } // for (int d=0; d<3; d++)
    } // CGPU_LOOP( idx_slope, CUBE(N_SLOPE_PPM) )
@@ -803,16 +907,16 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
       idx_B[2] = IDX321( i_cc, j_cc, k_cc, NIn,    NIn    );
 #     endif
 
- //   cc/fc: cell/face-centered variables; _C_ncomp: central cell with all NCOMP_TOTAL_PLUS_MAG variables
-      real cc_C_ncomp[NCOMP_TOTAL_PLUS_MAG], fc[6][NCOMP_TOTAL_PLUS_MAG];
-      real dfc[NCOMP_TOTAL_PLUS_MAG], dfc6[NCOMP_TOTAL_PLUS_MAG];
+ //   cc/fc: cell/face-centered variables; _C_ncomp: central cell with all NCOMP_LR variables
+      real cc_C_ncomp[NCOMP_LR], fc[6][NCOMP_LR], dfc[NCOMP_LR], dfc6[NCOMP_LR];
 
-      for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   cc_C_ncomp[v] = g_PriVar[v][idx_cc];
+      for (int v=0; v<NCOMP_LR; v++)   cc_C_ncomp[v] = g_PriVar[v][idx_cc];
 
 
 //    2-a. evaluate the eigenvalues and eigenvectors along all three directions for the pure-hydro CTU integrator
 #     if ( !defined MHD  &&  FLU_SCHEME == CTU )
-      Hydro_GetEigenSystem( cc_C_ncomp, EigenVal, LEigenVec, REigenVec, Gamma );
+      Hydro_GetEigenSystem( cc_C_ncomp, EigenVal, LEigenVec, REigenVec, EoS_DensPres2CSqr,
+                            EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #     endif
 
 
@@ -821,7 +925,8 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
       {
 //       2-b. evaluate the eigenvalues and eigenvectors along the target direction for the MHD CTU integrator
 #        if (  defined MHD  &&  ( FLU_SCHEME == CTU || defined CHAR_RECONSTRUCTION )  )
-         MHD_GetEigenSystem( cc_C_ncomp, EigenVal[d], LEigenVec, REigenVec, Gamma, d );
+         MHD_GetEigenSystem( cc_C_ncomp, EigenVal[d], LEigenVec, REigenVec, EoS_DensPres2CSqr,
+                             EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, d );
 #        endif
 
 
@@ -833,7 +938,7 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          const int idx_slopeL = idx_slope - didx_slope[d];
          const int idx_slopeR = idx_slope + didx_slope[d];
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
 //          cc/fc: cell/face-centered variables; _C/L/R: Central/Left/Right cells
             real cc_C, cc_L, cc_R, dcc_L, dcc_R, dcc_C, fc_L, fc_R, Max, Min;
@@ -880,16 +985,21 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
             fc[faceL][v] = fc_L;
             fc[faceR][v] = fc_R;
 
-         } // for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         } // for (int v=0; v<NCOMP_LR; v++)
 
 
 //       4. advance the face-centered variables by half time-step for the CTU integrator
 #        if ( FLU_SCHEME == CTU )
+
+#        ifdef LR_EINT
+#           error : CTU does NOT support LR_EINT !!
+#        endif
+
          real Coeff_L, Coeff_R;
-         real Correct_L[NCOMP_TOTAL_PLUS_MAG], Correct_R[NCOMP_TOTAL_PLUS_MAG];
+         real Correct_L[NCOMP_LR], Correct_R[NCOMP_LR];
 
 //       4-1. compute the PPM coefficient (for the passive scalars as well)
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             dfc [v] = fc[faceR][v] - fc[faceL][v];
             dfc6[v] = (real)6.0*(  cc_C_ncomp[v] - (real)0.5*( fc[faceL][v] + fc[faceR][v] )  );
@@ -1052,14 +1162,14 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
          Hydro_Rotate3D( Correct_L, d, false, MAG_OFFSET );
          Hydro_Rotate3D( Correct_R, d, false, MAG_OFFSET );
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+         for (int v=0; v<NCOMP_LR; v++)
          {
             fc[faceL][v] += Correct_L[v];
             fc[faceR][v] += Correct_R[v];
          }
 
 
-//       4-6. ensure positive density and pressure
+//       4-6. apply density and pressure floors
          fc[faceL][0] = FMAX( fc[faceL][0], MinDens );
          fc[faceR][0] = FMAX( fc[faceR][0], MinDens );
 
@@ -1089,24 +1199,35 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 
 
 //       6. primitive variables --> conserved variables
-         real tmp[NCOMP_TOTAL_PLUS_MAG];  // input and output arrays must not overlap for Pri2Con()
+//          --> When LR_EINT is on, use the reconstructed internal energy instead of pressure in Hydro_Pri2Con()
+//              to skip expensive EoS conversion
+         real tmp[NCOMP_LR];  // input and output arrays must not overlap for Pri2Con()
+#        ifdef LR_EINT
+         real* const EintPtr = tmp + NCOMP_TOTAL_PLUS_MAG;
+#        else
+         real* const EintPtr = NULL;
+#        endif
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   tmp[v] = fc[faceL][v];
-         Hydro_Pri2Con( tmp, fc[faceL], _Gamma_m1, NormPassive, NNorm, NormIdx );
+         for (int v=0; v<NCOMP_LR; v++)   tmp[v] = fc[faceL][v];
+         Hydro_Pri2Con( tmp, fc[faceL], NormPassive, NNorm, NormIdx, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
-         for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)   tmp[v] = fc[faceR][v];
-         Hydro_Pri2Con( tmp, fc[faceR], _Gamma_m1, NormPassive, NNorm, NormIdx );
+         for (int v=0; v<NCOMP_LR; v++)   tmp[v] = fc[faceR][v];
+         Hydro_Pri2Con( tmp, fc[faceR], NormPassive, NNorm, NormIdx, EoS_DensPres2Eint,
+                        EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, EintPtr );
 
       } // for (int d=0; d<3; d++)
 
 
 #     if ( FLU_SCHEME == MHM )
 //    7. advance the face-centered variables by half time-step for the MHM integrator
-      Hydro_HancockPredict( fc, dt, dh, Gamma_m1, _Gamma_m1, g_ConVar, idx_cc, MinDens, MinPres );
+      Hydro_HancockPredict( fc, dt, dh, g_ConVar, idx_cc, MinDens, MinPres, MinEint,
+                            EoS_DensEint2Pres, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #     endif
 
 
 //    8. store the face-centered values to the output array
+//       --> use NCOMP_TOTAL_PLUS_MAG instead of LR_EINT since we don't need to store internal energy in g_FC_Var[]
       for (int f=0; f<6; f++)
       for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
          g_FC_Var[f][v][idx_fc] = fc[f][v];
@@ -1131,29 +1252,43 @@ void Hydro_DataReconstruction( const real g_ConVar   [][ CUBE(FLU_NXT) ],
 // Note           1. Passive scalars require no conversion
 //                   --> Their eigenmatrices are just identity matrix
 //                2. Input and output share the same array
-//                3. InOut[] should have the size of NCOMP_TOTAL_PLUS_MAG
+//                3. InOut[] should have the size of NCOMP_TOTAL_PLUS_MAG or NCOMP_EINT
+//                   --> For LR_EINT, where NCOMP_EINT=NCOMP_TOTAL_PLUS_MAG+1, this function assumes that the
+//                       internal energy is stored as the last element and does not touch it at all
+//                4. Does NOT support General EoS
 //
-// Parameter   :  InOut     : Array storing both the input primitive variables and output characteristic variables
-//                Gamma     : Ratio of specific heats
-//                Rho       : Density
-//                Pres      : Pressure
-//                LEigenVec : Left eigenvector (for MHD only)
-//                XYZ       : Target spatial direction : (0/1/2) --> (x/y/z)
+// Parameter   :  InOut             : Array storing both the input primitive variables and output characteristic variables
+//                Dens              : Density
+//                Pres              : Pressure
+//                LEigenVec         : Left eigenvector (for MHD only)
+//                XYZ               : Target spatial direction : (0/1/2) --> (x/y/z)
+//                EoS_DensPres2CSqr : EoS routine to compute the sound speed
+//                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
+//                EoS_Table         : EoS tables
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
-void Hydro_Pri2Char( real InOut[], const real Gamma, const real Rho, const real Pres,
-                     const real LEigenVec[][NWAVE], const int XYZ )
+void Hydro_Pri2Char( real InOut[], const real Dens, const real Pres, const real LEigenVec[][NWAVE], const int XYZ,
+                     const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
+#  if ( EOS == EOS_GAMMA )
+#  ifndef MHD
+   const real *Passive = NULL;   // EOS_GAMMA does not involve passive scalars
+#  endif
+#  else
+#  error : Hydro_Pri2Char() only supports EOS_GAMMA !!
+#  endif
+
 #  if ( defined CHECK_NEGATIVE_IN_FLUID  &&  !defined MHD )
    if ( Hydro_CheckNegative(Pres) )
       printf( "ERROR : invalid pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
               Pres, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Rho) )
+   if ( Hydro_CheckNegative(Dens) )
       printf( "ERROR : invalid density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Rho,  __FILE__, __LINE__, __FUNCTION__ );
+              Dens,  __FILE__, __LINE__, __FUNCTION__ );
 #  endif
 
 
@@ -1194,14 +1329,15 @@ void Hydro_Pri2Char( real InOut[], const real Gamma, const real Rho, const real 
 
 // b. pure hydro
 #  else // #ifdef MHD
-   const real _a2 = (real)1.0 / ( Gamma*Pres/Rho );
+   const real  a2 = EoS_DensPres2CSqr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
+   const real _a2 = (real)1.0 / a2;
    const real _a  = SQRT( _a2 );
 
-   InOut[0] = -(real)0.5*Rho*_a*Temp[1] + (real)0.5*_a2*Temp[4];
+   InOut[0] = -(real)0.5*Dens*_a*Temp[1] + (real)0.5*_a2*Temp[4];
    InOut[1] = Temp[0] - _a2*Temp[4];
    InOut[2] = Temp[2];
    InOut[3] = Temp[3];
-   InOut[4] = +(real)0.5*Rho*_a*Temp[1] + (real)0.5*_a2*Temp[4];
+   InOut[4] = +(real)0.5*Dens*_a*Temp[1] + (real)0.5*_a2*Temp[4];
 #  endif // #ifdef MHD ... else ...
 
 } // FUNCTION : Hydro_Pri2Char
@@ -1215,28 +1351,41 @@ void Hydro_Pri2Char( real InOut[], const real Gamma, const real Rho, const real 
 // Note           1. Passive scalars require no conversion
 //                   --> Their eigenmatrices are just identity matrix
 //                2. Input and output share the same array
+//                3. InOut[] should have the size of NCOMP_TOTAL_PLUS_MAG or NCOMP_EINT
+//                   --> For LR_EINT, where NCOMP_EINT=NCOMP_TOTAL_PLUS_MAG+1, this function assumes that the
+//                       internal energy is stored as the last element and does not touch it at all
+//                4. Does NOT support General EoS
 //
-// Parameter   :  InOut     : Array storing both the input characteristic variables and output primitive variables
-//                Gamma     : Ratio of specific heats
-//                Rho       : Density
-//                Pres      : Pressure
-//                REigenVec : Right eigenvector (for MHD only)
-//                XYZ       : Target spatial direction : (0/1/2) --> (x/y/z)
+// Parameter   :  InOut             : Array storing both the input characteristic variables and output primitive variables
+//                Dens              : Density
+//                Pres              : Pressure
+//                REigenVec         : Right eigenvector (for MHD only)
+//                XYZ               : Target spatial direction : (0/1/2) --> (x/y/z)
+//                EoS_DensPres2CSqr : EoS routine to compute the sound speed
+//                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
+//                EoS_Table         : EoS tables
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
-void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, const real Pres,
-                     const real REigenVec[][NWAVE], const int XYZ )
+void Hydro_Char2Pri( real InOut[], const real Dens, const real Pres, const real REigenVec[][NWAVE], const int XYZ,
+                     const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                     const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
+#  if ( EOS == EOS_GAMMA )
+   const real *Passive = NULL;   // EOS_GAMMA does not involve passive scalars
+#  else
+#  error : Hydro_Char2Pri() only supports EOS_GAMMA !!
+#  endif
+
 #  if ( defined CHECK_NEGATIVE_IN_FLUID  &&  !defined MHD )
    if ( Hydro_CheckNegative(Pres) )
       printf( "ERROR : invalid pressure (%14.7e) at file <%s>, line <%d>, function <%s>\n",
               Pres, __FILE__, __LINE__, __FUNCTION__ );
 
-   if ( Hydro_CheckNegative(Rho) )
+   if ( Hydro_CheckNegative(Dens) )
       printf( "ERROR : invalid density (%14.7e) at file <%s>, line <%d>, function <%s>\n",
-              Rho,  __FILE__, __LINE__, __FUNCTION__ );
+              Dens,  __FILE__, __LINE__, __FUNCTION__ );
 #  endif
 
 
@@ -1253,8 +1402,7 @@ void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, const real 
 
 
 // primitive --> characteristic
-   const real _Rho = (real)1.0 / Rho;
-   const real a2   = Gamma*Pres*_Rho;
+   const real a2 = EoS_DensPres2CSqr( Dens, Pres, Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 
 // a. MHD
 #  ifdef MHD
@@ -1278,7 +1426,7 @@ void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, const real 
    const real a = SQRT( a2 );
 
    InOut[0] = Temp[0] + Temp[1] + Temp[4];
-   InOut[1] = a*_Rho*( -Temp[0] + Temp[4] );
+   InOut[1] = a/Dens*( -Temp[0] + Temp[4] );
    InOut[2] = Temp[2];
    InOut[3] = Temp[3];
    InOut[4] = a2*( Temp[0] + Temp[4] );
@@ -1307,26 +1455,40 @@ void Hydro_Char2Pri( real InOut[], const real Gamma, const real Rho, const real 
 //                   But for MHD, this function only computes the eigenvalues and eigenvectors
 //                   along the spatial direction specified by XYZ
 //                   --> Because eigenvectors along different directions are different for MHD
+//                6. Does NOT support General EoS
 //
-// Parameter   :  CC_Var      : Array storing the input cell-centered primitive variables
-//                EigenVal    : Array to store the output eigenvalues
-//                              --> Hydro: along all three spatial directions
-//                                  MHD  : only along the target spatial direction
-//                L/REigenVec : Array to store the output left/right eigenvectors
-//                Gamma       : Ratio of specific heats
-//                XYZ         : Target spatial direction (for MHD only)
+// Parameter   :  CC_Var            : Array storing the input cell-centered primitive variables
+//                EigenVal          : Array to store the output eigenvalues
+//                                    --> Hydro: along all three spatial directions
+//                                        MHD  : only along the target spatial direction
+//                L/REigenVec       : Array to store the output left/right eigenvectors
+//                EoS_DensPres2CSqr : EoS routine to compute the sound speed
+//                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
+//                EoS_Table         : EoS tables
+//                XYZ               : Target spatial direction (for MHD only)
+//
+// Return      :  EigenVal[], L/REigenVec[]
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
 #ifdef MHD
 void   MHD_GetEigenSystem( const real CC_Var[], real EigenVal[],
                            real LEigenVec[][NWAVE], real REigenVec[][NWAVE],
-                           const real Gamma, const int XYZ )
+                           const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                           const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX],
+                           const int XYZ )
 #else
 void Hydro_GetEigenSystem( const real CC_Var[], real EigenVal[][NWAVE],
                            real LEigenVec[][NWAVE], real REigenVec[][NWAVE],
-                           const real Gamma )
+                           const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                           const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 #endif
 {
+
+#  if ( EOS == EOS_GAMMA )
+   const real *Passive = NULL;   // EOS_GAMMA does not involve passive scalars
+#  else
+#  error : Hydro/MHD_GetEigenSystem() only supports EOS_GAMMA !!
+#  endif
 
 #  ifdef CHECK_NEGATIVE_IN_FLUID
    if ( Hydro_CheckNegative(CC_Var[4]) )
@@ -1338,9 +1500,10 @@ void Hydro_GetEigenSystem( const real CC_Var[], real EigenVal[][NWAVE],
               CC_Var[0], __FILE__, __LINE__, __FUNCTION__ );
 #  endif
 
+
    const real  Rho = CC_Var[0];
    const real _Rho = (real)1.0/Rho;
-   const real  a2  = Gamma*CC_Var[4]*_Rho;
+   const real  a2  = EoS_DensPres2CSqr( Rho, CC_Var[4], Passive, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
    const real  a   = SQRT( a2 );
    const real _a   = (real)1.0/a;
    const real _a2  = _a*_a;
@@ -1611,26 +1774,29 @@ void Hydro_GetEigenSystem( const real CC_Var[], real EigenVal[][NWAVE],
 // Description :  Evaluate the monotonic slope by slope limiters
 //
 // Note        :  1. Input data must be primitive variables
+//                2. Size of each input array should be NCOMP_LR
 //
-// Parameter   :  L             : Element x-1
-//                C             : Element x
-//                R             : Element x+1
-//                LR_Limiter    : Slope limiter for the data reconstruction in the MHM/MHM_RP/CTU schemes
-//                                (0/1/2/3) = (vanLeer/generalized MinMod/vanAlbada/vanLeer+generalized MinMod) limiter
-//                MinMod_Coeff  : Coefficient of the generalized MinMod limiter
-//                Gamma         : Ratio of specific heats
-//                                --> For pure hydro + CHAR_RECONSTRUCTION only
-//                XYZ           : Target spatial direction : (0/1/2) --> (x/y/z)
-//                                --> For CHAR_RECONSTRUCTION only
-//                L/REigenVec   : Array storing the left/right eigenvectors
-//                                --> For MHD + CHAR_RECONSTRUCTION only
-//                Slope_Limiter : Array to store the output monotonic slope
+// Parameter   :  L                 : Element x-1
+//                C                 : Element x
+//                R                 : Element x+1
+//                LR_Limiter        : Slope limiter for the data reconstruction in the MHM/MHM_RP/CTU schemes
+//                                    (0/1/2/3) = (vanLeer/generalized MinMod/vanAlbada/vanLeer+generalized MinMod) limiter
+//                MinMod_Coeff      : Coefficient of the generalized MinMod limiter
+//                XYZ               : Target spatial direction : (0/1/2) --> (x/y/z)
+//                                    --> For CHAR_RECONSTRUCTION only
+//                L/REigenVec       : Array storing the left/right eigenvectors
+//                                    --> For MHD + CHAR_RECONSTRUCTION only
+//                Slope_Limiter     : Array to store the output monotonic slope
+//                EoS_DensPres2CSqr : EoS routine to compute the sound speed --> for CHAR_RECONSTRUCTION only
+//                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
+//                EoS_Table         : EoS tables
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
 void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_Limiter_t LR_Limiter,
-                       const real MinMod_Coeff, const real Gamma, const int XYZ,
-                       const real LEigenVec[][NWAVE], const real REigenVec[][NWAVE],
-                       real Slope_Limiter[] )
+                       const real MinMod_Coeff, const int XYZ,
+                       const real LEigenVec[][NWAVE], const real REigenVec[][NWAVE], real Slope_Limiter[],
+                       const EoS_DP2C_t EoS_DensPres2CSqr, const double EoS_AuxArray_Flt[],
+                       const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
 // check
@@ -1642,11 +1808,11 @@ void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_
 #  endif
 
 
-   real Slope_L[NCOMP_TOTAL_PLUS_MAG], Slope_R[NCOMP_TOTAL_PLUS_MAG], Slope_C[NCOMP_TOTAL_PLUS_MAG];
-   real Slope_A[NCOMP_TOTAL_PLUS_MAG], Slope_LR;
+   real Slope_L[NCOMP_LR], Slope_R[NCOMP_LR], Slope_C[NCOMP_LR];
+   real Slope_A[NCOMP_LR], Slope_LR;
 
 // evaluate different slopes
-   for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+   for (int v=0; v<NCOMP_LR; v++)
    {
       Slope_L[v] = C[v] - L[v];
       Slope_R[v] = R[v] - C[v];
@@ -1655,7 +1821,7 @@ void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_
 
    if ( LR_Limiter == VL_GMINMOD )
    {
-      for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+      for (int v=0; v<NCOMP_LR; v++)
       {
          if ( Slope_L[v]*Slope_R[v] > (real)0.0 )
             Slope_A[v] = (real)2.0*Slope_L[v]*Slope_R[v]/( Slope_L[v] + Slope_R[v] );
@@ -1667,20 +1833,20 @@ void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_
 
 // primitive variables --> characteristic variables
 #  ifdef CHAR_RECONSTRUCTION
-   const real Rho  = C[0];
+   const real Dens = C[0];
    const real Pres = C[4];
 
-   Hydro_Pri2Char( Slope_L, Gamma, Rho, Pres, LEigenVec, XYZ );
-   Hydro_Pri2Char( Slope_R, Gamma, Rho, Pres, LEigenVec, XYZ );
-   Hydro_Pri2Char( Slope_C, Gamma, Rho, Pres, LEigenVec, XYZ );
+   Hydro_Pri2Char( Slope_L, Dens, Pres, LEigenVec, XYZ, EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
+   Hydro_Pri2Char( Slope_R, Dens, Pres, LEigenVec, XYZ, EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
+   Hydro_Pri2Char( Slope_C, Dens, Pres, LEigenVec, XYZ, EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 
    if ( LR_Limiter == VL_GMINMOD )
-      Hydro_Pri2Char( Slope_A, Gamma, Rho, Pres, LEigenVec, XYZ );
+   Hydro_Pri2Char( Slope_A, Dens, Pres, LEigenVec, XYZ, EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #  endif
 
 
 // apply the slope limiter
-   for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+   for (int v=0; v<NCOMP_LR; v++)
    {
       Slope_LR = Slope_L[v]*Slope_R[v];
 
@@ -1726,12 +1892,12 @@ void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_
       {
          Slope_Limiter[v] = (real)0.0;
       } // if ( Slope_LR > (real)0.0 ) ... else ...
-   } // for (int v=0; v<NCOMP_TOTAL_PLUS_MAG; v++)
+   } // for (int v=0; v<NCOMP_LR; v++)
 
 
 // characteristic variables --> primitive variables
 #  ifdef CHAR_RECONSTRUCTION
-   Hydro_Char2Pri( Slope_Limiter, Gamma, Rho, Pres, REigenVec, XYZ );
+   Hydro_Char2Pri( Slope_Limiter, Dens, Pres, REigenVec, XYZ, EoS_DensPres2CSqr, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table );
 #  endif
 
 } // FUNCTION : Hydro_LimitSlope
@@ -1748,22 +1914,24 @@ void Hydro_LimitSlope( const real L[], const real C[], const real R[], const LR_
 //                2. Do NOT require data in the neighboring cells
 //                3. Input variables must be conserved variables
 //
-// Parameter   :  fc           : Face-centered conserved variables to be updated
-//                dt           : Time interval to advance solution
-//                dh           : Cell size
-//                Gamma_m1     : Gamma - 1
-//                _Gamma_m1    : 1 / (Gamma - 1)
-//                g_cc_array   : Array storing the cell-centered conserved variables for checking
-//                               negative density and pressure
-//                               --> It is just the input array Flu_Array_In[]
-//                cc_idx       : Index for accessing g_cc_array[]
-//                MinDens/Pres : Minimum allowed density and pressure
+// Parameter   :  fc                : Face-centered conserved variables to be updated
+//                dt                : Time interval to advance solution
+//                dh                : Cell size
+//                g_cc_array        : Array storing the cell-centered conserved variables for checking
+//                                    negative density and pressure
+//                                    --> It is just the input array Flu_Array_In[]
+//                cc_idx            : Index for accessing g_cc_array[]
+//                MinDens/Pres/Eint : Density, pressure, and internal energy floors
+//                EoS_DensEint2Pres : EoS routine to compute the gas pressure
+//                EoS_AuxArray_*    : Auxiliary arrays for the EoS routines
+//                EoS_Table         : EoS tables
 //-------------------------------------------------------------------------------------------------------
 GPU_DEVICE
-void Hydro_HancockPredict( real fc[][NCOMP_TOTAL], const real dt, const real dh,
-                           const real Gamma_m1, const real _Gamma_m1,
+void Hydro_HancockPredict( real fc[][NCOMP_LR], const real dt, const real dh,
                            const real g_cc_array[][ CUBE(FLU_NXT) ], const int cc_idx,
-                           const real MinDens, const real MinPres )
+                           const real MinDens, const real MinPres, const real MinEint,
+                           const EoS_DE2P_t EoS_DensEint2Pres, const double EoS_AuxArray_Flt[],
+                           const int EoS_AuxArray_Int[], const real *const EoS_Table[EOS_NTABLE_MAX] )
 {
 
    const real dt_dh2 = (real)0.5*dt/dh;
@@ -1772,7 +1940,8 @@ void Hydro_HancockPredict( real fc[][NCOMP_TOTAL], const real dt, const real dh,
 
 
 // calculate flux
-   for (int f=0; f<6; f++)    Hydro_Con2Flux( f/2, Flux[f], fc[f], Gamma_m1, MinPres );
+   for (int f=0; f<6; f++)
+      Hydro_Con2Flux( f/2, Flux[f], fc[f], MinPres, EoS_DensEint2Pres, EoS_AuxArray_Flt, EoS_AuxArray_Int, EoS_Table, NULL );
 
 // update the face-centered variables
    for (int v=0; v<NCOMP_TOTAL; v++)
@@ -1785,7 +1954,11 @@ void Hydro_HancockPredict( real fc[][NCOMP_TOTAL], const real dt, const real dh,
 // check the negative density and energy
    for (int f=0; f<6; f++)
    {
+#     ifdef BAROTROPIC_EOS
+      if ( fc[f][0] <= (real)0.0 )
+#     else
       if ( fc[f][0] <= (real)0.0  ||  fc[f][4] <= (real)0.0 )
+#     endif
       {
 //       set to the cell-centered values before update
          for (int f=0; f<6; f++)
@@ -1796,18 +1969,20 @@ void Hydro_HancockPredict( real fc[][NCOMP_TOTAL], const real dt, const real dh,
       }
    }
 
-// ensure positive density and pressure
+// apply density and internal energy floors
    for (int f=0; f<6; f++)
    {
+      fc[f][0] = FMAX( fc[f][0], MinDens );
+#     ifndef BAROTROPIC_EOS
 #     ifdef MHD
 #     error : ERROR : MHD is not supported here !!!
-      const real EngyB = NULL_REAL;
+      const real Emag = NULL_REAL;
 #     else
-      const real EngyB = NULL_REAL;
+      const real Emag = NULL_REAL;
 #     endif
-      fc[f][0] = FMAX( fc[f][0], MinDens );
-      fc[f][4] = Hydro_CheckMinPresInEngy( fc[f][0], fc[f][1], fc[f][2], fc[f][3], fc[f][4],
-                                           Gamma_m1, _Gamma_m1, MinPres, EngyB );
+      fc[f][4] = Hydro_CheckMinEintInEngy( fc[f][0], fc[f][1], fc[f][2], fc[f][3], fc[f][4],
+                                           MinEint, Emag );
+#     endif // #ifndef BAROTROPIC_EOS
 #     if ( NCOMP_PASSIVE > 0 )
       for (int v=NCOMP_FLUID; v<NCOMP_TOTAL; v++)
       fc[f][v] = FMAX( fc[f][v], TINY_NUMBER );

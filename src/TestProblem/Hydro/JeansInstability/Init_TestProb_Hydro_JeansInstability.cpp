@@ -71,6 +71,10 @@ void Validate()
       Aux_Error( ERROR_INFO, "must adopt periodic BC for the gravity (i.e., \"OPT__BC_POT = 1\") !!\n" );
 #  endif
 
+#  if ( EOS != EOS_GAMMA )
+   Aux_Error( ERROR_INFO, "EOS != EOS_GAMMA !!\n" );
+#  endif
+
 
 // warnings
    if ( MPI_Rank == 0 )
@@ -135,9 +139,9 @@ void SetParameter()
 // (2) set the problem-specific derived parameters
    Jeans_WaveLength = amr->BoxSize[0] / sqrt(3.0);   // 3 wavelengths along the diagonal
 #  ifdef MHD
-   Jeans_WaveSpeed  = sqrt( GAMMA*Jeans_P0/Jeans_Rho0 + SQR(Jeans_B0)/Jeans_Rho0 );
+   Jeans_WaveSpeed  = sqrt( GAMMA*Jeans_P0/Jeans_Rho0 + SQR(Jeans_B0)/Jeans_Rho0 );    // assuming EOS_GAMMA
 #  else
-   Jeans_WaveSpeed  = sqrt( GAMMA*Jeans_P0/Jeans_Rho0 );
+   Jeans_WaveSpeed  = sqrt( GAMMA*Jeans_P0/Jeans_Rho0 );                               // assuming EOS_GAMMA
 #  endif
    Jeans_WaveK      = 2.0*M_PI/Jeans_WaveLength;
    Jeans_WaveKj     = sqrt( 4.0*M_PI*NEWTON_G*Jeans_Rho0/SQR(Jeans_WaveSpeed) );
@@ -229,21 +233,21 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
    const double WaveW  = Jeans_WaveW;
 
    double r, v1, P1, CosPhase, SinPhase, ExpPhase;
+   double Dens, MomX, MomY, MomZ, Pres, Eint, Etot;
 
    r  = 1.0/sqrt(3.0)*( x + y + z ) - v0*Time;
    v1 = Sign*Rho1/Rho0*WaveW/WaveK;
-   P1 = GAMMA*P0/Rho0*Rho1;
+   P1 = GAMMA*P0/Rho0*Rho1;   // assuming EOS_GAMMA
 
    if ( Jeans_Stable )
    {
       CosPhase = cos( WaveK*r - Sign*WaveW*Time + Phase0 );
 
-      fluid[DENS] = Rho0 + Rho1*CosPhase;
-      fluid[MOMX] = fluid[DENS]*( v0 + v1*CosPhase )/sqrt(3.0);
-      fluid[MOMY] = fluid[MOMX];
-      fluid[MOMZ] = fluid[MOMX];
-      fluid[ENGY] = 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/fluid[DENS]
-                    + ( P0 + P1*CosPhase )/(GAMMA-1.0);
+      Dens = Rho0 + Rho1*CosPhase;
+      MomX = Dens*( v0 + v1*CosPhase )/sqrt(3.0);
+      MomY = MomX;
+      MomZ = MomX;
+      Pres = P0 + P1*CosPhase;
    }
 
    else
@@ -252,13 +256,24 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
       SinPhase = sin( WaveK*r + Phase0 );
       ExpPhase = exp( Jeans_Sign*Jeans_WaveW*Time );
 
-      fluid[DENS] = Rho0 + Rho1*CosPhase*ExpPhase;
-      fluid[MOMX] = fluid[DENS]*( v0 - v1*SinPhase*ExpPhase )/sqrt(3.0);
-      fluid[MOMY] = fluid[MOMX];
-      fluid[MOMZ] = fluid[MOMX];
-      fluid[ENGY] = 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/fluid[DENS]
-                    + ( P0 + P1*CosPhase*ExpPhase )/(GAMMA-1.0);
+      Dens = Rho0 + Rho1*CosPhase*ExpPhase;
+      MomX = Dens*( v0 - v1*SinPhase*ExpPhase )/sqrt(3.0);
+      MomY = MomX;
+      MomZ = MomX;
+      Pres = P0 + P1*CosPhase*ExpPhase;
    }
+
+// compute the total gas energy
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt,
+                                    EoS_AuxArray_Int, h_EoS_Table );    // assuming EoS requires no passive scalars
+   Etot = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, 0.0 );      // do NOT include magnetic energy here
+
+// set the output array
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
 
 } // FUNCTION : SetGridIC
 
@@ -380,17 +395,8 @@ void Init_TestProb_Hydro_JeansInstability()
 // set the function pointers of various problem-specific routines
    Init_Function_User_Ptr        = SetGridIC;
    Output_User_Ptr               = OutputError;
-   Init_Field_User_Ptr           = NULL;
-   Init_User_Ptr                 = NULL;
-   Flag_User_Ptr                 = NULL;
-   Mis_GetTimeStep_User_Ptr      = NULL;
-   Aux_Record_User_Ptr           = NULL;
-   BC_User_Ptr                   = NULL;
-   Flu_ResetByUser_Func_Ptr      = NULL;
-   End_User_Ptr                  = NULL;
 #  ifdef MHD
    Init_Function_BField_User_Ptr = SetBFieldIC;
-   BC_BField_User_Ptr            = NULL;
 #  endif
 #  endif // if ( MODEL == HYDRO  &&  defined GRAVITY )
 

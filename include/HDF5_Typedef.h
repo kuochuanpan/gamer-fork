@@ -56,6 +56,7 @@ struct KeyInfo_t
    int    CellScale[NLEVEL];        // amr->scale[lv]
 #  if ( MODEL == HYDRO )
    int    Magnetohydrodynamics;
+   int    CosmicRay;
 #  endif
 
    long   Step;
@@ -129,6 +130,9 @@ struct Makefile_t
 #  endif
    int DualEnergy;
    int Magnetohydrodynamics;
+   int CosmicRay;
+   int EoS;
+   int BarotropicEoS;
 
 #  elif ( MODEL == ELBDM )
    int ConserveMass;
@@ -163,6 +167,7 @@ struct SymConst_t
    int    PatchSize;
    int    Flu_NIn;
    int    Flu_NOut;
+   int    Flu_NIn_T;
    int    NFluxFluid;
    int    NFluxPassive;
    int    Flu_GhostSize;
@@ -176,6 +181,7 @@ struct SymConst_t
 
    double TinyNumber;
    double HugeNumber;
+   double MaxError;
 
 
 #  ifdef GRAVITY
@@ -194,6 +200,7 @@ struct SymConst_t
    int    USG_NxtG;
 #  endif
 
+   int    ExtPot_BlockSize;
    int    Gra_BlockSize;
    int    ExtPotNAuxMax;
    int    ExtAccNAuxMax;
@@ -235,21 +242,26 @@ struct SymConst_t
    int    Flu_BlockSize_y;
    int    CheckNegativeInFluid;
    int    CharReconstruction;
+   int    LR_Eint;
    int    CheckIntermediate;
    int    HLL_NoRefState;
    int    HLL_IncludeAllWaves;
+   int    HLLC_WaveSpeed;
+   int    HLLE_WaveSpeed;
+#  ifdef MHD
+   int    HLLD_WaveSpeed;
+#  endif
 #  ifdef N_FC_VAR
    int    N_FC_Var;
 #  endif
 #  ifdef N_SLOPE_PPM
    int    N_Slope_PPM;
 #  endif
-#  ifdef MAX_ERROR
-   double MaxError;
-#  endif
 #  ifdef MHD
    int    EulerY;
 #  endif
+   int    EoSNAuxMax;
+   int    EoSNTableMax;
 
 #  elif  ( MODEL == ELBDM )
    int    Flu_BlockSize_x;
@@ -387,6 +399,7 @@ struct InputPara_t
 #  endif
    int    Opt__Flag_LohnerForm;
    int    Opt__Flag_User;
+   int    Opt__Flag_User_Num;
    int    Opt__Flag_Region;
 #  ifdef PARTICLE
    int    Opt__Flag_NParPatch;
@@ -415,6 +428,7 @@ struct InputPara_t
 #  if ( MODEL == HYDRO )
    double Gamma;
    double MolecularWeight;
+   double IsoTemp;
    double MinMod_Coeff;
    int    Opt__LR_Limiter;
    int    Opt__1stFluxCorr;
@@ -455,6 +469,8 @@ struct InputPara_t
 #  endif
 #  if ( MODEL == HYDRO )
    double MinPres;
+   double MinEint;
+   int    Opt__LastResortFloor;
    int    JeansMinPres;
    int    JeansMinPres_Level;
    int    JeansMinPres_NCell;
@@ -463,7 +479,7 @@ struct InputPara_t
    double DualEnergySwitch;
 #  endif
 
-// self-gravity
+// gravity
 #  ifdef GRAVITY
    double NewtonG;
 #  if   ( POT_SCHEME == SOR )
@@ -478,10 +494,16 @@ struct InputPara_t
 #  endif
    int    Pot_GPU_NPGroup;
    int    Opt__GraP5Gradient;
-   int    Opt__GravityType;
-   int    Opt__ExternalPot;
+   int    Opt__SelfGravity;
+   int    Opt__ExtAcc;
+   int    Opt__ExtPot;
+   char  *ExtPotTable_Name;
+   int    ExtPotTable_NPoint[3];
+   double ExtPotTable_dh;
+   double ExtPotTable_EdgeL[3];
+   int    ExtPotTable_Float8;
    int    Opt__GravityExtraMass;
-#  endif
+#  endif // #ifdef GRAVITY
 
 // Grackle
 #  ifdef SUPPORT_GRACKLE
@@ -549,6 +571,7 @@ struct InputPara_t
    int    Opt__RefPot_IntScheme;
 #  endif
    double IntMonoCoeff;
+   int    IntOppSign0thOrder;
 
 // data dump
    int    Opt__Output_Total;
@@ -614,7 +637,7 @@ struct InputPara_t
    double FlagTable_Rho         [NLEVEL-1];
    double FlagTable_RhoGradient [NLEVEL-1];
    double FlagTable_Lohner      [NLEVEL-1][4];
-   double FlagTable_User        [NLEVEL-1];
+   hvl_t  FlagTable_User        [NLEVEL-1];
 #  if   ( MODEL == HYDRO )
    double FlagTable_PresGradient[NLEVEL-1];
    double FlagTable_Vorticity   [NLEVEL-1];

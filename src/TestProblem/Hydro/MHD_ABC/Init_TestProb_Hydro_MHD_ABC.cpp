@@ -182,12 +182,23 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
                 const int lv, double AuxArray[] )
 {
 
-   fluid[DENS] = ABC_Rho0;
-   fluid[MOMX] = ABC_Rho0*ABC_V0/sqrt(3.0);
-   fluid[MOMY] = ABC_Rho0*ABC_V0/sqrt(3.0);
-   fluid[MOMZ] = ABC_Rho0*ABC_V0/sqrt(3.0);
-// no need to add the magnetic energy here
-   fluid[ENGY] = ABC_P0/(GAMMA-1.0) + 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) ) / fluid[DENS];
+   double Dens, MomX, MomY, MomZ, Pres, Eint, Etot;
+
+   Dens = ABC_Rho0;
+   MomX = ABC_Rho0*ABC_V0/sqrt(3.0);
+   MomY = ABC_Rho0*ABC_V0/sqrt(3.0);
+   MomZ = ABC_Rho0*ABC_V0/sqrt(3.0);
+   Pres = ABC_P0;
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt,
+                                    EoS_AuxArray_Int, h_EoS_Table );    // assuming EoS requires no passive scalars
+   Etot = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, 0.0 );      // do NOT include magnetic energy here
+
+// set the output array
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
 
 } // FUNCTION : SetGridIC
 
@@ -255,18 +266,6 @@ void Init_TestProb_Hydro_MHD_ABC()
 #  ifdef MHD
    Init_Function_BField_User_Ptr = SetBFieldIC;
 #  endif
-   Init_Field_User_Ptr           = NULL;
-   Flag_User_Ptr                 = NULL;
-   Mis_GetTimeStep_User_Ptr      = NULL;
-   BC_User_Ptr                   = NULL;
-#  ifdef MHD
-   BC_BField_User_Ptr            = NULL;
-#  endif
-   Flu_ResetByUser_Func_Ptr      = NULL;
-   Output_User_Ptr               = NULL;
-   Aux_Record_User_Ptr           = NULL;
-   Init_User_Ptr                 = NULL;
-   End_User_Ptr                  = NULL;
 #  endif // #if ( MODEL == HYDRO )
 
 

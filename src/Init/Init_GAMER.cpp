@@ -14,6 +14,10 @@ extern void (*Par_Init_ByFunction_Ptr)( const long NPar_ThisRank, const long NPa
 //-------------------------------------------------------------------------------------------------------
 // Function    :  Init
 // Description :  Initialize GAMER
+//
+// Note        :  1. Function pointer "Init_User_Ptr" may be set by a test problem initializer
+//
+// Parameter   :  argc, argv: Command line arguments
 //-------------------------------------------------------------------------------------------------------
 void Init_GAMER( int *argc, char ***argv )
 {
@@ -89,15 +93,27 @@ void Init_GAMER( int *argc, char ***argv )
 #  endif
 
 
-// initialize the external potential and acceleration parameters
-// --> must be called AFTER Init_TestProb()
-#  ifdef GRAVITY
-   Init_ExternalAccPot();
+// set the GPU ID
+// --> must be called BEFORE Init_ExtAccPot() and EoS_Init()
+#  ifdef GPU
+   CUAPI_SetDevice( OPT__GPUID_SELECT );
 #  endif
 
 
-// set the GPU ID and several GPU parameters
-// --> must be called AFTER Init_Field()
+// initialize the external potential and acceleration parameters
+// --> must be called AFTER Init_TestProb()
+#  ifdef GRAVITY
+   Init_ExtAccPot();
+#  endif
+
+
+// initialize the EoS routines
+#  if ( MODEL == HYDRO )
+   EoS_Init();
+#  endif
+
+
+// set the GPU parameters
 #  ifdef GPU
 #  ifndef GRAVITY
    int POT_GPU_NPGROUP = NULL_INT;
@@ -105,9 +121,10 @@ void Init_GAMER( int *argc, char ***argv )
 #  ifndef SUPPORT_GRACKLE
    int CHE_GPU_NPGROUP = NULL_INT;
 #  endif
-   CUAPI_SetDevice( OPT__GPUID_SELECT );
-
    CUAPI_Set_Default_GPU_Parameter( GPU_NSTREAM, FLU_GPU_NPGROUP, POT_GPU_NPGROUP, CHE_GPU_NPGROUP );
+
+// CUAPI_SetConstMemory must be called AFTER Init_Field(), Init_ExtAccPot(), and EoS_Init()
+   CUAPI_SetConstMemory();
 #  endif
 
 
@@ -144,16 +161,27 @@ void Init_GAMER( int *argc, char ***argv )
    Init_MemAllocate();
 
 
+// load the external potential table
+// --> before Init_ByFunction() so that the test problem initializer can access
+//     the external potential table if required
+// --> after Init_MemAllocate() to allocate the potential table array first
+#  ifdef GRAVITY
+   if ( OPT__EXT_POT == EXT_POT_TABLE )   Init_LoadExtPotTable();
+#  endif
+
+
 // initialize particles
 #  ifdef PARTICLE
    switch ( amr->Par->Init )
    {
       case PAR_INIT_BY_FUNCTION:
-         if ( Par_Init_ByFunction_Ptr == NULL )    Aux_Error( ERROR_INFO, "Par_Init_ByFunction_Ptr == NULL !!\n" );
-         Par_Init_ByFunction_Ptr( amr->Par->NPar_Active, amr->Par->NPar_Active_AllRank,
-                                  amr->Par->Mass, amr->Par->PosX, amr->Par->PosY, amr->Par->PosZ,
-                                  amr->Par->VelX, amr->Par->VelY, amr->Par->VelZ, amr->Par->Time,
-                                  amr->Par->Attribute );
+         if ( Par_Init_ByFunction_Ptr != NULL )
+            Par_Init_ByFunction_Ptr( amr->Par->NPar_Active, amr->Par->NPar_Active_AllRank,
+                                     amr->Par->Mass, amr->Par->PosX, amr->Par->PosY, amr->Par->PosZ,
+                                     amr->Par->VelX, amr->Par->VelY, amr->Par->VelZ, amr->Par->Time,
+                                     amr->Par->Attribute );
+         else
+            Aux_Error( ERROR_INFO, "Par_Init_ByFunction_Ptr == NULL for PAR_INIT = 1 !!\n" );
          break;
 
       case PAR_INIT_BY_RESTART:
@@ -196,10 +224,10 @@ void Init_GAMER( int *argc, char ***argv )
 
 
 #  ifdef GRAVITY
-   if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
+   if ( OPT__SELF_GRAVITY  ||  OPT__EXT_POT )
    {
 //    initialize the k-space Green's function for the isolated BC.
-      if ( OPT__BC_POT == BC_POT_ISOLATED )  Init_GreenFuncK();
+      if ( OPT__SELF_GRAVITY  &&  OPT__BC_POT == BC_POT_ISOLATED )    Init_GreenFuncK();
 
 
 //    evaluate the initial average density if it is not set yet (may already be set in Init_ByRestart)
@@ -215,7 +243,7 @@ void Init_GAMER( int *argc, char ***argv )
 
          Buf_GetBufferData( lv, amr->FluSg[lv], NULL_INT, NULL_INT, DATA_GENERAL, _DENS, _NONE, Rho_ParaBuf, USELB_YES );
 
-         Gra_AdvanceDt( lv, Time[lv], NULL_REAL, NULL_REAL, NULL_INT, amr->PotSg[lv], true, false, false, false );
+         Gra_AdvanceDt( lv, Time[lv], NULL_REAL, NULL_REAL, NULL_INT, amr->PotSg[lv], true, false, false, false, true );
 
          if ( lv > 0 )
          Buf_GetBufferData( lv, NULL_INT, NULL_INT, amr->PotSg[lv], POT_FOR_POISSON, _POTE, _NONE, Pot_ParaBuf, USELB_YES );
@@ -224,7 +252,7 @@ void Init_GAMER( int *argc, char ***argv )
       } // for (int lv=0; lv<NLEVEL; lv++)
 
       if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", "Calculating gravitational potential" );
-   } // if ( OPT__GRAVITY_TYPE == GRAVITY_SELF  ||  OPT__GRAVITY_TYPE == GRAVITY_BOTH )
+   } // if ( OPT__SELF_GRAVITY_TYPE  ||  OPT__EXT_POT )
 #  endif // #ifdef GARVITY
 
 

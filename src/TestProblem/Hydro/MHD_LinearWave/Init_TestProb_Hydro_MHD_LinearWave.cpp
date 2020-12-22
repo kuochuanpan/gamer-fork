@@ -58,6 +58,10 @@ void Validate()
    Aux_Error( ERROR_INFO, "PARTICLE must be disabled !!\n" );
 #  endif
 
+#  if ( EOS != EOS_GAMMA )
+   Aux_Error( ERROR_INFO, "EOS != EOS_GAMMA !!\n" );
+#  endif
+
    if ( amr->BoxSize[0] != amr->BoxSize[1]  ||  amr->BoxSize[0] != amr->BoxSize[2] )
       Aux_Error( ERROR_INFO, "simulation domain must be cubic !!\n" );
 
@@ -79,7 +83,7 @@ void Validate()
 
 
 
-#if ( MODEL == HYDRO  &&  defined MHD )
+#if ( MODEL == HYDRO )
 //-------------------------------------------------------------------------------------------------------
 // Function    :  SetParameter
 // Description :  Load and set the problem-specific runtime parameters
@@ -128,6 +132,7 @@ void SetParameter()
 // (2) set the problem-specific derived parameters
    MHDLinear_WaveLength = amr->BoxSize[0] / sqrt(3.0);   // 3 wavelengths along the diagonal
 
+// assuming EOS_GAMMA
    if ( MHDLinear_Mode == 1 )
       MHDLinear_WaveSpeed = sqrt( GAMMA*MHDLinear_P0/MHDLinear_Rho0 + SQR(MHDLinear_B0)/MHDLinear_Rho0 );
    else
@@ -215,26 +220,38 @@ void SetGridIC( real fluid[], const double x, const double y, const double z, co
 
    const double r = 1.0/sqrt(3.0)*( x + y + z ) - v0*Time;
    double v1, B1, P1, WaveK, WaveW, SinPhase;
+   double Dens, MomX, MomY, MomZ, Pres, Eint, Etot;
 
    if ( MHDLinear_Mode == 1 )
    {
       v1       = Sign*Rho1*WaveSpeed/Rho0;
       B1       = Sign*v1*B0/WaveSpeed;
-      P1       = Sign*v1*P0*GAMMA/WaveSpeed;
+      P1       = Sign*v1*P0*GAMMA/WaveSpeed;    // assuming EOS_GAMMA
       WaveK    = 2.0*M_PI/WaveLength;
       WaveW    = WaveK*WaveSpeed;
       SinPhase = sin( WaveK*r - Sign*WaveW*Time + Phase0 );
 
-      fluid[DENS] = Rho0 + Rho1*SinPhase;
-      fluid[MOMX] = fluid[DENS]*( v1*SinPhase + v0 ) / sqrt(3.0);
-      fluid[MOMY] = fluid[MOMX];
-      fluid[MOMZ] = fluid[MOMX];
-      fluid[ENGY] = 0.5*( SQR(fluid[MOMX]) + SQR(fluid[MOMY]) + SQR(fluid[MOMZ]) )/fluid[DENS]
-                    + ( P0 + P1*SinPhase )/(GAMMA-1.0);
+      Dens = Rho0 + Rho1*SinPhase;
+      MomX = Dens*( v1*SinPhase + v0 )/sqrt(3.0);
+      MomY = MomX;
+      MomZ = MomX;
+      Pres = P0 + P1*SinPhase;
    } // if ( MHDLinear_Mode == 1 )
 
    else
       Aux_Error( ERROR_INFO, "unsupported MHDLinear_Mode = %d !!\n", MHDLinear_Mode );
+
+// compute the total gas energy
+   Eint = EoS_DensPres2Eint_CPUPtr( Dens, Pres, NULL, EoS_AuxArray_Flt,
+                                    EoS_AuxArray_Int, h_EoS_Table );    // assuming EoS requires no passive scalars
+   Etot = Hydro_ConEint2Etot( Dens, MomX, MomY, MomZ, Eint, 0.0 );      // do NOT include magnetic energy here
+
+// set the output array
+   fluid[DENS] = Dens;
+   fluid[MOMX] = MomX;
+   fluid[MOMY] = MomY;
+   fluid[MOMZ] = MomZ;
+   fluid[ENGY] = Etot;
 
 } // FUNCTION : SetGridIC
 
@@ -291,7 +308,6 @@ void SetBFieldIC( real magnetic[], const double x, const double y, const double 
       Aux_Error( ERROR_INFO, "unsupported MHDLinear_Mode = %d !!\n", MHDLinear_Mode );
 
 } // FUNCTION : SetBFieldIC
-#endif // #ifdef MHD
 
 
 
@@ -315,7 +331,8 @@ static void OutputError()
    Output_L1Error( SetGridIC, SetBFieldIC, Prefix, Part, NULL_REAL, NULL_REAL, NULL_REAL );
 
 } // FUNCTION : OutputError
-#endif // #if ( MODEL == HYDRO  &&  defined MHD )
+#endif // #ifdef MHD
+#endif // #if ( MODEL == HYDRO )
 
 
 
@@ -339,25 +356,18 @@ void Init_TestProb_Hydro_MHD_LinearWave()
    Validate();
 
 
-#  if ( MODEL == HYDRO  &&  defined MHD )
+#  if ( MODEL == HYDRO )
 // set the problem-specific runtime parameters
    SetParameter();
 
 
 // set the function pointers of various problem-specific routines
    Init_Function_User_Ptr        = SetGridIC;
+#  ifdef MHD
    Init_Function_BField_User_Ptr = SetBFieldIC;
    Output_User_Ptr               = OutputError;
-   Init_Field_User_Ptr           = NULL;
-   Init_User_Ptr                 = NULL;
-   Flag_User_Ptr                 = NULL;
-   Mis_GetTimeStep_User_Ptr      = NULL;
-   Aux_Record_User_Ptr           = NULL;
-   BC_User_Ptr                   = NULL;
-   BC_BField_User_Ptr            = NULL;
-   Flu_ResetByUser_Func_Ptr      = NULL;
-   End_User_Ptr                  = NULL;
-#  endif // #if ( MODEL == HYDRO  &&  defined MHD )
+#  endif
+#  endif // #if ( MODEL == HYDRO )
 
 
    if ( MPI_Rank == 0 )    Aux_Message( stdout, "%s ... done\n", __FUNCTION__ );
